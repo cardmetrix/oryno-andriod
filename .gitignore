@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+package-lock.json
 
 # Expo
 .expo/
@@ -31,7 +32,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+.env.local
+.env.eas
+oryno-*-firebase-adminsdk-*.json
 
 # typescript
 *.tsbuildinfo

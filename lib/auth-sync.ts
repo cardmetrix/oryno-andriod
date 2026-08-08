@@ -1,0 +1,141 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { api } from '@/lib/api';
+import { getCountryInfo } from '@/lib/country';
+import { endpoints } from '@/lib/endpoints';
+import { detectUserCountry } from '@/lib/geo';
+import { toast } from '@/lib/toast';
+import type { SyncResponse } from '@/lib/types';
+
+const COUNTRY_STORAGE_KEY = 'oryno_country';
+const LOGIN_ANNOUNCED_KEY = 'oryno_login_announced';
+
+let inflight: Promise<SyncResponse> | null = null;
+/** Session-scoped country toast dedupe (like website sessionStorage). */
+let countryToastToken: string | null = null;
+
+export async function markLoginAnnounced() {
+  try {
+    await AsyncStorage.setItem(LOGIN_ANNOUNCED_KEY, '1');
+  } catch {
+    // ignore
+  }
+}
+
+export async function clearLoginAnnounced() {
+  try {
+    await AsyncStorage.removeItem(LOGIN_ANNOUNCED_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export async function wasLoginAnnounced() {
+  try {
+    return (await AsyncStorage.getItem(LOGIN_ANNOUNCED_KEY)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+async function persistCountry(info: ReturnType<typeof getCountryInfo>) {
+  try {
+    await AsyncStorage.setItem(
+      COUNTRY_STORAGE_KEY,
+      JSON.stringify({
+        countryCode: info.code,
+        currency: info.currency,
+        updatedAt: Date.now(),
+      }),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+/** Show the website-style “Country detected” toast once per app session. */
+export function maybeShowCountryToast(countryCode?: string | null) {
+  if (!countryCode) return;
+  const info = getCountryInfo(countryCode);
+  const token = `${info.code}:${info.currency}`;
+  if (countryToastToken === token) return;
+  countryToastToken = token;
+  toast.success(`Country detected: ${info.name}`, {
+    description: `Your wallet currency is ${info.currency} (${info.currencySymbol})`,
+  });
+}
+
+export async function syncSessionToDatabase(options?: {
+  announceLogin?: boolean;
+  countryCode?: string | null;
+  forceCountry?: boolean;
+  /** Show country toast after a successful sync (default true). */
+  showCountryToast?: boolean;
+}) {
+  if (inflight) {
+    if (__DEV__) console.log('[ORYNO auth-sync] reusing in-flight sync');
+    return inflight;
+  }
+
+  const showCountryToast = options?.showCountryToast !== false;
+
+  inflight = (async () => {
+    try {
+      let countryCode = options?.countryCode ?? null;
+      let forceCountry = Boolean(options?.forceCountry);
+
+      if (!countryCode) {
+        // Don't block boot on slow geo — server can still detect by IP.
+        const detected = await Promise.race([
+          detectUserCountry(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+        ]);
+        if (detected?.countryCode) {
+          countryCode = detected.countryCode;
+          forceCountry = true;
+        }
+      }
+
+      const announceLogin = Boolean(options?.announceLogin);
+      if (__DEV__) {
+        console.log('[ORYNO auth-sync] syncing session', {
+          countryCode,
+          forceCountry,
+          announceLogin,
+        });
+      }
+
+      const result = await api.post<SyncResponse>(endpoints.auth.sync, {
+        countryCode,
+        forceCountry,
+        announceLogin,
+      });
+
+      const resolvedCode = result.country?.code || result.user?.countryCode || countryCode;
+      const info = resolvedCode ? getCountryInfo(resolvedCode) : null;
+      if (info) {
+        await persistCountry(info);
+        if (showCountryToast) maybeShowCountryToast(info.code);
+      }
+
+      if (announceLogin) await markLoginAnnounced();
+
+      if (__DEV__) {
+        console.log('[ORYNO auth-sync] sync ok', {
+          country: info?.code,
+          currency: info?.currency,
+        });
+      }
+      return result;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[ORYNO auth-sync] sync failed', error);
+      }
+      throw error;
+    } finally {
+      inflight = null;
+    }
+  })();
+
+  return inflight;
+}

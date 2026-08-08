@@ -1,0 +1,34 @@
+# When this file exists it replaces .gitignore for EAS uploads.
+# Force pnpm: never ship a stale npm lockfile.
+package-lock.json
+npm-shrinkwrap.json
+
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env
+.env*.local
+.env.local
+.env.eas
+oryno-*-firebase-adminsdk-*.json
+*.tsbuildinfo
+app-example
+/ios
+/android
+.git/
+*.log

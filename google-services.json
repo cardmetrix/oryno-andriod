@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "631424622941",
+    "project_id": "oryno-5e660",
+    "storage_bucket": "oryno-5e660.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:631424622941:android:aa9df49456d5c79f0388b4",
+        "android_client_info": {
+          "package_name": "com.oryno.africa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDVskYD_vX9jMUDMTJKbnOrZ8qaoGJG6eI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

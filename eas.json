@@ -1,0 +1,47 @@
+{
+  "cli": {
+    "version": ">= 20.4.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "environment": "development",
+      "node": "22.14.0",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "environment": "preview",
+      "node": "22.14.0",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.orynoafrica.com",
+        "EXPO_PUBLIC_API_PREFIX": "/api/external/v1"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "environment": "production",
+      "node": "22.14.0",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.orynoafrica.com",
+        "EXPO_PUBLIC_API_PREFIX": "/api/external/v1"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=402, initial-scale=1" />
+  <title>ORYNO — Social Media Boosting</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange: #FF6A00;
+      --orange-soft: rgba(255, 106, 0, 0.08);
+      --charcoal: #1C1C1E;
+      --muted: #6E6E73;
+      --line: #EFEFEF;
+      --bg: #FFFFFF;
+      --field: #F5F5F7;
+      --success: #1DB954;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #E8E8ED;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+      color: var(--charcoal);
+    }
+    .phone {
+      width: 402px;
+      min-height: 874px;
+      background: var(--bg);
+      border-radius: 40px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.12);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .status {
+      height: 44px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .status-icons { display: flex; gap: 6px; align-items: center; opacity: 0.9; font-size: 12px; }
+    .nav {
+      padding: 8px 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .back {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      background: var(--field);
+      display: grid; place-items: center;
+      font-size: 18px;
+    }
+    .nav h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .nav .ghost { width: 36px; height: 36px; }
+    .content {
+      padding: 0 20px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      flex: 1;
+    }
+    .hero {
+      background: linear-gradient(145deg, #FF6A00 0%, #FF8A33 55%, #FFB06B 100%);
+      border-radius: 24px;
+      padding: 22px 20px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 160px; height: 160px;
+      right: -40px; top: -40px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 50%;
+    }
+    .hero .eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      opacity: 0.9;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .hero h2 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+      margin-bottom: 8px;
+      max-width: 260px;
+    }
+    .hero p {
+      font-size: 13px;
+      opacity: 0.92;
+      line-height: 1.4;
+      max-width: 280px;
+    }
+    .section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .platforms {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .platform {
+      background: var(--field);
+      border-radius: 16px;
+      padding: 14px 8px 12px;
+      text-align: center;
+      border: 1.5px solid transparent;
+    }
+    .platform.active {
+      background: var(--orange-soft);
+      border-color: var(--orange);
+    }
+    .platform .icon {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      margin: 0 auto 8px;
+      display: grid; place-items: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: white;
+    }
+    .platform .name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--charcoal);
+    }
+    .ig { background: linear-gradient(135deg, #F58529, #DD2A7B, #8134AF); }
+    .tt { background: #010101; }
+    .yt { background: #FF0000; }
+    .fb { background: #1877F2; }
+    .fb.active-ring, .platform.active .fb { box-shadow: none; }
+
+    .field-group { display: flex; flex-direction: column; gap: 8px; }
+    .field-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--charcoal);
+    }
+    .field {
+      background: var(--field);
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--muted);
+      border: none;
+      outline: none;
+      width: 100%;
+    }
+    .field.value { color: var(--charcoal); font-weight: 500; }
+
+    .packages {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .package {
+      border: 1.5px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+    }
+    .package.selected {
+      border-color: var(--orange);
+      background: var(--orange-soft);
+    }
+    .package .left { display: flex; flex-direction: column; gap: 4px; }
+    .package .title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .package .meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .package .price {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--charcoal);
+    }
+    .package.selected .price { color: var(--orange); }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--orange);
+      background: rgba(255,106,0,0.12);
+      padding: 3px 8px;
+      border-radius: 99px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    .summary {
+      background: var(--field);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .row strong {
+      color: var(--charcoal);
+      font-weight: 700;
+    }
+    .row.total {
+      padding-top: 10px;
+      border-top: 1px solid #E5E5EA;
+      font-size: 15px;
+      color: var(--charcoal);
+      font-weight: 600;
+    }
+    .row.total strong {
+      color: var(--orange);
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .cta {
+      margin-top: 4px;
+      background: var(--orange);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      height: 54px;
+      font-size: 16px;
+      font-weight: 700;
+      width: 100%;
+      letter-spacing: -0.2px;
+    }
+    .note {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .home {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .home span {
+      width: 134px;
+      height: 5px;
+      border-radius: 99px;
+      background: rgba(28,28,30,0.28);
+    }
+  </style>
+</head>
+<body>
+  <div class="phone" id="screen-social-boost">
+    <div class="status">
+      <span>9:41</span>
+      <div class="status-icons">
+        <span>●●●●</span>
+        <span>Wi‑Fi</span>
+        <span>100%</span>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="back">‹</div>
+      <h1>Social Boosting</h1>
+      <div class="ghost"></div>
+    </div>
+
+    <div class="content">
+      <div class="hero">
+        <div class="eyebrow">Grow faster</div>
+        <h2>Boost your social presence</h2>
+        <p>Buy real engagement for Instagram, TikTok, YouTube & Facebook — paid from your ORYNO wallet.</p>
+      </div>
+
+      <div>
+        <div class="section-label">Select platform</div>
+        <div class="platforms">
+          <div class="platform active">
+            <div class="icon ig">Ig</div>
+            <div class="name">Instagram</div>
+          </div>
+          <div class="platform">
+            <div class="icon tt">Tt</div>
+            <div class="name">TikTok</div>
+          </div>
+          <div class="platform">
+            <div class="icon yt">Yt</div>
+            <div class="name">YouTube</div>
+          </div>
+          <div class="platform">
+            <div class="icon fb">Fb</div>
+            <div class="name">Facebook</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>Profile or post link</label>
+        <div class="field value">instagram.com/yourhandle</div>
+      </div>
+
+      <div>
+        <div class="section-label">Choose package</div>
+        <div class="packages">
+          <div class="package selected">
+            <div class="left">
+              <div class="title">1,000 Followers <span class="badge">Popular</span></div>
+              <div class="meta">Starts in ~30 mins · Gradual delivery</div>
+            </div>
+            <div class="price">₦4,500</div>
+          </div>
+          <div class="package">
+            <div class="left">
+              <div class="title">5,000 Likes</div>
+              <div class="meta">For a single post or reel</div>
+            </div>
+            <div class="price">₦3,200</div>
+          </div>
+          <div class="package">
+            <div class="left">
+              <div class="title">10,000 Views</div>
+              <div class="meta">Reels / TikTok / Shorts</div>
+            </div>
+            <div class="price">₦2,800</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="row"><span>Platform</span><strong>Instagram</strong></div>
+        <div class="row"><span>Package</span><strong>1,000 Followers</strong></div>
+        <div class="row"><span>Wallet balance</span><strong>₦28,450.00</strong></div>
+        <div class="row total"><span>Total</span><strong>₦4,500</strong></div>
+      </div>
+
+      <button class="cta">Boost Now</button>
+      <p class="note">Orders are non-refundable once delivery starts. Delivery speed may vary by platform.</p>
+      <div class="home"><span></span></div>
+    </div>
+  </div>
+</body>
+</html>

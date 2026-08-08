@@ -1,48 +1,98 @@
 {
   "expo": {
-    "name": "oryno-africa",
-    "slug": "oryno-africa",
+    "name": "ORYNO",
+    "slug": "oryno",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "orynoafrica",
+    "icon": "./assets/images/oryno-icon.png",
+    "scheme": "oryno",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oryno.africa",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/oryno-icon.png"
       },
+      "icon": "./assets/images/oryno-icon.png",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.oryno.africa",
+      "googleServicesFile": "./google-services.json",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/oryno-icon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/oryno-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FF6A00",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#FF6A00"
           }
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow ORYNO to access your photos to save receipts.",
+          "savePhotosPermission": "Allow ORYNO to save receipts to your photos.",
+          "granularPermissions": [
+            "photo"
+          ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ORYNO to access your photos to upload gift card images."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/oryno-notification-icon.png",
+          "color": "#FF6A00",
+          "defaultChannel": "oryno-alerts",
+          "sounds": []
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "15515375-cb7e-49bb-8589-d61ce5bffc2a"
+      }
+    },
+    "owner": "orynoapps-team"
   }
 }

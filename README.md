@@ -1,50 +1,71 @@
-# Welcome to your Expo app 👋
+# ORYNO Mobile (Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Native mobile client for the live ORYNO platform ([orynoafrica.com](https://orynoafrica.com)).
 
-## Get started
+Uses the **external API** on `oryno-website` and **Clerk** for authentication.
 
-1. Install dependencies
+## Setup
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+1. Public env only (already in `.env` / `.env.local`):
 
 ```bash
-npm run reset-project
+EXPO_PUBLIC_API_URL=https://orynoafrica.com
+EXPO_PUBLIC_API_PREFIX=/api
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_…
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+After deploying the website middleware rewrite for the external API, you can switch to:
 
-## Learn more
+```bash
+EXPO_PUBLIC_API_PREFIX=/api/external/v1
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+(The client auto-falls back to `/api` if external returns 401/404/503.)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+2. Install & run:
 
-## Join the community
+```bash
+npm install
+npx expo start -c
+```
 
-Join our community of developers creating universal apps.
+## API
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Default prefix is `/api` (same first-party routes as the website).
+
+Optional external surface (after deploying `oryno-website` middleware rewrite):
+
+```
+EXPO_PUBLIC_API_PREFIX=/api/external/v1
+GET https://orynoafrica.com/api/external/v1
+```
+
+Docs: `oryno-website/docs/EXTERNAL_API.md`.
+
+## Live features
+
+| Area | External API |
+|------|----------------|
+| Auth sync | `POST /auth/sync`, `POST /auth/logout` |
+| Wallet | `GET /wallet`, deposit-account, withdraw, banks |
+| History | `/transactions` |
+| Airtime / Data / Bills | `/services/*` aliases or `/vtpass/*` |
+| Social Boost | `/services/social` or `/jap/*` |
+| Gift Cards | `/services/gift-cards/*` or Reloadly/Sogo |
+| Virtual Numbers / Emails | `/services/numbers/*`, `/services/emails/*` |
+| Profile / Settings / KYC | `/profile`, `/settings`, `/settings/kyc` |
+| Notifications | `/notifications` |
+
+## Security
+
+- Mobile only stores **publishable** Clerk key + API URL.
+- All provider secrets stay on the Next.js server.
+- Native app sends `Authorization: Bearer <Clerk session JWT>` on every API call.
+
+## Clerk dashboard (Google sign-in)
+
+1. **Configure → SSO connections → Google** — enable Google (same connection as the website).
+2. **Native applications** — add the Expo redirect URL shown in Metro logs as `[ORYNO OAuth] starting`:
+   - Dev build / TestFlight: `oryno://sso-callback`
+   - Expo Go: `exp://<your-lan-ip>:8081/--/sso-callback` (or the value `AuthSession.makeRedirectUri` prints)
+3. App scheme is `oryno` (`app.json`). Google / Apple buttons use Clerk `useSSO` on login & register.
