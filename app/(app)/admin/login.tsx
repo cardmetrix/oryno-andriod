@@ -283,7 +283,7 @@ function makeStyles(colors: ThemeColors) {
   },
   logo: {
     width: '100%',
-    height: '100%',
+    height: '100%', borderRadius: 999,
   },
   brandCopy: { flex: 1, minWidth: 0 },
   brand: {

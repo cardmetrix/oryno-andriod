@@ -230,7 +230,7 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
       borderRadius: 999,
       overflow: 'hidden',
     },
-    logo: { width: '100%', height: '100%', borderRadius: 999 },
+    logo: { width: '100%', height: '100%', borderRadius: 999,},
     brand: {
       flex: 1,
       fontSize: 18,

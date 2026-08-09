@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 12,
+    borderRadius: 999,
     backgroundColor: Brand.orangeMuted,
     borderWidth: 1.5,
     borderColor: 'rgba(255,106,0,0.22)',
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarImage: { width: '100%', height: '100%' },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 999 },
   avatarText: {
     fontSize: 14,
     fontWeight: '800',
@@ -373,8 +373,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '100%',
-    height: '100%',
-    borderRadius: 999,
+    height: '100%', borderRadius: 999,
     transform: [{ scale: 1.22 }],
   },
   panelHead: {

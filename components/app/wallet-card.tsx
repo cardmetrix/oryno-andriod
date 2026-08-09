@@ -155,8 +155,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '100%',
-    height: '100%',
-    borderRadius: 999,
+    height: '100%', borderRadius: 999,
     transform: [{ scale: 1.22 }],
   },
   brand: {

@@ -238,14 +238,14 @@ const styles = StyleSheet.create({
   logoBorder: {
     width: 72,
     height: 72,
-    borderRadius: 18,
+    borderRadius: 999,
     borderWidth: 2,
     overflow: 'hidden',
     backgroundColor: Brand.orange,
   },
   logo: {
     width: '100%',
-    height: '100%',
+    height: '100%', borderRadius: 999,
   },
   title: {
     fontSize: 20,

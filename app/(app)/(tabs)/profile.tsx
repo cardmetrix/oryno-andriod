@@ -463,7 +463,7 @@ function makeStyles(colors: ThemeColors) {
   avatar: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: 999,
     backgroundColor: colors.orangeMuted,
     alignItems: 'center',
     justifyContent: 'center',

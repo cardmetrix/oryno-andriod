@@ -194,7 +194,7 @@ function makeStyles(colors: ThemeColors) {
       overflow: 'hidden',
       marginBottom: 8,
     },
-    logo: { width: '100%', height: '100%', borderRadius: 999 },
+    logo: { width: '100%', height: '100%', borderRadius: 999,},
     title: { fontSize: 26, fontWeight: '800', color: colors.foreground },
     sub: { fontSize: 14, color: colors.mutedForeground, textAlign: 'center' },
     form: { gap: 14 },
