@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -39,13 +38,7 @@ export function WalletCard({
           <View pointerEvents="none" style={styles.overlayB} />
 
           <View style={styles.top}>
-            <View style={styles.logoWell}>
-              <Image
-                source={require('@/assets/images/oryno-logo.png')}
-                style={styles.logo}
-                contentFit="cover"
-              />
-            </View>
+          
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.brand}>ORYNO</Text>
               <Text style={styles.label}>{label}</Text>
@@ -110,27 +103,27 @@ export function WalletCard({
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 12 },
+  wrap: { gap: 8 },
   glow: {
     ...StyleSheet.absoluteFillObject,
-    top: -8,
-    bottom: 60,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,106,0,0.18)',
+    top: -6,
+    bottom: 48,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,106,0,0.14)',
   },
   shadowWrap: {
-    borderRadius: 24,
+    borderRadius: 20,
     shadowColor: Brand.orange,
-    shadowOpacity: 0.3,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
   card: {
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 20,
+    padding: 12,
     overflow: 'hidden',
-    minHeight: 138,
+    minHeight: 112,
   },
   overlayA: {
     ...StyleSheet.absoluteFillObject,
@@ -152,9 +145,9 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   logoWell: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 999,
     overflow: 'hidden',
     backgroundColor: Brand.orange,
     borderWidth: StyleSheet.hairlineWidth,
@@ -163,91 +156,92 @@ const styles = StyleSheet.create({
   logo: {
     width: '100%',
     height: '100%',
+    borderRadius: 999,
     transform: [{ scale: 1.22 }],
   },
   brand: {
     color: 'rgba(255,255,255,0.9)',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 2.2,
+    letterSpacing: 2,
   },
-  label: { color: Brand.white, fontSize: 14, fontWeight: '600', marginTop: 2 },
+  label: { color: Brand.white, fontSize: 13, fontWeight: '600', marginTop: 1 },
   balanceRow: {
-    marginTop: 16,
+    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
   available: {
     color: 'rgba(255,255,255,0.65)',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   balance: {
     color: Brand.white,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
-    marginTop: 2,
-    letterSpacing: -0.5,
+    marginTop: 1,
+    letterSpacing: -0.4,
   },
   eyeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
   },
-  actions: { flexDirection: 'row', gap: 10 },
+  actions: { flexDirection: 'row', gap: 8 },
   fundBtn: {
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
     shadowColor: Brand.orange,
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   fundGradient: {
-    height: 52,
-    borderRadius: 18,
+    height: 44,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
+    gap: 8,
+    paddingHorizontal: 10,
   },
   fundIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(0,0,0,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fundText: { color: '#111', fontSize: 14, fontWeight: '800', letterSpacing: 0.2 },
+  fundText: { color: '#111', fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
   withdrawBtn: {
     flex: 1,
-    height: 52,
-    borderRadius: 18,
+    height: 44,
+    borderRadius: 14,
     backgroundColor: '#1A120C',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
+    gap: 8,
+    paddingHorizontal: 10,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   withdrawGlow: {
     position: 'absolute',
@@ -259,12 +253,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,106,0,0.22)',
   },
   withdrawIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  withdrawText: { color: Brand.white, fontSize: 14, fontWeight: '800', letterSpacing: 0.2 },
+  withdrawText: { color: Brand.white, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
 });

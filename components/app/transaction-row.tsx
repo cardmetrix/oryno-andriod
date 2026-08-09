@@ -152,8 +152,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   rowCompact: {
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    gap: 10,
   },
   iconWell: {
     width: 44,

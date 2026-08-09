@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 14,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -208,9 +208,9 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 28,
-    paddingBottom: 22,
+    paddingHorizontal: 12,
+    paddingTop: 14,
+    paddingBottom: 14,
     alignItems: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#0F0F12',
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   logoWrap: {
-    marginBottom: 18,
+    marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -264,17 +264,17 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   actions: {
-    marginTop: 22,
+    marginTop: 14,
     width: '100%',
     gap: 10,
     alignItems: 'stretch',
   },
   btn: {
-    minHeight: 52,
+    minHeight: 44,
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
   },
   btnPressed: {
     opacity: 0.92,

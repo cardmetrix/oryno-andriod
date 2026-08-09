@@ -65,7 +65,7 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
       backgroundColor: isDark ? 'rgba(15,15,18,0.96)' : 'rgba(255,255,255,0.96)',
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       paddingBottom: 10,
     },
     row: {
@@ -79,10 +79,10 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
     logoWell: {
       width: 36,
       height: 36,
-      borderRadius: 12,
+      borderRadius: 999,
       overflow: 'hidden',
     },
-    logo: { width: '100%', height: '100%' },
+    logo: { width: '100%', height: '100%', borderRadius: 999 },
     copy: { flex: 1, minWidth: 0 },
     title: { fontSize: 14, fontWeight: '800', color: colors.foreground },
     sub: { marginTop: 1, fontSize: 11, color: colors.mutedForeground, fontWeight: '500' },

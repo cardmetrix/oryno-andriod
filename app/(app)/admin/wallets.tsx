@@ -79,7 +79,7 @@ function makeStyles(colors: ThemeColors) {
     borderColor: colors.border,
     backgroundColor: colors.muted,
     borderRadius: Radius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 12,
     fontSize: 15,
     color: colors.foreground,

@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   accountHeroWrap: {
     borderRadius: Radius.card,
     overflow: 'hidden',
-    marginBottom: 18,
+    marginBottom: 12,
     shadowColor: Brand.orange,
     shadowOpacity: 0.28,
     shadowRadius: 20,
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   accountHero: {
-    padding: 18,
+    padding: 12,
   },
   accountTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   accountEyebrow: {
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  sectionWrap: { marginBottom: 18 },
+  sectionWrap: { marginBottom: 12 },
   sectionTitle: {
     marginBottom: 8,
     paddingHorizontal: 4,
@@ -524,8 +524,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -533,8 +533,8 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 14, fontWeight: '700' },
   rowHint: { marginTop: 2, fontSize: 12, fontWeight: '500' },
   langBlock: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   langHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
-    marginLeft: 52,
+    marginLeft: 44,
   },
   langChip: {
     borderRadius: 999,
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
   },
   langChipText: { fontSize: 12, fontWeight: '700' },
   signOutBtn: {
-    height: 52,
+    height: 44,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,59,48,0.25)',
@@ -572,10 +572,10 @@ const styles = StyleSheet.create({
   },
   savingText: { fontSize: 12, fontWeight: '600' },
   errorCard: {
-    marginTop: 24,
+    marginTop: 12,
     borderRadius: Radius.card,
     borderWidth: 1,
-    padding: 24,
+    padding: 12,
     alignItems: 'center',
   },
   errorTitle: { fontSize: 17, fontWeight: '800' },
@@ -585,10 +585,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryBtn: {
-    marginTop: 16,
+    marginTop: 12,
     backgroundColor: Brand.orange,
     borderRadius: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 10,
   },
   retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },

@@ -303,7 +303,7 @@ export default function AdminNotificationsScreen() {
               })}
             </View>
 
-            <Text style={[styles.sectionLabel, { marginTop: 18 }]}>Audience</Text>
+            <Text style={[styles.sectionLabel, { marginTop: 12 }]}>Audience</Text>
             <View style={styles.modeRow}>
               {(
                 [
@@ -578,7 +578,7 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   newBtn: {
     height: 42,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -634,7 +634,7 @@ function makeStyles(colors: ThemeColors) {
     marginBottom: 4,
   },
   hintText: { fontSize: 12, color: colors.mutedForeground },
-  field: { marginTop: 14 },
+  field: { marginTop: 10 },
   fieldLabel: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground, marginBottom: 6 },
   input: {
     borderWidth: 1,
@@ -690,7 +690,7 @@ function makeStyles(colors: ThemeColors) {
   userEmail: { marginTop: 2, fontSize: 11, color: colors.mutedForeground },
   addLabel: { fontSize: 11, fontWeight: '700', color: Brand.orange },
   toggles: {
-    marginTop: 16,
+    marginTop: 12,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -703,7 +703,7 @@ function makeStyles(colors: ThemeColors) {
     paddingVertical: 12,
   },
   toggleLabel: { fontSize: 14, fontWeight: '700', color: colors.foreground },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
   editing: { marginTop: 10, fontSize: 11, color: colors.mutedForeground },
   campaignRow: {
     borderRadius: 14,
@@ -720,14 +720,14 @@ function makeStyles(colors: ThemeColors) {
     borderTopColor: colors.border,
   },
   brandNote: {
-    marginTop: 14,
+    marginTop: 10,
     flexDirection: 'row',
     gap: 12,
     borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    padding: 16,
+    padding: 12,
   },
   megaphone: {
     width: 40,

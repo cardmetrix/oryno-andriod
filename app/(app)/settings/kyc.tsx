@@ -341,7 +341,7 @@ export default function KycScreen() {
           {!locked ? (
             <Animated.View
               entering={FadeInDown.delay(60).duration(280)}
-              style={[styles.card, { marginTop: 14 }]}>
+              style={[styles.card, { marginTop: 10 }]}>
               <Text style={styles.section}>ID type</Text>
               <View style={styles.chips}>
                 {ID_TYPES.map((type) => {
@@ -630,14 +630,14 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 18,
+      padding: 12,
     },
     progressTrack: {
       height: 8,
       borderRadius: 999,
       backgroundColor: colors.muted,
       overflow: 'hidden',
-      marginBottom: 14,
+      marginBottom: 10,
     },
     progressFill: {
       height: '100%',
@@ -658,9 +658,9 @@ function makeStyles(colors: ThemeColors) {
       letterSpacing: 0.6,
       marginBottom: 10,
     },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
     chip: {
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 10,
       borderRadius: Radius.lg,
       backgroundColor: colors.muted,
@@ -672,7 +672,7 @@ function makeStyles(colors: ThemeColors) {
     },
     chipText: { fontSize: 13, fontWeight: '700', color: colors.foreground },
     chipTextActive: { color: Brand.orange },
-    uploadStack: { gap: 10, marginTop: 14 },
+    uploadStack: { gap: 10, marginTop: 10 },
     uploadTile: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -707,13 +707,13 @@ function makeStyles(colors: ThemeColors) {
       color: colors.mutedForeground,
       fontWeight: '500',
     },
-    actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+    actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
     statusCard: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 12,
       borderRadius: 18,
-      padding: 14,
+      padding: 10,
     },
     statusTitle: { fontSize: 14, fontWeight: '800' },
     statusBody: {
@@ -731,8 +731,8 @@ function makeStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     pendingHero: {
-      paddingHorizontal: 20,
-      paddingTop: 28,
+      paddingHorizontal: 12,
+      paddingTop: 14,
       paddingBottom: 30,
       alignItems: 'center',
     },
@@ -741,7 +741,7 @@ function makeStyles(colors: ThemeColors) {
       height: 72,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 14,
+      marginBottom: 10,
     },
     pendingPulse: {
       position: 'absolute',
@@ -782,7 +782,7 @@ function makeStyles(colors: ThemeColors) {
       maxWidth: 300,
     },
     pendingChip: {
-      marginTop: 16,
+      marginTop: 12,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
@@ -792,8 +792,8 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 8,
     },
     pendingChipText: { color: Brand.white, fontSize: 12, fontWeight: '700' },
-    pendingContent: { padding: 18, gap: 4 },
-    metaRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
+    pendingContent: { padding: 12, gap: 4 },
+    metaRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
     metaBox: {
       flex: 1,
       borderRadius: 16,
@@ -842,7 +842,7 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 999,
     },
     reviewLineDone: { backgroundColor: Brand.success },
-    reviewCopy: { flex: 1, paddingBottom: 16 },
+    reviewCopy: { flex: 1, paddingBottom: 12 },
     reviewLabel: { fontSize: 14, fontWeight: '700', color: colors.foreground },
     reviewDetail: {
       marginTop: 2,
@@ -877,7 +877,7 @@ function makeStyles(colors: ThemeColors) {
       borderStyle: 'dashed',
       borderColor: 'rgba(255,106,0,0.28)',
       backgroundColor: colors.orangeMuted,
-      padding: 14,
+      padding: 10,
     },
     notifyIcon: {
       width: 36,
@@ -895,12 +895,12 @@ function makeStyles(colors: ThemeColors) {
       color: colors.mutedForeground,
     },
     errorCard: {
-      marginTop: 24,
+      marginTop: 12,
       borderRadius: Radius.card,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 24,
+      padding: 12,
       alignItems: 'center',
     },
     errorTitle: { fontSize: 17, fontWeight: '800', color: colors.foreground },
@@ -911,10 +911,10 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     retryBtn: {
-      marginTop: 16,
+      marginTop: 12,
       backgroundColor: Brand.orange,
       borderRadius: 14,
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       paddingVertical: 10,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },

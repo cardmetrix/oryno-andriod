@@ -241,11 +241,11 @@ export default function BillsScreen() {
           </Text>
           <Button
             title="Buy airtime instead"
-            style={{ marginTop: 20, width: '100%' }}
+            style={{ marginTop: 14, width: '100%' }}
             onPress={() => router.push('/(app)/services/airtime')}
           />
         </Animated.View>
-        <View style={{ marginTop: 16 }}>
+        <View style={{ marginTop: 12 }}>
           <ServiceInstructions service="bills" />
         </View>
       </Screen>
@@ -293,7 +293,22 @@ export default function BillsScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      footer={
+        <Pressable
+          disabled={!canSubmit}
+          onPress={() => void onSubmit()}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            !canSubmit && styles.submitDisabled,
+            pressed && canSubmit && { opacity: 0.92 },
+          ]}>
+          <Text style={styles.submitText}>
+            {submitting ? 'Paying bill…' : `Pay bill · ${money(amountNumber)}`}
+          </Text>
+        </Pressable>
+      }>
       <PageHeader
         title="Bill Payments"
         subtitle="TV subscriptions & electricity"
@@ -423,7 +438,7 @@ export default function BillsScreen() {
         />
 
         {showAmountField ? (
-          <View style={{ marginTop: 16 }}>
+          <View style={{ marginTop: 12 }}>
             <Text style={styles.fieldLabel}>Amount</Text>
             <TextInput
               value={amount}
@@ -474,22 +489,6 @@ export default function BillsScreen() {
         </View>
       </Animated.View>
 
-      <Animated.View
-        entering={FadeInDown.delay(240).duration(280)}
-        style={{ marginTop: 16, marginBottom: 8 }}>
-        <Pressable
-          disabled={!canSubmit}
-          onPress={() => void onSubmit()}
-          style={({ pressed }) => [
-            styles.submitBtn,
-            !canSubmit && styles.submitDisabled,
-            pressed && canSubmit && { opacity: 0.92 },
-          ]}>
-          <Text style={styles.submitText}>
-            {submitting ? 'Paying bill…' : `Pay bill · ${money(amountNumber)}`}
-          </Text>
-        </Pressable>
-      </Animated.View>
     </Screen>
   );
 }
@@ -518,12 +517,12 @@ function SummaryRow({
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     card: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: Radius.card,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 18,
+      padding: 10,
     },
     cardTitle: { fontSize: 16, fontWeight: '700', color: colors.charcoal },
     fieldLabel: {
@@ -564,7 +563,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       fontSize: 14,
       color: colors.charcoal,
     },
@@ -575,7 +574,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.grayLight,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
@@ -624,7 +623,7 @@ function makeStyles(colors: ThemeColors) {
     },
     payText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     submitBtn: {
-      height: 48,
+      height: 46,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
@@ -637,17 +636,17 @@ function makeStyles(colors: ThemeColors) {
       alignSelf: 'center',
       backgroundColor: Brand.orange,
       borderRadius: 12,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 8,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
     errorBanner: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
       backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 14,
+      padding: 10,
       flexDirection: 'row',
       gap: 10,
       alignItems: 'flex-start',
@@ -659,7 +658,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 28,
+      padding: 14,
       alignItems: 'center',
     },
     gateIcon: {
@@ -671,7 +670,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     gateTitle: {
-      marginTop: 16,
+      marginTop: 12,
       fontSize: 18,
       fontWeight: '800',
       color: colors.charcoal,
@@ -690,7 +689,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 28,
+      padding: 14,
       alignItems: 'center',
     },
     successIcon: {
@@ -702,7 +701,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     successTitle: {
-      marginTop: 16,
+      marginTop: 12,
       fontSize: 22,
       fontWeight: '800',
       color: colors.charcoal,
@@ -715,7 +714,7 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     tokenBox: {
-      marginTop: 14,
+      marginTop: 10,
       borderRadius: 14,
       backgroundColor: colors.grayLight,
       paddingHorizontal: 12,
@@ -727,6 +726,6 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.charcoal,
     },
-    successActions: { marginTop: 24, width: '100%', gap: 10 },
+    successActions: { marginTop: 12, width: '100%', gap: 10 },
   });
 }

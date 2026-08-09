@@ -165,7 +165,7 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   btnSecondary: {
     height: 42,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -176,7 +176,7 @@ function makeStyles(colors: ThemeColors) {
   btnSecondaryText: { fontSize: 13, fontWeight: '700', color: colors.foreground },
   btnPrimary: {
     height: 42,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     borderRadius: Radius.md,
     backgroundColor: Brand.orange,
     flexDirection: 'row',
@@ -228,7 +228,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.muted,
-    padding: 14,
+    padding: 10,
     gap: 6,
   },
   countryTop: {

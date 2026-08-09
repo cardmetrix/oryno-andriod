@@ -260,7 +260,22 @@ export default function EmailsScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      footer={
+        <Button
+          title={
+            submitting
+              ? 'Reserving…'
+              : selected
+                ? `Rent email · ${money(selected.costLocal)}`
+                : 'Continue'
+          }
+          disabled={!canSubmit}
+          loading={submitting}
+          onPress={() => void onSubmit()}
+        />
+      }>
       <PageHeader
         title="Rent Email"
         subtitle="Temporary inboxes for OTP & sign-ups"
@@ -390,20 +405,6 @@ export default function EmailsScreen() {
       </Animated.View>
 
       <ServiceInstructions service="emails" />
-
-      <View style={{ height: 12 }} />
-      <Button
-        title={
-          submitting
-            ? 'Reserving…'
-            : selected
-              ? `Rent email · ${money(selected.costLocal)}`
-              : 'Continue'
-        }
-        disabled={!canSubmit}
-        loading={submitting}
-        onPress={() => void onSubmit()}
-      />
 
       <PickerSheet
         visible={domainOpen}
@@ -551,8 +552,8 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
-      marginBottom: 14,
-      padding: 14,
+      marginBottom: 8,
+      padding: 10,
       borderRadius: Radius.lg,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
@@ -566,18 +567,18 @@ function makeStyles(colors: ThemeColors) {
       color: colors.charcoal,
     },
     card: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 16,
+      padding: 10,
     },
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      marginBottom: 14,
+      marginBottom: 8,
     },
     iconBubble: {
       width: 40,
@@ -603,7 +604,7 @@ function makeStyles(colors: ThemeColors) {
     },
     chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 9,
       borderRadius: 99,
       backgroundColor: colors.grayLight,
@@ -618,13 +619,13 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       fontSize: 14,
       fontWeight: '600',
       color: colors.charcoal,
     },
     triggerSkel: {
-      height: 52,
+      height: 44,
       borderRadius: 14,
       backgroundColor: colors.grayLight,
     },
@@ -632,12 +633,12 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      minHeight: 52,
+      minHeight: 44,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 12,
     },
     triggerDisabled: { opacity: 0.55 },
@@ -709,7 +710,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 12,
     },
     domainRowActive: {
@@ -732,14 +733,14 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     checkSpacer: { width: 24, height: 24 },
-    emptySheet: { paddingVertical: 40, alignItems: 'center' },
+    emptySheet: { paddingVertical: 28, alignItems: 'center' },
     emptyText: { fontSize: 13, fontWeight: '600', color: colors.grayMedium },
     successCard: {
       borderRadius: 28,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 24,
+      padding: 12,
       alignItems: 'center',
     },
     successIcon: {
@@ -751,7 +752,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     successTitle: {
-      marginTop: 16,
+      marginTop: 12,
       fontSize: 22,
       fontWeight: '800',
       color: colors.charcoal,
@@ -763,7 +764,7 @@ function makeStyles(colors: ThemeColors) {
       color: colors.grayMedium,
       textAlign: 'center',
     },
-    copyStack: { width: '100%', gap: 10, marginTop: 22 },
+    copyStack: { width: '100%', gap: 10, marginTop: 14 },
     copyRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -772,7 +773,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.grayLight,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 12,
     },
     copyLabel: { fontSize: 11, fontWeight: '600', color: colors.grayMedium },
@@ -799,6 +800,6 @@ function makeStyles(colors: ThemeColors) {
       gap: 8,
     },
     pollingText: { fontSize: 12, fontWeight: '500', color: colors.grayMedium },
-    successActions: { width: '100%', gap: 10, marginTop: 22 },
+    successActions: { width: '100%', gap: 10, marginTop: 14 },
   });
 }

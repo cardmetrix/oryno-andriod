@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 12,
   },
-  logo: { width: '100%', height: '100%' },
+  logo: { width: '100%', height: '100%', borderRadius: 999 },
   brand: {
     fontSize: 42,
     fontWeight: '900',

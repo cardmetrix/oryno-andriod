@@ -102,7 +102,7 @@ function CardsSkeleton() {
 
 function OverviewSkeleton() {
   return (
-    <View style={{ gap: 14, marginTop: 4 }}>
+    <View style={{ gap: 10, marginTop: 4 }}>
       <StatsSkeleton />
       <TableSkeleton rows={4} />
       <TableSkeleton rows={3} />
@@ -114,11 +114,11 @@ function ReportsSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 14 }}>
+    <View style={{ gap: 10 }}>
       <StatsSkeleton />
       <View style={styles.card}>
         <Skeleton width={110} height={14} radius={999} />
-        <View style={{ marginTop: 14, gap: 12 }}>
+        <View style={{ marginTop: 10, gap: 12 }}>
           {Array.from({ length: 5 }).map((_, i) => (
             <View key={i} style={styles.reportRow}>
               <Skeleton width="36%" height={12} radius={999} />
@@ -178,11 +178,11 @@ export function AdminEmpty({ message }: { message: string }) {
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     wrap: { marginTop: 8, width: '100%' },
-    center: { alignItems: 'center', paddingVertical: 28, gap: 10 },
+    center: { alignItems: 'center', paddingVertical: 10, gap: 10 },
     muted: { fontSize: 13, color: colors.mutedForeground },
     box: {
       marginTop: 12,
-      padding: 14,
+      padding: 10,
       borderRadius: Radius.md,
       backgroundColor: 'rgba(255,59,48,0.08)',
       gap: 10,
@@ -209,7 +209,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 14,
+      padding: 10,
     },
     card: {
       marginTop: 4,
@@ -217,7 +217,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 16,
+      padding: 12,
     },
     cardHead: {
       flexDirection: 'row',
@@ -246,7 +246,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 14,
+      padding: 10,
     },
     reportRow: {
       flexDirection: 'row',
@@ -257,7 +257,7 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      paddingVertical: 14,
+      paddingVertical: 10,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },

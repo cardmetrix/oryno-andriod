@@ -178,7 +178,7 @@ export default function HistoryAnalyticsScreen() {
             {categories.length === 0 ? (
               <Text style={styles.muted}>No activity in this month yet.</Text>
             ) : (
-              <View style={{ gap: 14 }}>
+              <View style={{ gap: 10 }}>
                 {categories.map((cat, index) => (
                   <View key={cat.id}>
                     <View style={styles.catRow}>
@@ -290,8 +290,8 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 18,
-      marginBottom: 14,
+      padding: 12,
+      marginBottom: 10,
     },
     heroLabel: {
       fontSize: 12,
@@ -314,7 +314,7 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '500',
     },
     heroStats: {
-      marginTop: 16,
+      marginTop: 12,
       flexDirection: 'row',
       alignItems: 'center',
     },
@@ -338,7 +338,7 @@ function makeStyles(colors: ThemeColors) {
       marginHorizontal: 12,
     },
     track: {
-      marginTop: 16,
+      marginTop: 12,
       height: 8,
       borderRadius: 999,
       backgroundColor: Brand.orange,
@@ -360,14 +360,14 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.card,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 18,
-      marginBottom: 14,
+      padding: 12,
+      marginBottom: 10,
     },
     panelHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 14,
+      marginBottom: 10,
     },
     panelTitle: {
       fontSize: 16,
@@ -423,7 +423,7 @@ function makeStyles(colors: ThemeColors) {
     legend: {
       marginTop: 12,
       flexDirection: 'row',
-      gap: 14,
+      gap: 10,
     },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     legendDot: { width: 8, height: 8, borderRadius: 4 },

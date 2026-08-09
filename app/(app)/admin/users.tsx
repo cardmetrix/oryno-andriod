@@ -316,7 +316,7 @@ function UserManageSheet({
 
           <ScrollView
             style={styles.sheetScroll}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            contentContainerStyle={{ paddingBottom: 12 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
             {loading || !detail ? (
@@ -628,7 +628,7 @@ function makeStyles(colors: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
@@ -651,7 +651,7 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 8,
   },
   grabber: {
@@ -675,7 +675,7 @@ function makeStyles(colors: ThemeColors) {
   },
   sheetScroll: { flexGrow: 0 },
   detailName: { fontSize: 18, fontWeight: '800', color: colors.foreground },
-  section: { marginTop: 20, gap: 10 },
+  section: { marginTop: 14, gap: 10 },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
@@ -736,7 +736,7 @@ function makeStyles(colors: ThemeColors) {
   docLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
   docLink: { fontSize: 13, fontWeight: '700', color: Brand.orange },
   noteLabel: {
-    marginTop: 20,
+    marginTop: 14,
     fontSize: 12,
     fontWeight: '700',
     color: colors.mutedForeground,

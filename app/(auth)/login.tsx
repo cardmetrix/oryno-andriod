@@ -131,11 +131,11 @@ const styles = StyleSheet.create({
   logoWell: {
     width: 56,
     height: 56,
-    borderRadius: Radius.sm,
+    borderRadius: 999,
     overflow: 'hidden',
     marginBottom: 8,
   },
-  logo: { width: '100%', height: '100%' },
+  logo: { width: '100%', height: '100%', borderRadius: 999 },
   title: { fontSize: 28, fontWeight: '800' },
   sub: { fontSize: 14, textAlign: 'center' },
   form: { gap: 14 },

@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 import { SplashLoading } from '@/components/ui/splash-loading';
 import {
   formSheetScreenOptions,
-  modalScreenOptions,
   stackScreenOptions,
 } from '@/constants/transitions';
 import { useAppTheme } from '@/context/theme-context';
@@ -76,8 +75,22 @@ export default function AppLayout() {
         contentStyle: { backgroundColor: colors.background },
       }}>
       <Stack.Screen name="(tabs)" options={{ animation: 'fade', gestureEnabled: false }} />
-      <Stack.Screen name="fund" options={modalScreenOptions} />
-      <Stack.Screen name="withdraw" options={modalScreenOptions} />
+      <Stack.Screen
+        name="fund"
+        options={{
+          ...formSheetScreenOptions,
+          sheetAllowedDetents: [0.72, 0.94],
+          sheetInitialDetentIndex: 0,
+        }}
+      />
+      <Stack.Screen
+        name="withdraw"
+        options={{
+          ...formSheetScreenOptions,
+          sheetAllowedDetents: [0.72, 0.94],
+          sheetInitialDetentIndex: 0,
+        }}
+      />
       <Stack.Screen name="notifications" options={formSheetScreenOptions} />
       <Stack.Screen name="wallet/add-bank" options={formSheetScreenOptions} />
       <Stack.Screen name="support" />

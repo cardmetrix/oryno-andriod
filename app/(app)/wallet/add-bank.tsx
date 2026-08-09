@@ -259,12 +259,16 @@ export default function AddBankSheet() {
           <View style={styles.resolveWrap}>
             <TextInput
               value={accountName}
-              editable={false}
+              onChangeText={(v) => {
+                setAccountName(v);
+                setError(null);
+              }}
               placeholder={
-                resolving ? 'Verifying with Paystack…' : 'Resolved after account number'
+                resolving ? 'Verifying with Paystack…' : 'Auto-filled, or type manually'
               }
               placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { paddingRight: 40 }]}
+              style={[styles.input, { paddingRight: 28 }]}
+              autoCapitalize="characters"
             />
             {resolving ? (
               <ActivityIndicator style={styles.resolveSpinner} color={Brand.orange} size="small" />
@@ -285,15 +289,15 @@ export default function AddBankSheet() {
             {saving ? (
               <ActivityIndicator color={Brand.white} />
             ) : (
-              <Text style={styles.saveText}>Verify & save bank</Text>
+              <Text style={styles.saveText}>Save bank</Text>
             )}
           </Pressable>
 
           <View style={styles.hintCard}>
             <Ionicons name="shield-checkmark-outline" size={18} color={Brand.orange} />
             <Text style={styles.hintText}>
-              We verify the account name with Paystack before saving. Only use an account that
-              matches your records.
+              We look up the account name with Paystack after you enter the number. You can edit
+              the name manually if needed before saving.
             </Text>
           </View>
         </ScrollView>
@@ -325,9 +329,9 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 12,
-      paddingHorizontal: 20,
+      paddingHorizontal: 12,
       paddingTop: 4,
-      paddingBottom: 14,
+      paddingBottom: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
@@ -362,8 +366,8 @@ function makeStyles(colors: ThemeColors) {
     },
     scroll: { flex: 1 },
     scrollContent: {
-      paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingHorizontal: 12,
+      paddingTop: 12,
     },
     errorBox: {
       marginBottom: 12,
@@ -381,12 +385,12 @@ function makeStyles(colors: ThemeColors) {
     },
     select: {
       marginTop: 8,
-      height: 52,
+      height: 44,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.muted,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -395,12 +399,12 @@ function makeStyles(colors: ThemeColors) {
     selectText: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.foreground },
     input: {
       marginTop: 8,
-      height: 52,
+      height: 44,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.muted,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       fontSize: 15,
       fontWeight: '600',
       color: colors.foreground,
@@ -409,8 +413,8 @@ function makeStyles(colors: ThemeColors) {
     resolveSpinner: { position: 'absolute', right: 14, top: 24 },
     resolveIcon: { position: 'absolute', right: 14, top: 25 },
     saveBtn: {
-      marginTop: 20,
-      height: 52,
+      marginTop: 14,
+      height: 44,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
@@ -418,13 +422,13 @@ function makeStyles(colors: ThemeColors) {
     },
     saveText: { color: Brand.white, fontWeight: '800', fontSize: 15 },
     hintCard: {
-      marginTop: 16,
+      marginTop: 12,
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
       borderRadius: 16,
       backgroundColor: colors.orangeMuted,
-      padding: 14,
+      padding: 10,
     },
     hintText: {
       flex: 1,
@@ -433,7 +437,7 @@ function makeStyles(colors: ThemeColors) {
       color: colors.foreground,
       fontWeight: '500',
     },
-    banksPane: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
+    banksPane: { flex: 1, paddingHorizontal: 12, paddingTop: 12 },
     searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -455,7 +459,7 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingVertical: 14,
+      paddingVertical: 10,
       paddingHorizontal: 4,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
@@ -466,7 +470,7 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
       color: colors.mutedForeground,
       fontWeight: '600',
-      paddingVertical: 28,
+      paddingVertical: 10,
     },
   });
 }

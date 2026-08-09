@@ -459,7 +459,22 @@ export default function SocialScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      footer={
+        <Pressable
+          disabled={!canSubmit}
+          onPress={() => void onSubmit()}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            !canSubmit && styles.submitDisabled,
+            pressed && canSubmit && { opacity: 0.92 },
+          ]}>
+          <Text style={styles.submitText}>
+            {submitting ? 'Processing…' : submitLabel}
+          </Text>
+        </Pressable>
+      }>
       <PageHeader
         title="Social Boosting"
         subtitle={
@@ -668,22 +683,6 @@ export default function SocialScreen() {
         <ServiceInstructions service="social" />
       </Animated.View>
 
-      <Animated.View
-        entering={FadeInDown.delay(160).duration(280)}
-        style={{ marginTop: 16, marginBottom: 8 }}>
-        <Pressable
-          disabled={!canSubmit}
-          onPress={() => void onSubmit()}
-          style={({ pressed }) => [
-            styles.submitBtn,
-            !canSubmit && styles.submitDisabled,
-            pressed && canSubmit && { opacity: 0.92 },
-          ]}>
-          <Text style={styles.submitText}>
-            {submitting ? 'Processing…' : submitLabel}
-          </Text>
-        </Pressable>
-      </Animated.View>
     </Screen>
   );
 }
@@ -712,18 +711,18 @@ function SummaryRow({
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     card: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: Radius.card,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 18,
+      padding: 10,
     },
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      marginBottom: 16,
+      marginBottom: 12,
     },
     iconBubble: {
       width: 44,
@@ -782,8 +781,8 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.grayLight,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
     },
     previewName: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     previewMeta: { marginTop: 4, fontSize: 12, fontWeight: '500', color: colors.grayMedium },
@@ -803,7 +802,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.grayLight,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
     },
     linkInput: {
       flex: 1,
@@ -838,7 +837,7 @@ function makeStyles(colors: ThemeColors) {
     },
     payText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     submitBtn: {
-      height: 48,
+      height: 46,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
@@ -847,12 +846,12 @@ function makeStyles(colors: ThemeColors) {
     submitDisabled: { opacity: 0.5 },
     submitText: { color: Brand.white, fontSize: 16, fontWeight: '800' },
     errorBanner: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
       backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 14,
+      padding: 10,
       flexDirection: 'row',
       gap: 10,
       alignItems: 'flex-start',
@@ -864,7 +863,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 28,
+      padding: 14,
       alignItems: 'center',
     },
     successIcon: {
@@ -876,7 +875,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     successTitle: {
-      marginTop: 18,
+      marginTop: 12,
       fontSize: 22,
       fontWeight: '800',
       color: colors.charcoal,
@@ -902,6 +901,6 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '500',
       color: colors.grayMedium,
     },
-    successActions: { marginTop: 24, width: '100%', gap: 10 },
+    successActions: { marginTop: 12, width: '100%', gap: 10 },
   });
 }

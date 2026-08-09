@@ -629,13 +629,13 @@ function makeStyles(colors: ThemeColors) {
   searchBtn: {
     backgroundColor: Brand.orange,
     borderRadius: Radius.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 12,
   },
   searchBtnText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
   itemCard: {
-    marginTop: 14,
-    paddingTop: 14,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },

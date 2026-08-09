@@ -541,8 +541,39 @@ export default function GiftCardsScreen() {
     await Clipboard.setStringAsync(value);
   }
 
+  const stickyFooter =
+    sellSuccess || buySuccess
+      ? null
+      : mode === 'sell'
+        ? sellLoading || !selectedSell
+          ? null
+          : (
+              <Button
+                title={sellSubmitting ? 'Submitting…' : 'Sell gift card'}
+                disabled={!sellQuote || sellSubmitting}
+                loading={sellSubmitting}
+                onPress={() => void onSellSubmit()}
+              />
+            )
+        : buyLoading || !selectedBuy
+          ? null
+          : (
+              <Button
+                title={
+                  buySubmitting
+                    ? 'Buying…'
+                    : buyQuote
+                      ? `Buy · ${formatNaira(buyQuote.local)}`
+                      : 'Buy gift card'
+                }
+                disabled={!buyQuote || buySubmitting}
+                loading={buySubmitting}
+                onPress={() => void onBuySubmit()}
+              />
+            );
+
   return (
-    <Screen scroll>
+    <Screen scroll footer={stickyFooter}>
       <PageHeader
         title="Gift Cards"
         subtitle={
@@ -748,7 +779,7 @@ export default function GiftCardsScreen() {
               ) : null}
 
               {cardType === 'ecode' ? (
-                <View style={{ marginTop: 14 }}>
+                <View style={{ marginTop: 10 }}>
                   <Text style={styles.fieldLabel}>Gift card code</Text>
                   <TextInput
                     value={code}
@@ -761,7 +792,7 @@ export default function GiftCardsScreen() {
                   />
                 </View>
               ) : (
-                <View style={{ marginTop: 14 }}>
+                <View style={{ marginTop: 10 }}>
                   <Text style={styles.fieldLabel}>
                     Card photos (1–{MAX_CARD_IMAGES}) · max 2.5MB each
                   </Text>
@@ -830,13 +861,6 @@ export default function GiftCardsScreen() {
                   {cardCurrency} 1
                 </Text>
               ) : null}
-              <View style={{ height: 12 }} />
-              <Button
-                title={sellSubmitting ? 'Submitting…' : 'Sell gift card'}
-                disabled={!sellQuote || sellSubmitting}
-                loading={sellSubmitting}
-                onPress={() => void onSellSubmit()}
-              />
             </Animated.View>
           </View>
         )
@@ -953,7 +977,7 @@ export default function GiftCardsScreen() {
               }))}
             />
 
-            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
               Amount ({selectedBuy.recipientCurrency})
               {(selectedBuy.denominationType || '').toUpperCase() === 'RANGE' &&
               selectedBuy.minAmount != null &&
@@ -992,7 +1016,7 @@ export default function GiftCardsScreen() {
               placeholderTextColor={colors.mutedForeground}
             />
 
-            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>
+            <Text style={[styles.fieldLabel, { marginTop: 10 }]}>
               Delivery email
             </Text>
             <TextInput
@@ -1022,19 +1046,6 @@ export default function GiftCardsScreen() {
                 </Text>
               </View>
             </View>
-            <View style={{ height: 12 }} />
-            <Button
-              title={
-                buySubmitting
-                  ? 'Buying…'
-                  : buyQuote
-                    ? `Buy · ${formatNaira(buyQuote.local)}`
-                    : 'Buy gift card'
-              }
-              disabled={!buyQuote || buySubmitting}
-              loading={buySubmitting}
-              onPress={() => void onBuySubmit()}
-            />
           </Animated.View>
         </View>
       )}
@@ -1188,7 +1199,7 @@ function FormSkeleton() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.stack}>
-      <View style={[styles.card, { height: 88 }]} />
+      <View style={[styles.card, { height: 72 }]} />
       <View style={[styles.card, { height: 220 }]} />
     </View>
   );
@@ -1268,7 +1279,7 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       gap: 8,
       padding: 6,
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.grayDivider,
@@ -1292,8 +1303,8 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
-      marginBottom: 14,
-      padding: 14,
+      marginBottom: 8,
+      padding: 10,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
@@ -1306,7 +1317,7 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '500',
       color: colors.charcoal,
     },
-    stack: { gap: 14 },
+    stack: { gap: 10 },
     backLink: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1319,7 +1330,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 16,
+      padding: 10,
     },
     brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     brandTitle: { fontSize: 16, fontWeight: '700', color: colors.charcoal },
@@ -1342,7 +1353,7 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    typeRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+    typeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
     typeTab: {
       flex: 1,
       height: 44,
@@ -1369,7 +1380,7 @@ function makeStyles(colors: ThemeColors) {
     },
     chipRow: { flexDirection: 'row', gap: 8, paddingRight: 4, marginBottom: 10 },
     chip: {
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 7,
       borderRadius: 99,
       backgroundColor: colors.grayLight,
@@ -1378,12 +1389,12 @@ function makeStyles(colors: ThemeColors) {
     chipText: { fontSize: 12, fontWeight: '700', color: colors.grayMedium },
     chipTextActive: { color: Brand.white },
     input: {
-      height: 48,
+      height: 44,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       fontSize: 14,
       fontWeight: '600',
       color: colors.charcoal,
@@ -1398,7 +1409,7 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.grayLight,
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 16,
+      padding: 12,
       gap: 4,
     },
     uploadTitle: { fontSize: 12, fontWeight: '700', color: colors.grayMedium },
@@ -1477,7 +1488,7 @@ function makeStyles(colors: ThemeColors) {
     pickerTrailing: { fontSize: 12, fontWeight: '800', color: Brand.orange },
     emptyText: {
       textAlign: 'center',
-      paddingVertical: 28,
+      paddingVertical: 10,
       fontSize: 13,
       fontWeight: '600',
       color: colors.grayMedium,
@@ -1487,7 +1498,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 24,
+      padding: 12,
       alignItems: 'center',
     },
     successIcon: {
@@ -1499,7 +1510,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     successTitle: {
-      marginTop: 16,
+      marginTop: 12,
       fontSize: 22,
       fontWeight: '800',
       color: colors.charcoal,
@@ -1518,8 +1529,8 @@ function makeStyles(colors: ThemeColors) {
       color: colors.grayMedium,
       textAlign: 'center',
     },
-    successActions: { width: '100%', gap: 10, marginTop: 22 },
-    copyStack: { width: '100%', gap: 10, marginTop: 18 },
+    successActions: { width: '100%', gap: 10, marginTop: 14 },
+    copyStack: { width: '100%', gap: 10, marginTop: 12 },
     copyCard: {
       borderRadius: 16,
       borderWidth: 1,

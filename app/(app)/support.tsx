@@ -245,7 +245,7 @@ export default function SupportScreen() {
 
       <Animated.View entering={FadeInDown.delay(120).duration(280)} style={styles.panel}>
         <Text style={styles.panelTitle}>Frequently asked questions</Text>
-        <Text style={[styles.panelSub, { marginBottom: 14 }]}>
+        <Text style={[styles.panelSub, { marginBottom: 10 }]}>
           Quick answers for common ORYNO questions
         </Text>
         <View style={styles.faqList}>
@@ -353,7 +353,7 @@ export default function SupportScreen() {
           })}
         </View>
 
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Email</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 10 }]}>Email</Text>
         <TextInput
           value={email}
           onChangeText={setEmail}
@@ -365,7 +365,7 @@ export default function SupportScreen() {
           style={styles.input}
         />
 
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>How can we help?</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 10 }]}>How can we help?</Text>
         <TextInput
           value={message}
           onChangeText={setMessage}
@@ -437,14 +437,14 @@ function makeStyles(colors: ThemeColors) {
   heroWrap: {
     borderRadius: Radius.card,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: Brand.orange,
     shadowOpacity: 0.28,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 12 },
     elevation: 5,
   },
-  hero: { padding: 22, overflow: 'hidden' },
+  hero: { padding: 14, overflow: 'hidden' },
   heroGlow: {
     position: 'absolute',
     top: -48,
@@ -481,7 +481,7 @@ function makeStyles(colors: ThemeColors) {
     lineHeight: 18,
   },
   heroCta: {
-    marginTop: 18,
+    marginTop: 12,
     height: 48,
     borderRadius: 14,
     backgroundColor: Brand.white,
@@ -491,7 +491,7 @@ function makeStyles(colors: ThemeColors) {
     gap: 8,
   },
   heroCtaText: { color: '#111', fontSize: 14, fontWeight: '800' },
-  actions: { gap: 10, marginBottom: 16 },
+  actions: { gap: 10, marginBottom: 12 },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -500,7 +500,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    padding: 16,
+    padding: 12,
   },
   actionCardPressed: {
     borderColor: 'rgba(255,106,0,0.45)',
@@ -522,19 +522,19 @@ function makeStyles(colors: ThemeColors) {
     color: colors.mutedForeground,
   },
   panel: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    padding: 20,
+    padding: 14,
   },
   panelHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   panelTitle: { fontSize: 16, fontWeight: '700', color: colors.foreground },
   panelSub: {
@@ -549,7 +549,7 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
+    padding: 10,
     gap: 10,
   },
   bubbleRow: { flexDirection: 'row', justifyContent: 'flex-start' },
@@ -557,7 +557,7 @@ function makeStyles(colors: ThemeColors) {
   bubble: {
     maxWidth: '85%',
     borderRadius: 16,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 10,
   },
   bubbleAgent: {
@@ -577,7 +577,7 @@ function makeStyles(colors: ThemeColors) {
     fontWeight: '500',
   },
   bubbleTextUser: { color: Brand.white },
-  chatComposer: { marginTop: 14, flexDirection: 'row', gap: 8 },
+  chatComposer: { marginTop: 10, flexDirection: 'row', gap: 8 },
   chatInput: {
     flex: 1,
     height: 48,
@@ -585,7 +585,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.muted,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     fontSize: 14,
     color: colors.foreground,
   },
@@ -593,7 +593,7 @@ function makeStyles(colors: ThemeColors) {
     height: 48,
     borderRadius: 14,
     backgroundColor: Brand.orange,
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -629,7 +629,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.muted,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     fontSize: 14,
     color: colors.foreground,
   },
@@ -639,7 +639,7 @@ function makeStyles(colors: ThemeColors) {
     textAlignVertical: 'top',
   },
   submitBtn: {
-    marginTop: 18,
+    marginTop: 12,
     height: 48,
     borderRadius: 14,
     backgroundColor: Brand.orange,
@@ -650,12 +650,12 @@ function makeStyles(colors: ThemeColors) {
   },
   submitText: { color: Brand.white, fontSize: 15, fontWeight: '800' },
   successCard: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    padding: 16,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
@@ -681,7 +681,7 @@ function makeStyles(colors: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   ticketsMeta: { fontSize: 12, fontWeight: '600', color: colors.mutedForeground },
   ticketList: { gap: 10 },
@@ -693,8 +693,8 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   ticketSubject: { fontSize: 14, fontWeight: '700', color: colors.foreground },
   ticketMeta: {
@@ -721,7 +721,7 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.card,
     overflow: 'hidden',
   },
-  faqItem: { paddingHorizontal: 16 },
+  faqItem: { paddingHorizontal: 12 },
   faqBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
@@ -730,11 +730,11 @@ function makeStyles(colors: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   faqQ: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.foreground },
   faqA: {
-    paddingBottom: 16,
+    paddingBottom: 12,
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '500',
@@ -746,8 +746,8 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    padding: 20,
-    gap: 14,
+    padding: 14,
+    gap: 10,
   },
   callLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   callIcon: {

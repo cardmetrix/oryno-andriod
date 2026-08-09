@@ -5,7 +5,7 @@ import { WalletCard } from '@/components/app/wallet-card';
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
 import { Screen } from '@/components/ui/screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
-import { Brand, Radius } from '@/constants/theme';
+import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useAdminAccess } from '@/hooks/use-admin-access';
 import { useNotificationsQuery } from '@/hooks/use-notifications-query';
@@ -13,8 +13,8 @@ import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { useWallet } from '@/hooks/use-wallet';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
@@ -80,7 +80,7 @@ export default function HomeScreen() {
     );
   }, [data?.user.fullName, user?.fullName, user?.firstName, firstName]);
   const currency = data?.primary.currency ?? data?.country?.currency ?? 'NGN';
-  const recent = (data?.recent ?? []).slice(0, 5);
+  const recent = (data?.recent ?? []).slice(0, 3);
 
   useFocusEffect(
     useCallback(() => {
@@ -109,21 +109,17 @@ export default function HomeScreen() {
           style={styles.headerIdentity}
           onPress={() => router.push('/(app)/(tabs)/profile')}
           accessibilityLabel="Open profile">
-          <View style={styles.avatar}>
-            {avatarUrl ? (
+          <View style={styles.logoWell}>
               <Image
-                source={{ uri: avatarUrl }}
-                style={styles.avatarImage}
+                source={require('@/assets/images/oryno-logo.png')}
+                style={styles.logo}
                 contentFit="cover"
-                cachePolicy="memory-disk"
               />
-            ) : (
-              <Text style={styles.avatarText}>{initials}</Text>
-            )}
-          </View>
+            </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[styles.pageTitle, { color: colors.foreground }]}>Home</Text>
-            <Text style={[styles.hello, { color: colors.mutedForeground }]} numberOfLines={1}>
+            <Text
+              style={[styles.pageTitle, { color: colors.foreground }]}
+              numberOfLines={1}>
               Welcome back, {firstName} 👋
             </Text>
           </View>
@@ -262,6 +258,7 @@ export default function HomeScreen() {
               <TransactionRow
                 key={tx.id}
                 item={tx}
+                compact
                 onPress={() => router.push(`/(app)/history/${tx.id}`)}
               />
             ))}
@@ -277,21 +274,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
-    paddingTop: 4,
-    paddingBottom: 16,
+    gap: 8,
+    paddingTop: 0,
+    paddingBottom: 8,
   },
   headerIdentity: {
     flex: 1,
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: Brand.orangeMuted,
     borderWidth: 1.5,
     borderColor: 'rgba(255,106,0,0.22)',
@@ -301,40 +298,40 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%' },
   avatarText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: Brand.orange,
   },
   pageTitle: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   hello: {
-    fontSize: 14,
-    marginTop: 2,
+    fontSize: 12,
+    marginTop: 0,
     fontWeight: '500',
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   bell: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bellBadge: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    minWidth: 16,
-    height: 16,
+    top: 4,
+    right: 4,
+    minWidth: 15,
+    height: 15,
     borderRadius: 999,
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
     backgroundColor: Brand.orange,
     alignItems: 'center',
     justifyContent: 'center',
@@ -342,45 +339,60 @@ const styles = StyleSheet.create({
   },
   bellBadgeText: {
     color: Brand.white,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    lineHeight: 12,
+    lineHeight: 11,
   },
   errorBox: {
-    marginTop: 12,
-    padding: 12,
+    marginTop: 8,
+    padding: 10,
     borderRadius: 12,
     backgroundColor: 'rgba(255,59,48,0.08)',
   },
   errorText: { color: Brand.error, fontSize: 13 },
   panel: {
-    marginTop: 18,
-    borderRadius: Radius.card,
+    marginTop: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 16,
+    padding: 10,
     overflow: 'hidden',
     shadowColor: '#0F0F12',
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  logoWell: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: Brand.orange,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+    transform: [{ scale: 1.22 }],
   },
   panelHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 6,
   },
-  panelTitle: { fontSize: 16, fontWeight: '700' },
+  panelTitle: { fontSize: 14, fontWeight: '700' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  link: { color: Brand.orange, fontWeight: '700', fontSize: 13 },
+  link: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
   grid: {
-    gap: 8,
+    gap: 6,
     width: '100%',
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     width: '100%',
   },
   action: {
@@ -389,9 +401,9 @@ const styles = StyleSheet.create({
     flexBasis: 0,
     minWidth: 0,
     alignItems: 'center',
-    gap: 6,
-    borderRadius: 16,
-    paddingVertical: 12,
+    gap: 4,
+    borderRadius: 14,
+    paddingVertical: 8,
     paddingHorizontal: 4,
     borderWidth: 1,
     borderColor: 'transparent',
@@ -409,64 +421,64 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   actionIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#0F0F12',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
   actionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
     width: '100%',
   },
-  txList: { marginHorizontal: -6, gap: 2 },
-  emptyWrap: { alignItems: 'center', paddingVertical: 22, paddingHorizontal: 8 },
+  txList: { marginHorizontal: -4, gap: 0 },
+  emptyWrap: { alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8 },
   emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
+    width: 52,
+    height: 44,
+    borderRadius: 18,
     backgroundColor: Brand.orangeMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,106,0,0.16)',
   },
-  emptyTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.2 },
+  emptyTitle: { fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
   emptySub: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 19,
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
     textAlign: 'center',
   },
   emptyActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 16,
+    marginTop: 12,
     justifyContent: 'center',
   },
   emptyPrimary: {
     backgroundColor: Brand.orange,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  emptyPrimaryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
+  emptyPrimaryText: { color: Brand.white, fontWeight: '700', fontSize: 12 },
   emptySecondary: {
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  emptySecondaryText: { color: Brand.orange, fontWeight: '700', fontSize: 13 },
+  emptySecondaryText: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
 });

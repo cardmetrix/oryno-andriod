@@ -227,10 +227,10 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
     logoWell: {
       width: 36,
       height: 36,
-      borderRadius: 10,
+      borderRadius: 999,
       overflow: 'hidden',
     },
-    logo: { width: '100%', height: '100%' },
+    logo: { width: '100%', height: '100%', borderRadius: 999 },
     brand: {
       flex: 1,
       fontSize: 18,

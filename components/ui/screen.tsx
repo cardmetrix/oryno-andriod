@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useSegments } from 'expo-router';
 import {
   RefreshControl,
@@ -7,7 +8,7 @@ import {
   type ViewProps,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/context/theme-context';
 
@@ -18,6 +19,8 @@ type Props = ViewProps & {
   onRefresh?: () => void;
   /** Soft content enter motion (default true). */
   animate?: boolean;
+  /** Fixed bottom bar (e.g. primary CTA). Stays pinned while content scrolls. */
+  footer?: ReactNode;
 };
 
 export function Screen({
@@ -27,10 +30,12 @@ export function Screen({
   refreshing,
   onRefresh,
   animate = true,
+  footer,
   style,
   ...props
 }: Props) {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const inTabs = segments.includes('(tabs)');
   const inAdmin =
@@ -50,31 +55,54 @@ export function Screen({
     </Animated.View>
   );
 
+  const scrollBottomPad = footer
+    ? 20
+    : inTabs || inAdmin
+      ? 108
+      : 28;
+
+  const body = scroll ? (
+    <ScrollView
+      style={styles.flex}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPad }]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={Boolean(refreshing)}
+            onRefresh={onRefresh}
+            tintColor={colors.orange}
+          />
+        ) : undefined
+      }>
+      {content}
+    </ScrollView>
+  ) : (
+    <View style={styles.flex}>{content}</View>
+  );
+
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={inAdmin ? ['left', 'right'] : ['top', 'left', 'right']}>
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: inTabs || inAdmin ? 118 : 32 },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={Boolean(refreshing)}
-                onRefresh={onRefresh}
-                tintColor={colors.orange}
-              />
-            ) : undefined
-          }>
-          {content}
-        </ScrollView>
+      {footer ? (
+        <View style={styles.flex}>
+          {body}
+          <View
+            style={[
+              styles.footer,
+              {
+                paddingBottom: Math.max(insets.bottom, 10),
+                backgroundColor: colors.background,
+                borderTopColor: colors.border,
+              },
+            ]}>
+            {footer}
+          </View>
+        </View>
       ) : (
-        content
+        body
       )}
     </SafeAreaView>
   );
@@ -82,6 +110,12 @@ export function Screen({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  padded: { paddingHorizontal: 20 },
+  flex: { flex: 1 },
+  padded: { paddingHorizontal: 16 },
   scrollContent: { flexGrow: 1 },
+  footer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
 });

@@ -60,11 +60,11 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    height: 54,
+    height: 46,
     borderRadius: Radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: 12,
   },
   disabled: { opacity: 0.5 },
   label: { fontSize: 16, fontWeight: '700' },

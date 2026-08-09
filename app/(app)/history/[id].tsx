@@ -398,9 +398,9 @@ function ReceiptSkeleton() {
             <View style={styles.skelLight} />
           </View>
         </View>
-        <View style={[styles.heroCenter, { marginTop: 28 }]}>
+        <View style={[styles.heroCenter, { marginTop: 14 }]}>
           <View style={[styles.typeIcon, { opacity: 0.5 }]} />
-          <View style={[styles.skelLight, { marginTop: 16, width: 140 }]} />
+          <View style={[styles.skelLight, { marginTop: 12, width: 140 }]} />
           <View style={[styles.skelLightWide, { marginTop: 12, height: 28, width: 160 }]} />
         </View>
       </LinearGradient>
@@ -426,8 +426,8 @@ function makeStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     receiptHero: {
-      paddingHorizontal: 20,
-      paddingVertical: 24,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
     },
     brandRow: {
       flexDirection: 'row',
@@ -437,14 +437,15 @@ function makeStyles(colors: ThemeColors) {
     logoWell: {
       width: 44,
       height: 44,
-      borderRadius: 12,
+      borderRadius: 999,
       overflow: 'hidden',
       backgroundColor: Brand.orange,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: 'rgba(255,255,255,0.25)',
       zIndex: 2,
     },
-    logo: { width: '100%', height: '100%', transform: [{ scale: 1.22 }] },
+    logo: { width: '100%', height: '100%', borderRadius: 999,
+    transform: [{ scale: 1.22 }] },
     brandEyebrow: {
       color: 'rgba(255,255,255,0.85)',
       fontSize: 11,
@@ -458,7 +459,7 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '700',
     },
     heroCenter: {
-      marginTop: 24,
+      marginTop: 12,
       alignItems: 'center',
     },
     typeIcon: {
@@ -501,15 +502,15 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '700',
     },
     details: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 12,
       paddingVertical: 4,
     },
     detailRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: 16,
-      paddingVertical: 14,
+      gap: 12,
+      paddingVertical: 10,
     },
     detailBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -538,8 +539,8 @@ function makeStyles(colors: ThemeColors) {
       textTransform: 'none',
     },
     footer: {
-      paddingHorizontal: 20,
-      paddingBottom: 20,
+      paddingHorizontal: 12,
+      paddingBottom: 14,
       paddingTop: 8,
       textAlign: 'center',
       fontSize: 11,
@@ -547,7 +548,7 @@ function makeStyles(colors: ThemeColors) {
       color: colors.mutedForeground,
     },
     actions: {
-      marginTop: 18,
+      marginTop: 12,
       flexDirection: 'row',
       gap: 12,
     },
@@ -576,13 +577,13 @@ function makeStyles(colors: ThemeColors) {
     },
     downloadText: { fontSize: 14, fontWeight: '800', color: Brand.white },
     errorCard: {
-      marginTop: 24,
+      marginTop: 12,
       borderRadius: Radius.card,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      paddingHorizontal: 24,
-      paddingVertical: 48,
+      paddingHorizontal: 12,
+      paddingVertical: 40,
       alignItems: 'center',
     },
     errorTitle: { fontSize: 18, fontWeight: '800', color: colors.foreground },
@@ -593,10 +594,10 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     retryBtn: {
-      marginTop: 18,
+      marginTop: 12,
       backgroundColor: Brand.orange,
       borderRadius: 14,
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       paddingVertical: 10,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },

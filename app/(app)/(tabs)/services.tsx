@@ -56,7 +56,6 @@ export default function ServicesScreen() {
           <View style={styles.heroTop}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={styles.eyebrow}>
-                <Ionicons name="sparkles" size={13} color="#FFD29A" />
                 <Text style={styles.eyebrowText}>CATALOG</Text>
               </View>
               <Text style={styles.heroTitle}>{servicesDirectory.length} services ready</Text>
@@ -112,7 +111,7 @@ export default function ServicesScreen() {
         {visible.length === 0 ? (
           <Animated.View entering={FadeIn.duration(220)} style={styles.empty}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="search-outline" size={26} color={Brand.orange} />
+              <Ionicons name="search-outline" size={22} color={Brand.orange} />
             </View>
             <Text style={styles.emptyTitle}>No services found</Text>
             <Text style={styles.emptySub}>
@@ -173,7 +172,7 @@ function ServiceCard({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.iconWell}>
-          {item.renderIcon(Brand.white, 22)}
+          {item.renderIcon(Brand.white, 20)}
           {item.soon ? (
             <View style={styles.soonBadge}>
               <Text style={styles.soonText}>SOON</Text>
@@ -191,120 +190,120 @@ function ServiceCard({
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: colors.charcoal,
-    marginTop: 8,
+    marginTop: 4,
     letterSpacing: -0.4,
   },
   sub: {
     color: colors.grayMedium,
-    marginBottom: 16,
-    marginTop: 4,
-    fontSize: 14,
+    marginBottom: 8,
+    marginTop: 2,
+    fontSize: 13,
     fontWeight: '500',
   },
   heroShell: {
-    borderRadius: Radius.card,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.grayDivider,
     backgroundColor: colors.card,
     shadowColor: '#0F0F12',
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 2,
   },
   hero: {
-    paddingHorizontal: 18,
-    paddingVertical: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     overflow: 'hidden',
   },
   heroGlow: {
     position: 'absolute',
     top: -40,
     right: -30,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   eyebrowText: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.6,
+    letterSpacing: 1.4,
   },
   heroTitle: {
-    marginTop: 6,
+    marginTop: 4,
     color: Brand.white,
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   heroSub: {
-    marginTop: 6,
+    marginTop: 4,
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
     fontWeight: '500',
   },
   popularBadge: {
     borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  popularText: { color: '#FFD29A', fontSize: 11, fontWeight: '800' },
-  heroBody: { padding: 14, gap: 12 },
+  popularText: { color: '#FFD29A', fontSize: 10, fontWeight: '800' },
+  heroBody: { padding: 8, gap: 8 },
   searchWrap: {
-    height: 48,
-    borderRadius: 16,
+    height: 42,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.grayDivider,
     backgroundColor: colors.grayLight,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.charcoal,
   },
-  chips: { gap: 8, paddingRight: 4 },
+  chips: { gap: 6, paddingRight: 4 },
   chip: {
     borderRadius: 999,
     backgroundColor: colors.grayLight,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
   },
   chipActive: { backgroundColor: Brand.orange },
   chipText: { fontSize: 12, fontWeight: '700', color: colors.grayMedium },
   chipTextActive: { color: Brand.white },
-  gridWrap: { marginTop: 18 },
-  grid: { gap: 10 },
-  gridRow: { flexDirection: 'row', gap: 10 },
+  gridWrap: { marginTop: 10 },
+  grid: { gap: 8 },
+  gridRow: { flexDirection: 'row', gap: 8 },
   cardWrap: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   cardSpacer: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   card: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    borderRadius: 22,
+    gap: 6,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.grayDivider,
     backgroundColor: colors.card,
-    paddingHorizontal: 10,
-    paddingVertical: 16,
-    minHeight: 124,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+    minHeight: 96,
     overflow: 'hidden',
   },
   cardPressed: {
@@ -313,9 +312,9 @@ function makeStyles(colors: ThemeColors) {
     transform: [{ scale: 0.97 }],
   },
   iconWell: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
@@ -327,16 +326,16 @@ function makeStyles(colors: ThemeColors) {
     right: -8,
     borderRadius: 999,
     backgroundColor: colors.charcoal,
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     paddingVertical: 2,
   },
   soonText: { color: Brand.white, fontSize: 8, fontWeight: '800' },
   cardLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: colors.charcoal,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 14,
   },
   empty: {
     alignItems: 'center',
@@ -344,34 +343,33 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.grayDivider,
     backgroundColor: colors.card,
-    paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 20,
   },
   emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     backgroundColor: Brand.orangeMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  emptyTitle: { fontSize: 17, fontWeight: '800', color: colors.charcoal },
+  emptyTitle: { fontSize: 15, fontWeight: '800', color: colors.charcoal },
   emptySub: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 19,
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 17,
     color: colors.grayMedium,
     textAlign: 'center',
   },
   clearBtn: {
-    marginTop: 16,
-    borderRadius: 14,
+    marginTop: 10,
+    borderRadius: 12,
     backgroundColor: colors.grayLight,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  clearText: { color: colors.charcoal, fontWeight: '700', fontSize: 13 },
+  clearText: { color: colors.charcoal, fontWeight: '700', fontSize: 12 },
 });
 }
-

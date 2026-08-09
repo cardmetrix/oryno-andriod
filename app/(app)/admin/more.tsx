@@ -59,8 +59,8 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   itemPressed: {
     backgroundColor: colors.orangeMuted,

@@ -16,7 +16,7 @@ const DEFAULT_COLORS = [
   'rgba(28,28,30,0.35)',
   'transparent',
 ] as const;
-const CAROUSEL_HEIGHT = 148;
+const CAROUSEL_HEIGHT = 118;
 
 function isExternalHref(href: string) {
   return /^https?:\/\//i.test(href.trim());
@@ -147,16 +147,16 @@ export function AdCarousel() {
 const styles = StyleSheet.create({
   wrap: {
     height: CAROUSEL_HEIGHT,
-    borderRadius: 22,
+    borderRadius: 18,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 14,
+    marginTop: 10,
   },
   placeholder: {
     height: CAROUSEL_HEIGHT,
-    borderRadius: 22,
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 14,
+    marginTop: 10,
   },
   image: { ...StyleSheet.absoluteFillObject },
   progressTrack: {
@@ -191,15 +191,15 @@ const styles = StyleSheet.create({
   copy: {
     flex: 1,
     justifyContent: 'flex-end',
-    padding: 14,
+    padding: 12,
   },
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: Brand.orange,
     borderRadius: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   badgeText: {
     color: Brand.white,
@@ -210,24 +210,24 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Brand.white,
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   subtitle: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 12,
+    marginTop: 1,
   },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 10,
+    marginTop: 6,
   },
   cta: {
     color: 'rgba(255,255,255,0.95)',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
 });

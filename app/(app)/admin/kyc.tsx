@@ -214,7 +214,7 @@ export default function AdminKycScreen() {
 
             <ScrollView
               style={styles.sheetScroll}
-              contentContainerStyle={{ paddingBottom: 24 }}
+              contentContainerStyle={{ paddingBottom: 12 }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled">
               {review ? (
@@ -361,13 +361,13 @@ function makeStyles(colors: ThemeColors) {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    paddingVertical: 14,
+    paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
@@ -387,7 +387,7 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 8,
   },
   grabber: {
@@ -461,7 +461,7 @@ function makeStyles(colors: ThemeColors) {
     alignItems: 'center',
   },
   docMissingText: { fontSize: 11, fontWeight: '600', color: colors.mutedForeground },
-  previewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  previewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
   previewWrap: {
     width: '48%',
     flexGrow: 1,
@@ -486,7 +486,7 @@ function makeStyles(colors: ThemeColors) {
     marginBottom: 6,
   },
   reasonInput: {
-    minHeight: 88,
+    minHeight: 72,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.muted,
@@ -495,7 +495,7 @@ function makeStyles(colors: ThemeColors) {
     paddingVertical: 12,
     fontSize: 14,
     color: colors.foreground,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   actions: { flexDirection: 'row', gap: 10 },
   approveBtn: {

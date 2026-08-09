@@ -112,10 +112,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   card: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     overflow: 'hidden',
-    minHeight: 210,
+    minHeight: 168,
   },
   glow: {
     position: 'absolute',
@@ -175,10 +175,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  actions: { marginTop: 20, flexDirection: 'row', gap: 10 },
+  actions: { marginTop: 14, flexDirection: 'row', gap: 10 },
   fundBtn: {
     flex: 1,
-    height: 50,
+    height: 44,
     borderRadius: 16,
     backgroundColor: Brand.white,
     flexDirection: 'row',
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   fundText: { color: '#111', fontSize: 14, fontWeight: '800' },
   withdrawBtn: {
     flex: 1,
-    height: 50,
+    height: 44,
     borderRadius: 16,
     backgroundColor: 'rgba(0,0,0,0.25)',
     flexDirection: 'row',

@@ -48,7 +48,12 @@ export function UsdWalletCard({
   hidden,
   panel,
   onPanelChange,
-}: Pick<SharedProps, 'usd' | 'hidden' | 'panel' | 'onPanelChange'>) {
+  holderName,
+  countryCode,
+}: Pick<SharedProps, 'usd' | 'hidden' | 'panel' | 'onPanelChange'> & {
+  holderName: string;
+  countryCode: string;
+}) {
   const balance = usd?.balanceFormatted ?? '$0.00';
 
   return (
@@ -69,6 +74,9 @@ export function UsdWalletCard({
             numberOfLines={1}>
             {maskBalance(Boolean(hidden), balance)}
           </Animated.Text>
+          <Text style={styles.holder} numberOfLines={1}>
+            {holderName} · USD wallet
+          </Text>
         </View>
         <View style={styles.badge}>
           <Ionicons name="shield-checkmark" size={13} color={Brand.orange} />
@@ -336,10 +344,10 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: Radius.card,
     backgroundColor: Brand.charcoal,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     overflow: 'hidden',
-    minHeight: 180,
+    minHeight: 148,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
@@ -376,6 +384,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.6,
   },
+  holder: {
+    marginTop: 6,
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,10 +402,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   badgeText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '800' },
-  actions: { marginTop: 20, flexDirection: 'row', gap: 10 },
+  actions: { marginTop: 14, flexDirection: 'row', gap: 10 },
   fundBtn: {
     flex: 1,
-    height: 50,
+    height: 44,
     borderRadius: 16,
     backgroundColor: Brand.white,
     flexDirection: 'row',
@@ -403,7 +417,7 @@ const styles = StyleSheet.create({
   fundText: { color: '#111', fontSize: 14, fontWeight: '800' },
   convertBtn: {
     flex: 1,
-    height: 50,
+    height: 44,
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.1)',
     flexDirection: 'row',
@@ -420,12 +434,12 @@ const styles = StyleSheet.create({
 function makePanelStyles(colors: ThemeColors) {
   return StyleSheet.create({
     panel: {
-      marginTop: 16,
+      marginTop: 12,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 16,
+      padding: 12,
     },
     panelTitle: { fontSize: 14, fontWeight: '700', color: colors.foreground },
     panelSub: {
@@ -452,19 +466,19 @@ function makePanelStyles(colors: ThemeColors) {
     segText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
     segTextActive: { color: Brand.orange },
     fieldLabel: {
-      marginTop: 14,
+      marginTop: 10,
       fontSize: 13,
       fontWeight: '600',
       color: colors.foreground,
     },
     input: {
       marginTop: 8,
-      height: 48,
+      height: 44,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.muted,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       fontSize: 16,
       fontWeight: '600',
       color: colors.foreground,
@@ -480,10 +494,10 @@ function makePanelStyles(colors: ThemeColors) {
     presetText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
     presetTextActive: { color: colors.background },
     preview: {
-      marginTop: 14,
+      marginTop: 10,
       borderRadius: 16,
       backgroundColor: colors.muted,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 12,
     },
     previewLabel: { fontSize: 12, color: colors.mutedForeground },
@@ -501,8 +515,8 @@ function makePanelStyles(colors: ThemeColors) {
     },
     error: { marginTop: 10, fontSize: 13, fontWeight: '600', color: Brand.error },
     cta: {
-      marginTop: 14,
-      height: 48,
+      marginTop: 10,
+      height: 44,
       borderRadius: 14,
       backgroundColor: Brand.orange,
       alignItems: 'center',

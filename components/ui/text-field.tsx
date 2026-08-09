@@ -84,13 +84,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderRadius: Radius.md,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 15,
     borderWidth: 1.5,
   },
   inputWithToggle: {
-    paddingRight: 48,
+    paddingRight: 40,
   },
   toggle: {
     position: 'absolute',

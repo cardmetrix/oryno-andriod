@@ -10,28 +10,28 @@ export function WalletCardSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 12 }}>
+    <View style={{ gap: 8 }}>
       <LinearGradient
         colors={['#FF8124', Brand.orange, '#E85D00']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.walletCard}>
         <View style={styles.row}>
-          <Skeleton width={48} height={48} radius={16} tone="onOrange" />
-          <View style={{ flex: 1, gap: 6 }}>
-            <Skeleton width={72} height={10} tone="onOrange" />
-            <Skeleton width={110} height={14} tone="onOrange" />
+          <Skeleton width={34} height={34} radius={10} tone="onOrange" />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Skeleton width={64} height={9} tone="onOrange" />
+            <Skeleton width={100} height={12} tone="onOrange" />
           </View>
         </View>
-        <Skeleton width={120} height={10} tone="onOrange" style={{ marginTop: 20 }} />
-        <View style={[styles.row, { marginTop: 10, alignItems: 'flex-end' }]}>
-          <Skeleton width={180} height={28} tone="onOrange" />
-          <Skeleton width={32} height={32} radius={16} tone="onOrange" />
+        <Skeleton width={100} height={9} tone="onOrange" style={{ marginTop: 10 }} />
+        <View style={[styles.row, { marginTop: 8, alignItems: 'flex-end' }]}>
+          <Skeleton width={150} height={24} tone="onOrange" />
+          <Skeleton width={30} height={30} radius={15} tone="onOrange" />
         </View>
       </LinearGradient>
-      <View style={[styles.row, { gap: 10 }]}>
-        <Skeleton width="48%" height={52} radius={18} />
-        <Skeleton width="48%" height={52} radius={18} />
+      <View style={[styles.row, { gap: 8 }]}>
+        <Skeleton width="48%" height={44} radius={14} />
+        <Skeleton width="48%" height={44} radius={14} />
       </View>
     </View>
   );
@@ -72,7 +72,7 @@ export function WalletPageSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 16, paddingTop: 4 }}>
+    <View style={{ gap: 12, paddingTop: 4 }}>
       <View style={[styles.row, { alignItems: 'flex-start', marginBottom: 2 }]}>
         <View style={{ flex: 1, gap: 8 }}>
           <Skeleton width={130} height={28} radius={10} />
@@ -88,9 +88,9 @@ export function WalletPageSkeleton() {
           end={{ x: 1, y: 1 }}
           style={styles.walletPageHero}>
           <Skeleton width={96} height={12} radius={999} tone="onOrange" />
-          <Skeleton width={180} height={34} radius={999} tone="onOrange" style={{ marginTop: 14 }} />
-          <Skeleton width={140} height={14} radius={999} tone="onOrange" style={{ marginTop: 14 }} />
-          <View style={[styles.row, { marginTop: 22, gap: 10 }]}>
+          <Skeleton width={180} height={34} radius={999} tone="onOrange" style={{ marginTop: 10 }} />
+          <Skeleton width={140} height={14} radius={999} tone="onOrange" style={{ marginTop: 10 }} />
+          <View style={[styles.row, { marginTop: 14, gap: 10 }]}>
             <Skeleton width="48%" height={50} radius={16} tone="onOrange" />
             <Skeleton width="48%" height={50} radius={16} tone="onOrange" />
           </View>
@@ -113,7 +113,7 @@ export function WalletPageSkeleton() {
       </View>
 
       <View style={styles.card}>
-        <View style={[styles.row, { marginBottom: 14 }]}>
+        <View style={[styles.row, { marginBottom: 10 }]}>
           <Skeleton width={44} height={44} radius={16} />
           <View style={{ flex: 1, gap: 8 }}>
             <Skeleton width={120} height={14} />
@@ -128,7 +128,7 @@ export function WalletPageSkeleton() {
       </View>
 
       <View style={styles.card}>
-        <Skeleton width={140} height={16} style={{ marginBottom: 14 }} />
+        <Skeleton width={140} height={16} style={{ marginBottom: 10 }} />
         {Array.from({ length: 4 }).map((_, i) => (
           <TransactionRowSkeleton key={i} />
         ))}
@@ -141,36 +141,33 @@ export function HomeSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 14, paddingTop: 4 }}>
-      <View style={[styles.row, { alignItems: 'flex-start' }]}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Skeleton width={72} height={22} />
-          <Skeleton width={140} height={14} />
+    <View style={{ gap: 8, paddingTop: 0 }}>
+      <View style={[styles.row, { alignItems: 'center' }]}>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Skeleton width={64} height={18} />
+          <Skeleton width={130} height={12} />
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Skeleton width={96} height={40} radius={14} />
-          <Skeleton width={42} height={42} radius={14} />
-        </View>
+        <Skeleton width={36} height={36} radius={12} />
       </View>
       <WalletCardSkeleton />
-      <Skeleton width="100%" height={148} radius={22} />
+      <Skeleton width="100%" height={118} radius={18} />
       <View style={styles.card}>
-        <View style={[styles.row, { marginBottom: 14 }]}>
-          <Skeleton width={110} height={16} />
-          <Skeleton width={60} height={13} />
+        <View style={[styles.row, { marginBottom: 8 }]}>
+          <Skeleton width={96} height={14} />
+          <Skeleton width={52} height={12} />
         </View>
         <View style={styles.grid3}>
           {Array.from({ length: 6 }).map((_, i) => (
             <View key={i} style={styles.actionBone}>
-              <Skeleton width={44} height={44} radius={16} />
-              <Skeleton width={48} height={10} />
+              <Skeleton width={36} height={36} radius={12} />
+              <Skeleton width={44} height={9} />
             </View>
           ))}
         </View>
       </View>
       <View style={styles.card}>
-        <Skeleton width={150} height={16} style={{ marginBottom: 12 }} />
-        <TransactionListSkeleton count={4} />
+        <Skeleton width={130} height={14} style={{ marginBottom: 8 }} />
+        <TransactionListSkeleton count={3} />
       </View>
     </View>
   );
@@ -211,7 +208,7 @@ export function FormSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 14, marginTop: 12 }}>
+    <View style={{ gap: 10, marginTop: 12 }}>
       <Skeleton width={90} height={12} />
       <ChipRowSkeleton />
       <Skeleton width={120} height={12} style={{ marginTop: 8 }} />
@@ -250,7 +247,7 @@ export function SettingsSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 18, marginTop: 4 }}>
+    <View style={{ gap: 12, marginTop: 4 }}>
       <Skeleton width="100%" height={118} radius={Radius.card} />
       {Array.from({ length: 3 }).map((_, section) => (
         <View key={section} style={{ gap: 8 }}>
@@ -283,14 +280,14 @@ export function ProfileSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 16, paddingTop: 4 }}>
+    <View style={{ gap: 12, paddingTop: 4 }}>
       <Skeleton width={100} height={28} />
       <Skeleton width={180} height={13} />
       <View style={styles.profileHeroModern}>
         <Skeleton width="100%" height={104} radius={0} />
-        <View style={{ alignItems: 'center', marginTop: -48, paddingBottom: 20 }}>
+        <View style={{ alignItems: 'center', marginTop: -48, paddingBottom: 14 }}>
           <Skeleton width={96} height={96} radius={48} />
-          <Skeleton width={160} height={22} style={{ marginTop: 14 }} />
+          <Skeleton width={160} height={22} style={{ marginTop: 10 }} />
           <Skeleton width={100} height={14} style={{ marginTop: 8 }} />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
             <Skeleton width={90} height={28} radius={999} />
@@ -317,11 +314,11 @@ export function DetailSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 14, marginTop: 12 }}>
+    <View style={{ gap: 10, marginTop: 12 }}>
       <Skeleton width={120} height={12} />
       <Skeleton width="70%" height={28} />
       <Skeleton width="40%" height={14} />
-      <View style={[styles.card, { marginTop: 8, gap: 14 }]}>
+      <View style={[styles.card, { marginTop: 8, gap: 10 }]}>
         {Array.from({ length: 5 }).map((_, i) => (
           <View key={i} style={styles.row}>
             <Skeleton width={90} height={12} />
@@ -340,9 +337,9 @@ export { SplashLoading as FullScreenSkeleton } from '@/components/ui/splash-load
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   walletCard: {
-    borderRadius: 24,
-    padding: 16,
-    minHeight: 138,
+    borderRadius: 20,
+    padding: 12,
+    minHeight: 112,
   },
   walletPageCard: {
     borderRadius: Radius.card,
@@ -352,9 +349,9 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.card,
   },
   walletPageHero: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    minHeight: 210,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    minHeight: 168,
   },
   pagerDots: {
     flexDirection: 'row',
@@ -368,7 +365,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.grayDivider,
     backgroundColor: colors.card,
-    padding: 14,
+    padding: 10,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   txRow: {
@@ -381,7 +378,7 @@ function makeStyles(colors: ThemeColors) {
     borderRadius: Radius.card,
     borderWidth: 1,
     borderColor: colors.grayDivider,
-    padding: 16,
+    padding: 12,
     backgroundColor: colors.card,
   },
   grid3: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -391,13 +388,13 @@ function makeStyles(colors: ThemeColors) {
     gap: 8,
     backgroundColor: colors.grayLight,
     borderRadius: 18,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   serviceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 16,
+    padding: 12,
     borderRadius: Radius.xl,
     backgroundColor: colors.grayLight,
   },
@@ -405,7 +402,7 @@ function makeStyles(colors: ThemeColors) {
   notif: {
     flexDirection: 'row',
     gap: 12,
-    padding: 16,
+    padding: 12,
     borderRadius: Radius.xl,
     backgroundColor: colors.grayLight,
     alignItems: 'flex-start',
@@ -421,8 +418,8 @@ function makeStyles(colors: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   settingsSectionRowBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -432,7 +429,7 @@ function makeStyles(colors: ThemeColors) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 16,
+    padding: 12,
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: colors.grayDivider,
@@ -442,7 +439,7 @@ function makeStyles(colors: ThemeColors) {
     alignItems: 'center',
     backgroundColor: colors.grayLight,
     borderRadius: Radius.card,
-    padding: 22,
+    padding: 14,
   },
   profileHeroModern: {
     borderRadius: Radius.card,

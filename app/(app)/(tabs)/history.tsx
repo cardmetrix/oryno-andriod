@@ -371,7 +371,7 @@ function HistorySkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 14, marginTop: 8 }}>
+    <View style={{ gap: 10, marginTop: 8 }}>
       <View style={styles.filterRow}>
         <View style={[styles.filterPill, { opacity: 0.5, flex: 1 }]} />
         <View style={[styles.filterPill, { opacity: 0.5, flex: 1 }]} />
@@ -393,7 +393,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       gap: 12,
       marginTop: 4,
-      marginBottom: 14,
+      marginBottom: 10,
     },
     title: {
       fontSize: 28,
@@ -423,7 +423,7 @@ function makeStyles(colors: ThemeColors) {
     filterRow: {
       flexDirection: 'row',
       gap: 10,
-      marginBottom: 18,
+      marginBottom: 12,
     },
     filterPill: {
       flex: 1,
@@ -432,7 +432,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.muted,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -476,7 +476,7 @@ function makeStyles(colors: ThemeColors) {
       gap: 6,
       backgroundColor: Brand.orange,
       borderRadius: 999,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 9,
     },
     analysisText: {
@@ -487,7 +487,7 @@ function makeStyles(colors: ThemeColors) {
     cashflow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 16,
+      gap: 12,
       marginBottom: 10,
     },
     cashflowText: {
@@ -516,8 +516,8 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      paddingHorizontal: 24,
-      paddingVertical: 40,
+      paddingHorizontal: 12,
+      paddingVertical: 28,
       marginTop: 12,
     },
     stateIcon: {
@@ -538,18 +538,18 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     primaryBtn: {
-      marginTop: 16,
+      marginTop: 12,
       backgroundColor: Brand.orange,
       borderRadius: 14,
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       paddingVertical: 11,
     },
     primaryBtnText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
     secondaryBtn: {
-      marginTop: 16,
+      marginTop: 12,
       borderRadius: 14,
       backgroundColor: colors.muted,
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       paddingVertical: 11,
     },
     secondaryBtnText: { color: colors.foreground, fontWeight: '700', fontSize: 13 },

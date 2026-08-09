@@ -168,7 +168,7 @@ export default function AdminSettingsScreen() {
               loading={saving}
               disabled={saving}
               onPress={() => void save()}
-              style={{ marginTop: 16 }}
+              style={{ marginTop: 12 }}
             />
           </AdminCard>
         </>
@@ -240,8 +240,8 @@ function makeStyles(colors: ThemeColors) {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     marginTop: 10,
     backgroundColor: colors.card,
   },
@@ -252,7 +252,7 @@ function makeStyles(colors: ThemeColors) {
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 12,
     backgroundColor: colors.card,
   },

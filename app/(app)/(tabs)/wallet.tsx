@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -201,6 +202,8 @@ export default function WalletScreen() {
             hidden={hidden}
             panel={usdPanel}
             onPanelChange={setUsdPanel}
+            holderName={data.user.fullName}
+            countryCode={data.user.countryCode}
           />
         </View>
       </ScrollView>
@@ -249,17 +252,17 @@ export default function WalletScreen() {
                   : `${symbol}${Number(data.totals.balance).toLocaleString('en-NG', {
                       maximumFractionDigits: 0,
                     })}`,
-                icon: 'wallet-outline' as const,
+                ion: 'wallet-outline' as const,
               },
               {
                 label: 'Banks',
                 value: String(data.totals.bankCount ?? data.banks.length),
-                icon: 'business-outline' as const,
+                material: 'account-balance' as const,
               },
               {
                 label: 'Recent',
                 value: String(data.recent.length),
-                icon: 'time-outline' as const,
+                ion: 'time-outline' as const,
               },
             ].map((stat, i) => (
               <Animated.View
@@ -267,7 +270,11 @@ export default function WalletScreen() {
                 entering={FadeInDown.delay(40 + i * 40).duration(280)}
                 style={styles.statCard}>
                 <View style={styles.statIcon}>
-                  <Ionicons name={stat.icon} size={16} color={Brand.orange} />
+                  {'material' in stat && stat.material ? (
+                    <MaterialIcons name={stat.material} size={16} color={Brand.orange} />
+                  ) : (
+                    <Ionicons name={stat.ion!} size={16} color={Brand.orange} />
+                  )}
                 </View>
                 <Text style={styles.statLabel}>{stat.label}</Text>
                 <Text style={styles.statValue} numberOfLines={1}>
@@ -284,7 +291,7 @@ export default function WalletScreen() {
             <View style={styles.panelHead}>
               <View style={styles.panelHeadLeft}>
                 <View style={styles.panelIcon}>
-                  <Ionicons name="business-outline" size={20} color={Brand.orange} />
+                  <MaterialIcons name="account-balance" size={20} color={Brand.orange} />
                 </View>
                 <View>
                   <Text style={styles.panelTitle}>Bank accounts</Text>
@@ -307,7 +314,7 @@ export default function WalletScreen() {
                   style={[styles.bankCard, account.isPrimary && styles.bankCardPrimary]}>
                   <View style={styles.bankRow}>
                     <View style={styles.bankIcon}>
-                      <Ionicons name="business" size={18} color={Brand.orange} />
+                      <MaterialIcons name="account-balance" size={18} color={Brand.orange} />
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <View style={styles.bankTitleRow}>
@@ -392,7 +399,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       gap: 12,
       marginTop: 4,
-      marginBottom: 16,
+      marginBottom: 12,
     },
     title: {
       fontSize: 28,
@@ -408,7 +415,7 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: colors.card,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 10,
     },
     historyBtnText: {
@@ -421,8 +428,8 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 24,
-      paddingVertical: 40,
+      paddingHorizontal: 12,
+      paddingVertical: 28,
       alignItems: 'center',
     },
     errorTitle: { fontSize: 18, fontWeight: '800', color: colors.charcoal },
@@ -433,10 +440,10 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
     },
     retryBtn: {
-      marginTop: 18,
+      marginTop: 12,
       backgroundColor: Brand.orange,
       borderRadius: 14,
-      paddingHorizontal: 18,
+      paddingHorizontal: 12,
       paddingVertical: 12,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 14 },
@@ -448,14 +455,14 @@ function makeStyles(colors: ThemeColors) {
       backgroundColor: 'rgba(142,142,147,0.35)',
     },
     hintText: { fontSize: 11, color: colors.grayMedium },
-    statsRow: { marginTop: 16, flexDirection: 'row', gap: 10 },
+    statsRow: { marginTop: 12, flexDirection: 'row', gap: 10 },
     statCard: {
       flex: 1,
       borderRadius: 22,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 14,
+      padding: 10,
     },
     statIcon: {
       width: 32,
@@ -478,19 +485,19 @@ function makeStyles(colors: ThemeColors) {
       color: colors.charcoal,
     },
     panel: {
-      marginTop: 18,
+      marginTop: 12,
       borderRadius: Radius.card,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 18,
+      padding: 12,
     },
     panelHead: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 10,
-      marginBottom: 14,
+      marginBottom: 10,
     },
     panelHeadLeft: {
       flexDirection: 'row',
@@ -524,8 +531,8 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
     },
     bankCardPrimary: {
       borderColor: 'rgba(255,106,0,0.4)',
@@ -581,8 +588,8 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderStyle: 'dashed',
       borderColor: colors.grayDivider,
-      paddingHorizontal: 16,
-      paddingVertical: 28,
+      paddingHorizontal: 12,
+      paddingVertical: 16,
       alignItems: 'center',
     },
     emptyBanksTitle: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
@@ -594,10 +601,10 @@ function makeStyles(colors: ThemeColors) {
       lineHeight: 17,
     },
     emptyBanksBtn: {
-      marginTop: 14,
+      marginTop: 10,
       backgroundColor: Brand.orange,
       borderRadius: 14,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 10,
     },
     emptyBanksBtnText: { color: Brand.white, fontWeight: '700', fontSize: 13 },

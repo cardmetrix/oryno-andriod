@@ -148,7 +148,7 @@ export default function AdminLoginScreen() {
                   title="Back to app"
                   variant="secondary"
                   onPress={() => router.replace('/(app)/(tabs)' as never)}
-                  style={{ marginTop: 16 }}
+                  style={{ marginTop: 12 }}
                 />
               </Animated.View>
             ) : (
@@ -217,7 +217,7 @@ export default function AdminLoginScreen() {
                   onPress={onSubmit}
                   loading={loading}
                   disabled={passcode.trim().length < 4}
-                  style={{ marginTop: 18 }}
+                  style={{ marginTop: 12 }}
                 />
               </Animated.View>
             )}
@@ -232,7 +232,7 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  safe: { flex: 1, paddingHorizontal: 20 },
+  safe: { flex: 1, paddingHorizontal: 12 },
   glowTop: {
     position: 'absolute',
     top: -80,
@@ -257,7 +257,7 @@ function makeStyles(colors: ThemeColors) {
     gap: 4,
     alignSelf: 'flex-start',
     marginTop: 8,
-    marginBottom: 18,
+    marginBottom: 12,
     paddingVertical: 6,
     paddingRight: 8,
   },
@@ -267,7 +267,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    padding: 22,
+    padding: 14,
     shadowColor: '#0F0F12',
     shadowOpacity: 0.08,
     shadowRadius: 24,
@@ -278,7 +278,7 @@ function makeStyles(colors: ThemeColors) {
   logoWell: {
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: 999,
     overflow: 'hidden',
   },
   logo: {
@@ -293,13 +293,13 @@ function makeStyles(colors: ThemeColors) {
     letterSpacing: -0.3,
   },
   brandSub: { marginTop: 2, fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
-  checking: { alignItems: 'center', paddingVertical: 40, gap: 12 },
+  checking: { alignItems: 'center', paddingVertical: 28, gap: 12 },
   muted: { fontSize: 13, color: colors.mutedForeground },
   callout: {
-    marginTop: 22,
+    marginTop: 14,
     borderRadius: 18,
     backgroundColor: colors.orangeMuted,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 12,
     gap: 4,
   },
@@ -313,14 +313,14 @@ function makeStyles(colors: ThemeColors) {
     color: colors.foreground,
   },
   label: {
-    marginTop: 20,
+    marginTop: 14,
     marginBottom: 8,
     fontSize: 13,
     fontWeight: '700',
     color: colors.foreground,
   },
   inputWrap: {
-    minHeight: 54,
+    minHeight: 46,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -328,7 +328,7 @@ function makeStyles(colors: ThemeColors) {
     borderColor: colors.border,
     backgroundColor: colors.muted,
     borderRadius: Radius.lg,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
   },
   inputWrapError: {
     borderColor: 'rgba(255,59,48,0.45)',
@@ -340,12 +340,12 @@ function makeStyles(colors: ThemeColors) {
     fontWeight: '600',
     letterSpacing: 0.4,
     color: colors.foreground,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   error: { marginTop: 10, color: Brand.error, fontSize: 13, fontWeight: '600' },
   hint: { marginTop: 10, fontSize: 12, color: colors.mutedForeground, lineHeight: 17 },
   hintStrong: { fontWeight: '700', color: colors.foreground },
-  stateBox: { marginTop: 22, alignItems: 'center' },
+  stateBox: { marginTop: 14, alignItems: 'center' },
   stateIcon: {
     width: 48,
     height: 48,

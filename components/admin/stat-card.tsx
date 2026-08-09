@@ -35,7 +35,7 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: Radius.lg,
       borderWidth: 1,
       borderColor: colors.border,
-      padding: 14,
+      padding: 10,
       gap: 4,
     },
     label: { fontSize: 12, fontWeight: '600', color: colors.mutedForeground },

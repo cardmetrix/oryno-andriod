@@ -256,7 +256,26 @@ export default function DataScreen() {
   }
 
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      footer={
+        <Pressable
+          disabled={!canSubmit}
+          onPress={() => void onSubmit()}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            !canSubmit && styles.submitDisabled,
+            pressed && canSubmit && { opacity: 0.92 },
+          ]}>
+          <Text style={styles.submitText}>
+            {submitting
+              ? 'Buying data…'
+              : selected
+                ? `Buy data · ${money(selected.amount)}`
+                : 'Select a plan'}
+          </Text>
+        </Pressable>
+      }>
       <PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />
 
       {error ? (
@@ -366,28 +385,6 @@ export default function DataScreen() {
           </View>
         </View>
       </Animated.View>
-
-
-      <Animated.View
-        entering={FadeInDown.delay(200).duration(280)}
-        style={{ marginTop: 16, marginBottom: 8 }}>
-        <Pressable
-          disabled={!canSubmit}
-          onPress={() => void onSubmit()}
-          style={({ pressed }) => [
-            styles.submitBtn,
-            !canSubmit && styles.submitDisabled,
-            pressed && canSubmit && { opacity: 0.92 },
-          ]}>
-          <Text style={styles.submitText}>
-            {submitting
-              ? 'Buying data…'
-              : selected
-                ? `Buy data · ${money(selected.amount)}`
-                : 'Select a plan'}
-          </Text>
-        </Pressable>
-      </Animated.View>
     </Screen>
   );
 }
@@ -416,14 +413,14 @@ function SummaryRow({
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     card: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: Radius.card,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 18,
+      padding: 10,
     },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
     iconBubble: {
       width: 40,
       height: 40,
@@ -446,11 +443,11 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 16,
+      paddingHorizontal: 12,
       fontSize: 14,
       color: colors.charcoal,
     },
-    plansHeader: { gap: 12, marginBottom: 12 },
+    plansHeader: { gap: 10, marginBottom: 8 },
     filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     filterChip: {
       borderRadius: 999,
@@ -475,8 +472,8 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.grayDivider,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
     },
     planRowActive: {
       borderColor: Brand.orange,
@@ -518,7 +515,7 @@ function makeStyles(colors: ThemeColors) {
     },
     payText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     submitBtn: {
-      height: 48,
+      height: 46,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
@@ -538,17 +535,17 @@ function makeStyles(colors: ThemeColors) {
       alignSelf: 'center',
       backgroundColor: Brand.orange,
       borderRadius: 12,
-      paddingHorizontal: 14,
+      paddingHorizontal: 10,
       paddingVertical: 8,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
     errorBanner: {
-      marginBottom: 14,
+      marginBottom: 8,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
       backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 14,
+      padding: 10,
       flexDirection: 'row',
       gap: 10,
       alignItems: 'flex-start',
@@ -560,7 +557,7 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 28,
+      padding: 14,
       alignItems: 'center',
     },
     successIcon: {
@@ -572,7 +569,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     successTitle: {
-      marginTop: 16,
+      marginTop: 12,
       fontSize: 22,
       fontWeight: '800',
       color: colors.charcoal,
@@ -585,6 +582,6 @@ function makeStyles(colors: ThemeColors) {
       textAlign: 'center',
       lineHeight: 20,
     },
-    successActions: { marginTop: 24, width: '100%', gap: 10 },
+    successActions: { marginTop: 12, width: '100%', gap: 10 },
   });
 }

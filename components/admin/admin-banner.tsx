@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Brand, Radius } from '@/constants/theme';
+import { Brand } from '@/constants/theme';
 
 type Props = {
   hasSession?: boolean;
@@ -23,7 +23,7 @@ export function AdminAccessBanner({ hasSession }: Props) {
         end={{ x: 1, y: 1 }}
         style={styles.gradient}>
         <View style={styles.iconWrap}>
-          <Ionicons name="shield-checkmark" size={22} color={Brand.orange} />
+          <Ionicons name="shield-checkmark" size={20} color={Brand.orange} />
         </View>
         <View style={styles.copy}>
           <Text style={styles.eyebrow}>Admin</Text>
@@ -40,39 +40,39 @@ export function AdminAccessBanner({ hasSession }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: 14,
-    borderRadius: Radius.card,
+    marginTop: 10,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   gradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,106,0,0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   copy: { flex: 1, minWidth: 0 },
   eyebrow: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: Brand.orange,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   title: {
-    marginTop: 2,
-    fontSize: 15,
+    marginTop: 1,
+    fontSize: 14,
     fontWeight: '800',
     color: Brand.white,
     letterSpacing: -0.2,
   },
-  sub: { marginTop: 2, fontSize: 12, color: 'rgba(255,255,255,0.65)' },
+  sub: { marginTop: 1, fontSize: 11, color: 'rgba(255,255,255,0.65)' },
 });

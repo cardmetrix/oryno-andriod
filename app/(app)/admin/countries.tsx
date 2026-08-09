@@ -296,7 +296,7 @@ function AddCountrySheet({
           <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 20 }}>
+            contentContainerStyle={{ paddingBottom: 14 }}>
             {availablePresets.length ? (
               <View style={styles.presets}>
                 {availablePresets.slice(0, 10).map((p) => (
@@ -385,7 +385,7 @@ function AddCountrySheet({
               loading={saving}
               disabled={saving}
               onPress={() => void onSubmit()}
-              style={{ marginTop: 16 }}
+              style={{ marginTop: 12 }}
             />
           </ScrollView>
         </View>
@@ -431,7 +431,7 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   addBtn: {
     height: 42,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     borderRadius: Radius.md,
     backgroundColor: Brand.orange,
     flexDirection: 'row',
@@ -445,7 +445,7 @@ function makeStyles(colors: ThemeColors) {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.muted,
-    padding: 14,
+    padding: 10,
   },
   cardTop: {
     flexDirection: 'row',
@@ -478,7 +478,7 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.card,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingTop: 8,
   },
   grabber: {

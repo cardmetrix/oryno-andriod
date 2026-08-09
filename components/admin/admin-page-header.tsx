@@ -30,8 +30,8 @@ export function AdminPageHeader({ title, subtitle, actions }: Props) {
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     wrap: {
-      marginBottom: 18,
-      gap: 14,
+      marginBottom: 12,
+      gap: 10,
     },
     copy: { gap: 4 },
     title: {
