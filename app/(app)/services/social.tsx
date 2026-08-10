@@ -13,6 +13,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
+import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
@@ -63,6 +64,17 @@ function parseQuantityInput(raw: string): number | null {
   return Math.round(n);
 }
 
+function isCustomCommentsService(service: {
+  type?: string | null;
+  quality?: string | null;
+  name?: string | null;
+}) {
+  const hay = `${service.type || ''} ${service.quality || ''} ${service.name || ''}`
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ');
+  return /\bcustom\s*comments?\b/.test(hay);
+}
+
 export default function SocialScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -74,6 +86,7 @@ export default function SocialScreen() {
   const [quality, setQuality] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [quantityText, setQuantityText] = useState('');
+  const [customComments, setCustomComments] = useState<string[]>(['']);
   const [profileUrl, setProfileUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,11 +99,13 @@ export default function SocialScreen() {
   const catalogData = catalogQuery.data as
     | {
         demo?: boolean;
+        fallback?: boolean;
         platforms?: string[];
         services?: JapServiceRow[];
       }
     | undefined;
-  const liveMode = catalogData?.demo === false;
+  const liveMode =
+    catalogData?.demo === false && catalogData?.fallback !== true;
   const platforms = useMemo(
     () => (catalogData?.platforms ?? []).filter((p) => p && p !== 'All'),
     [catalogData?.platforms],
@@ -146,6 +161,7 @@ export default function SocialScreen() {
     setQuality(firstQuality);
     setSelectedId(firstPkg?.service ?? null);
     setQuantityText('');
+    setCustomComments(['']);
     setError(null);
   }, [catalogQuery.dataUpdatedAt, catalogQuery.error, services, platforms]);
 
@@ -193,9 +209,23 @@ export default function SocialScreen() {
     packagesForType[0] ??
     null;
 
-  const minQuantity = selected ? Math.max(QUANTITY_FLOOR, selected.min) : QUANTITY_FLOOR;
+  const isCustomComments = selected ? isCustomCommentsService(selected) : false;
+  const filledComments = useMemo(
+    () => customComments.map((c) => c.trim()).filter(Boolean),
+    [customComments],
+  );
+
+  const minQuantity = selected
+    ? isCustomComments
+      ? Math.max(1, selected.min)
+      : Math.max(QUANTITY_FLOOR, selected.min)
+    : QUANTITY_FLOOR;
   const maxQuantity = selected?.max ?? 1_000_000;
-  const quantity = parseQuantityInput(quantityText);
+  const quantity = isCustomComments
+    ? filledComments.length > 0
+      ? filledComments.length
+      : null
+    : parseQuantityInput(quantityText);
   const quantityValid =
     quantity != null && quantity >= minQuantity && quantity <= maxQuantity;
 
@@ -206,6 +236,18 @@ export default function SocialScreen() {
 
   const quantityHint = useMemo(() => {
     if (!selected) return 'Choose a package first';
+    if (isCustomComments) {
+      if (!filledComments.length) {
+        return `Add ${minQuantity.toLocaleString()}–${maxQuantity.toLocaleString()} custom comments (one per row)`;
+      }
+      if (!quantityValid) {
+        if (filledComments.length < minQuantity) {
+          return `Add at least ${minQuantity.toLocaleString()} comments`;
+        }
+        return `Maximum is ${maxQuantity.toLocaleString()} comments`;
+      }
+      return `${filledComments.length.toLocaleString()} comments · ${money(priceFor(selected, filledComments.length))}`;
+    }
     if (!quantityText.trim()) {
       return `Enter any amount from ${minQuantity.toLocaleString()}–${maxQuantity.toLocaleString()}`;
     }
@@ -213,17 +255,45 @@ export default function SocialScreen() {
     if (quantity < minQuantity) return `Minimum is ${minQuantity.toLocaleString()}`;
     if (quantity > maxQuantity) return `Maximum is ${maxQuantity.toLocaleString()}`;
     return `${quantity.toLocaleString()} ${selected.metric.toLowerCase()} · ${money(priceFor(selected, quantity))}`;
-  }, [selected, quantityText, quantity, minQuantity, maxQuantity, countryCode]);
+  }, [
+    selected,
+    isCustomComments,
+    filledComments.length,
+    quantityValid,
+    quantityText,
+    quantity,
+    minQuantity,
+    maxQuantity,
+    countryCode,
+  ]);
 
   const canSubmit = useMemo(() => {
     if (!selected || submitting || !quantityValid || quantity == null) return false;
+    if (isCustomComments && filledComments.length !== quantity) return false;
     const link = profileUrl.trim();
     return link.length > 4 && /^(https?:\/\/|@|t\.me\/)/i.test(link);
-  }, [selected, submitting, quantityValid, quantity, profileUrl]);
+  }, [
+    selected,
+    submitting,
+    quantityValid,
+    quantity,
+    isCustomComments,
+    filledComments.length,
+    profileUrl,
+  ]);
 
   useEffect(() => {
     if (!selected) return;
     setSelectedId(selected.service);
+    if (isCustomCommentsService(selected)) {
+      setCustomComments((prev) => {
+        if (prev.some((c) => c.trim())) return prev;
+        return [''];
+      });
+      setQuantityText('');
+      return;
+    }
+    setCustomComments(['']);
     setQuantityText((prev) => {
       const n = parseQuantityInput(prev);
       if (n == null) return prev;
@@ -309,6 +379,7 @@ export default function SocialScreen() {
     );
     setSelectedId(match?.service ?? null);
     setQuantityText('');
+    setCustomComments(['']);
   }
 
   function onMetricChange(next: string) {
@@ -330,6 +401,7 @@ export default function SocialScreen() {
     );
     setSelectedId(match?.service ?? null);
     setQuantityText('');
+    setCustomComments(['']);
   }
 
   function onQualityChange(next: string) {
@@ -342,11 +414,31 @@ export default function SocialScreen() {
     );
     setSelectedId(match?.service ?? null);
     setQuantityText('');
+    setCustomComments(['']);
   }
 
   function onPackageChange(serviceId: string) {
     setSelectedId(Number(serviceId));
     setQuantityText('');
+    setCustomComments(['']);
+  }
+
+  function updateComment(index: number, value: string) {
+    setCustomComments((prev) => prev.map((c, i) => (i === index ? value : c)));
+  }
+
+  function addCommentRow() {
+    setCustomComments((prev) => {
+      if (prev.length >= maxQuantity) return prev;
+      return [...prev, ''];
+    });
+  }
+
+  function removeCommentRow(index: number) {
+    setCustomComments((prev) => {
+      if (prev.length <= 1) return [''];
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   function onQuantityTextChange(raw: string) {
@@ -389,6 +481,7 @@ export default function SocialScreen() {
         quantity,
         rateUsd: selected.rate,
         priceLocal: amount,
+        ...(isCustomComments ? { comments: filledComments } : {}),
       });
       setOrderId(data.orderId || '');
       setReceipt(data.amountFormatted || money(amount));
@@ -406,7 +499,9 @@ export default function SocialScreen() {
     ? 'Processing…'
     : selected && quantityValid && quantity != null
       ? `Boost now · ${money(amount)}`
-      : 'Enter quantity to continue';
+      : isCustomComments
+        ? 'Add custom comments to continue'
+        : 'Enter quantity to continue';
 
   if (success && selected) {
     return (
@@ -420,15 +515,24 @@ export default function SocialScreen() {
           }
           showBack
         />
-        <Animated.View entering={FadeInDown.duration(280)} style={styles.successCard}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={32} color={Brand.orange} />
-          </View>
-          <Text style={styles.successTitle}>Boost ordered</Text>
-          <Text style={styles.successSub}>
-            {(quantity ?? 0).toLocaleString()} {selected.metric.toLowerCase()} for{' '}
-            {selected.platform} · {receipt}
-          </Text>
+        <ServiceSuccess
+          variant={polling ? 'pending' : 'success'}
+          title="Boost ordered"
+          subtitle={`${(quantity ?? 0).toLocaleString()} ${selected.metric.toLowerCase()} for ${selected.platform}`}
+          amountLabel="Amount charged"
+          amount={receipt || null}
+          reference={orderId || null}
+          onDismiss={() => setSuccess(false)}
+          tertiaryAction={{
+            label: 'Boost again',
+            onPress: () => {
+              setSuccess(false);
+              setStatusLabel(null);
+              setQuantityText('');
+              setCustomComments(['']);
+            },
+            icon: 'plus',
+          }}>
           {statusLabel ? (
             <View style={styles.statusRow}>
               <Text style={styles.statusText}>
@@ -437,23 +541,7 @@ export default function SocialScreen() {
               </Text>
             </View>
           ) : null}
-          <Text style={styles.orderId}>Order #{orderId}</Text>
-          <View style={styles.successActions}>
-            <Button
-              title="Boost again"
-              onPress={() => {
-                setSuccess(false);
-                setStatusLabel(null);
-                setQuantityText('');
-              }}
-            />
-            <Button
-              title="Back to Home"
-              variant="secondary"
-              onPress={() => router.replace('/(app)/(tabs)')}
-            />
-          </View>
-        </Animated.View>
+        </ServiceSuccess>
       </Screen>
     );
   }
@@ -499,6 +587,14 @@ export default function SocialScreen() {
             hitSlop={8}>
             <Ionicons name="close" size={18} color={colors.mutedForeground} />
           </Pressable>
+        </View>
+      ) : null}
+
+      {catalogData?.fallback && !error ? (
+        <View style={styles.fallbackBanner}>
+          <Text style={styles.fallbackText}>
+            Live catalog is slow right now — showing backup packages.
+          </Text>
         </View>
       ) : null}
 
@@ -571,51 +667,104 @@ export default function SocialScreen() {
             emptyText="No packages for this filter"
           />
 
-          <View>
-            <Text style={styles.fieldLabel}>Quantity</Text>
-            <View style={styles.qtyRow}>
-              <Pressable
-                disabled={!selected || (quantity ?? 0) <= minQuantity}
-                onPress={() => nudgeQuantity(-100)}
-                style={({ pressed }) => [
-                  styles.qtyBtn,
-                  (!selected || (quantity ?? 0) <= minQuantity) && { opacity: 0.4 },
-                  pressed && { opacity: 0.85 },
-                ]}>
-                <Text style={styles.qtyBtnText}>−</Text>
-              </Pressable>
-              <TextInput
-                value={quantityText}
-                onChangeText={onQuantityTextChange}
-                onBlur={commitQuantity}
-                editable={Boolean(selected)}
-                keyboardType="number-pad"
-                placeholder={`Min ${minQuantity.toLocaleString()}`}
-                placeholderTextColor={colors.mutedForeground}
+          {!isCustomComments ? (
+            <View>
+              <Text style={styles.fieldLabel}>Quantity</Text>
+              <View style={styles.qtyRow}>
+                <Pressable
+                  disabled={!selected || (quantity ?? 0) <= minQuantity}
+                  onPress={() => nudgeQuantity(-100)}
+                  style={({ pressed }) => [
+                    styles.qtyBtn,
+                    (!selected || (quantity ?? 0) <= minQuantity) && { opacity: 0.4 },
+                    pressed && { opacity: 0.85 },
+                  ]}>
+                  <Text style={styles.qtyBtnText}>−</Text>
+                </Pressable>
+                <TextInput
+                  value={quantityText}
+                  onChangeText={onQuantityTextChange}
+                  onBlur={commitQuantity}
+                  editable={Boolean(selected)}
+                  keyboardType="number-pad"
+                  placeholder={`Min ${minQuantity.toLocaleString()}`}
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[
+                    styles.qtyInput,
+                    Boolean(quantityText.trim()) && !quantityValid && styles.qtyInputError,
+                  ]}
+                />
+                <Pressable
+                  disabled={!selected || (quantity ?? 0) >= maxQuantity}
+                  onPress={() => nudgeQuantity(100)}
+                  style={({ pressed }) => [
+                    styles.qtyBtn,
+                    (!selected || (quantity ?? 0) >= maxQuantity) && { opacity: 0.4 },
+                    pressed && { opacity: 0.85 },
+                  ]}>
+                  <Text style={styles.qtyBtnText}>+</Text>
+                </Pressable>
+              </View>
+              <Text
                 style={[
-                  styles.qtyInput,
-                  Boolean(quantityText.trim()) && !quantityValid && styles.qtyInputError,
-                ]}
-              />
-              <Pressable
-                disabled={!selected || (quantity ?? 0) >= maxQuantity}
-                onPress={() => nudgeQuantity(100)}
-                style={({ pressed }) => [
-                  styles.qtyBtn,
-                  (!selected || (quantity ?? 0) >= maxQuantity) && { opacity: 0.4 },
-                  pressed && { opacity: 0.85 },
+                  styles.qtyHint,
+                  Boolean(quantityText.trim()) && !quantityValid && styles.qtyHintError,
                 ]}>
-                <Text style={styles.qtyBtnText}>+</Text>
-              </Pressable>
+                {quantityHint}
+              </Text>
             </View>
-            <Text
-              style={[
-                styles.qtyHint,
-                Boolean(quantityText.trim()) && !quantityValid && styles.qtyHintError,
-              ]}>
-              {quantityHint}
-            </Text>
-          </View>
+          ) : (
+            <View>
+              <View style={styles.commentsHeader}>
+                <Text style={[styles.fieldLabel, { marginBottom: 0 }]}>Custom comments</Text>
+                <Text style={styles.commentsCount}>
+                  {filledComments.length.toLocaleString()}/{maxQuantity.toLocaleString()}
+                </Text>
+              </View>
+              <View style={styles.commentsList}>
+                {customComments.map((comment, index) => (
+                  <View key={`comment-${index}`} style={styles.commentRow}>
+                    <Text style={styles.commentIndex}>{index + 1}</Text>
+                    <TextInput
+                      value={comment}
+                      onChangeText={(value) => updateComment(index, value)}
+                      placeholder={`Comment ${index + 1}`}
+                      placeholderTextColor={colors.mutedForeground}
+                      style={styles.commentInput}
+                    />
+                    <Pressable
+                      disabled={customComments.length <= 1}
+                      onPress={() => removeCommentRow(index)}
+                      style={({ pressed }) => [
+                        styles.commentRemoveBtn,
+                        customComments.length <= 1 && { opacity: 0.4 },
+                        pressed && { opacity: 0.85 },
+                      ]}>
+                      <Ionicons name="trash-outline" size={18} color={colors.mutedForeground} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+              <Pressable
+                disabled={customComments.length >= maxQuantity}
+                onPress={addCommentRow}
+                style={({ pressed }) => [
+                  styles.addCommentBtn,
+                  customComments.length >= maxQuantity && { opacity: 0.4 },
+                  pressed && { opacity: 0.9 },
+                ]}>
+                <Ionicons name="add" size={18} color={colors.charcoal} />
+                <Text style={styles.addCommentText}>Add more</Text>
+              </Pressable>
+              <Text
+                style={[
+                  styles.qtyHint,
+                  filledComments.length > 0 && !quantityValid && styles.qtyHintError,
+                ]}>
+                {quantityHint}
+              </Text>
+            </View>
+          )}
 
           {selected && quantityValid && quantity != null ? (
             <View style={styles.previewCard}>
@@ -663,7 +812,9 @@ export default function SocialScreen() {
             value={
               selected && quantityValid && quantity != null
                 ? `${quantity.toLocaleString()} ${selected.metric}`
-                : 'Enter quantity'
+                : isCustomComments
+                  ? 'Add comments'
+                  : 'Enter quantity'
             }
           />
           <SummaryRow label="Target" value={profileUrl || '—'} />
@@ -773,6 +924,74 @@ function makeStyles(colors: ThemeColors) {
       color: colors.grayMedium,
     },
     qtyHintError: { color: Brand.error, fontWeight: '600' },
+    fallbackBanner: {
+      marginBottom: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(255,106,0,0.25)',
+      backgroundColor: 'rgba(255,106,0,0.08)',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    fallbackText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.charcoal,
+      lineHeight: 17,
+    },
+    commentsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 8,
+    },
+    commentsCount: { fontSize: 12, fontWeight: '600', color: colors.grayMedium },
+    commentsList: { gap: 8 },
+    commentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    commentIndex: {
+      width: 22,
+      textAlign: 'center',
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.grayMedium,
+    },
+    commentInput: {
+      flex: 1,
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.grayDivider,
+      backgroundColor: colors.card,
+      paddingHorizontal: 12,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.charcoal,
+    },
+    commentRemoveBtn: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.grayDivider,
+      backgroundColor: colors.grayLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addCommentBtn: {
+      marginTop: 10,
+      height: 44,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.grayDivider,
+      backgroundColor: colors.grayLight,
+      paddingHorizontal: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      alignSelf: 'flex-start',
+    },
+    addCommentText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     previewCard: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -858,49 +1077,11 @@ function makeStyles(colors: ThemeColors) {
     },
     errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
     errorText: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.charcoal },
-    successCard: {
-      borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      padding: 14,
-      alignItems: 'center',
-    },
-    successIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    successTitle: {
-      marginTop: 12,
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.charcoal,
-    },
-    successSub: {
-      marginTop: 8,
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.grayMedium,
-      textAlign: 'center',
-      lineHeight: 20,
-    },
     statusRow: {
-      marginTop: 12,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
     },
     statusText: { fontSize: 14, fontWeight: '700', color: Brand.orange },
-    orderId: {
-      marginTop: 8,
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.grayMedium,
-    },
-    successActions: { marginTop: 12, width: '100%', gap: 10 },
   });
 }

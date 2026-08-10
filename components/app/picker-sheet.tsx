@@ -23,6 +23,8 @@ type PickerSheetProps = {
   children: ReactNode;
   /** Optional header accessory (e.g. filter chips) rendered under the title row. */
   headerExtra?: ReactNode;
+  /** Full-screen sheet (services). Default is a bottom sheet. */
+  fullScreen?: boolean;
 };
 
 /** Bottom sheet chrome matching notifications / add-bank form sheets. */
@@ -33,6 +35,7 @@ export function PickerSheet({
   onClose,
   children,
   headerExtra,
+  fullScreen = false,
 }: PickerSheetProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
@@ -41,22 +44,34 @@ export function PickerSheet({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent
+      transparent={!fullScreen}
+      presentationStyle={fullScreen ? 'fullScreen' : 'overFullScreen'}
       onRequestClose={onClose}
       statusBarTranslucent>
-      <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Dismiss" />
+      <View style={[styles.root, fullScreen && styles.rootFull]}>
+        {!fullScreen ? (
+          <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Dismiss" />
+        ) : null}
         <View
           style={[
             styles.sheet,
-            { backgroundColor: colors.card, paddingBottom: Math.max(insets.bottom, 12) },
+            fullScreen && styles.sheetFull,
+            {
+              backgroundColor: colors.card,
+              paddingTop: fullScreen ? Math.max(insets.top, 8) : 0,
+              paddingBottom: Math.max(insets.bottom, 12),
+            },
           ]}>
-          {Platform.OS === 'android' ? (
-            <View style={styles.handleWrap}>
-              <View style={[styles.handle, { backgroundColor: colors.mutedForeground }]} />
-            </View>
+          {!fullScreen ? (
+            Platform.OS === 'android' ? (
+              <View style={styles.handleWrap}>
+                <View style={[styles.handle, { backgroundColor: colors.mutedForeground }]} />
+              </View>
+            ) : (
+              <View style={styles.handleSpacer} />
+            )
           ) : (
-            <View style={styles.handleSpacer} />
+            <View style={styles.handleSpacerFull} />
           )}
 
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -85,7 +100,10 @@ export function PickerSheet({
 
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              fullScreen && styles.scrollContentFull,
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
             {children}
@@ -274,6 +292,7 @@ export function SelectSheet({
   disabled,
   emptyText,
   headerExtra,
+  fullScreen = true,
 }: {
   label: string;
   title: string;
@@ -288,6 +307,8 @@ export function SelectSheet({
   disabled?: boolean;
   emptyText?: string;
   headerExtra?: ReactNode;
+  /** Services use full-screen pickers by default. */
+  fullScreen?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.id === value);
@@ -307,7 +328,8 @@ export function SelectSheet({
         title={title}
         subtitle={subtitle}
         onClose={() => setOpen(false)}
-        headerExtra={headerExtra}>
+        headerExtra={headerExtra}
+        fullScreen={fullScreen}>
         <PickerOptionList
           options={options}
           value={value}
@@ -328,6 +350,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  rootFull: {
+    justifyContent: 'flex-start',
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(28,28,30,0.45)',
@@ -337,6 +362,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',
+  },
+  sheetFull: {
+    flex: 1,
+    height: '100%',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
   handleWrap: {
     alignItems: 'center',
@@ -350,6 +381,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   handleSpacer: { height: 10 },
+  handleSpacerFull: { height: 4 },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -389,6 +421,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
     flexGrow: 1,
+  },
+  scrollContentFull: {
+    paddingBottom: 24,
   },
   list: { gap: 8 },
   skelRow: {

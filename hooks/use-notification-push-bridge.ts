@@ -32,8 +32,9 @@ async function saveSeenIds(key: string, ids: Set<string>): Promise<void> {
 }
 
 /**
- * Growvest-style bridge: poll inbox and mirror newly unread items as local
- * device banners (covers foreground / when remote push credentials are missing).
+ * Fallback bridge: poll inbox and mirror newly unread items as local banners
+ * when remote Expo push is unavailable (no registered device token).
+ * Disabled while the device is registered — otherwise users get duplicate alerts.
  */
 export function useNotificationPushBridge(enabled = true): void {
   const seenRef = useRef<Set<string> | null>(null);

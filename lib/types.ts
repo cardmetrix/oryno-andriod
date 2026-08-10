@@ -87,7 +87,9 @@ export type ProfileDto = {
   countryCode: string | null;
   countryName: string;
   kycStatus: string;
+  kycLevel: number;
   kycLabel: string;
+  accountLevelName?: string;
   status: string;
   dailyLimitLabel: string;
   emailVerified: boolean;

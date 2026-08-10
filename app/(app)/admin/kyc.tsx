@@ -30,6 +30,8 @@ type Submission = {
   id: string;
   status: string;
   statusLabel: string;
+  targetLevel?: number;
+  levelLabel?: string;
   idType: string | null;
   idNumber: string | null;
   idFrontUrl: string | null;
@@ -42,6 +44,7 @@ type Submission = {
     name: string;
     email: string;
     country: string;
+    kycLevel?: number;
   };
 };
 
@@ -176,6 +179,7 @@ export default function AdminKycScreen() {
                     {s.user.email}
                   </Text>
                   <Text style={styles.meta}>
+                    {s.levelLabel || `Level ${s.targetLevel || 1}`} ·{' '}
                     {s.user.country} · {s.idType || 'ID'}
                     {s.idNumber ? ` · ${s.idNumber}` : ''}
                   </Text>
@@ -202,7 +206,9 @@ export default function AdminKycScreen() {
             <View style={styles.grabber} />
             <View style={styles.sheetHead}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sheetTitle}>Review KYC</Text>
+                <Text style={styles.sheetTitle}>
+                  Review Level {review?.targetLevel || 1} KYC
+                </Text>
                 <Text style={styles.sheetSub}>
                   {review?.user.name} · {review?.user.email}
                 </Text>
@@ -226,7 +232,11 @@ export default function AdminKycScreen() {
 
                   <View style={styles.idBox}>
                     <Text style={styles.idLine}>
-                      <Text style={styles.idMuted}>Type: </Text>
+                      <Text style={styles.idMuted}>Target level: </Text>
+                      {review.targetLevel || 1}
+                    </Text>
+                    <Text style={[styles.idLine, { marginTop: 6 }]}>
+                      <Text style={styles.idMuted}>Document: </Text>
                       {review.idType || '—'}
                     </Text>
                     <Text style={[styles.idLine, { marginTop: 6 }]}>

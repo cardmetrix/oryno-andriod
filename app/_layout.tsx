@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Text, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { ReferralDeepLinkCapture } from '@/components/auth/referral-deep-link-capture';
 import { PushNotificationShell } from '@/components/notifications/push-notification-shell';
 import { ThemeSync } from '@/components/theme-sync';
 import { AlertSheetHost } from '@/components/ui/alert-sheet';
@@ -49,6 +50,7 @@ function NavigationRoot() {
         <Stack.Screen name="(app)" options={{ animation: 'fade' }} />
       </Stack>
       <ThemeSync />
+      <ReferralDeepLinkCapture />
       <PushNotificationShell />
       <Toaster />
       <AlertSheetHost />

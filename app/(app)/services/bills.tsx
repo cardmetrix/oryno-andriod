@@ -13,6 +13,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
+import { ServiceSuccess } from '@/components/app/service-success';
 import {
   VtpassServicePicker
 } from '@/components/app/vtpass-service-picker';
@@ -260,34 +261,28 @@ export default function BillsScreen() {
           subtitle="TV subscriptions & electricity"
           showBack
         />
-        <Animated.View entering={FadeInDown.duration(280)} style={styles.successCard}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={28} color={Brand.success} />
-          </View>
-          <Text style={styles.successTitle}>Bill paid</Text>
-          <Text style={styles.successSub}>
-            {selectedService?.name} · {receipt || money(amountNumber)}
-          </Text>
+        <ServiceSuccess
+          title="Bill paid"
+          subtitle={
+            selectedService?.name || 'Your bill was paid successfully.'
+          }
+          amountLabel="Amount charged"
+          amount={receipt || money(amountNumber)}
+          onDismiss={() => setSuccess(false)}
+          tertiaryAction={{
+            label: 'Pay another bill',
+            onPress: () => {
+              setSuccess(false);
+              setToken(null);
+            },
+            icon: 'plus',
+          }}>
           {token ? (
             <View style={styles.tokenBox}>
               <Text style={styles.tokenText}>Token / receipt: {token}</Text>
             </View>
           ) : null}
-          <View style={styles.successActions}>
-            <Button
-              title="Pay another bill"
-              onPress={() => {
-                setSuccess(false);
-                setToken(null);
-              }}
-            />
-            <Button
-              title="Back to Home"
-              variant="secondary"
-              onPress={() => router.replace('/(app)/(tabs)')}
-            />
-          </View>
-        </Animated.View>
+        </ServiceSuccess>
       </Screen>
     );
   }

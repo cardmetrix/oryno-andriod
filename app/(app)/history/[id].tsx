@@ -89,9 +89,6 @@ export default function HistoryDetailScreen() {
       `Type: ${credit ? 'Credit' : 'Debit'}`,
       `Date: ${receipt.createdAtFormatted}`,
       `Reference: ${receipt.reference}`,
-      ...(receipt.balanceAfterFormatted
-        ? [`Balance after: ${receipt.balanceAfterFormatted}`]
-        : []),
       `Currency: ${receipt.currency ?? 'NGN'}`,
       '',
       'Powered by ORYNO · Keep this receipt for your records',
@@ -241,9 +238,6 @@ export default function HistoryDetailScreen() {
             <DetailRow label="Type" value={credit ? 'Credit' : 'Debit'} />
             <DetailRow label="Date" value={tx.createdAtFormatted} />
             <DetailRow label="Reference" value={tx.reference} mono />
-            {tx.balanceAfterFormatted ? (
-              <DetailRow label="Balance after" value={tx.balanceAfterFormatted} />
-            ) : null}
             <DetailRow label="Currency" value={tx.currency ?? 'NGN'} last />
           </View>
 

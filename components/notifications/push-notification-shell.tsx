@@ -15,6 +15,7 @@ export function PushNotificationShell() {
     enableNotificationsFromModal,
     dismissEnableModal,
     isRegistering,
+    isRegisteredWithBackend,
     configurePushNotifications,
     promptEnableAfterAuth,
     clearPushRegistration,
@@ -59,7 +60,9 @@ export function PushNotificationShell() {
     return () => clearTimeout(timer);
   }, [active, notificationsPref, userId]);
 
-  useNotificationPushBridge(active && notificationsPref);
+  // Local inbox-mirroring duplicates Expo remote pushes when the device is
+  // already registered — only bridge as a fallback (no token / Expo Go).
+  useNotificationPushBridge(active && notificationsPref && !isRegisteredWithBackend);
 
   return (
     <NotificationEnableModal

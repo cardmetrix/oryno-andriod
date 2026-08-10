@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -13,11 +12,11 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
+import { ServiceSuccess } from '@/components/app/service-success';
 import {
   VtpassServicePicker,
   type VtpassServiceOption,
 } from '@/components/app/vtpass-service-picker';
-import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
@@ -250,30 +249,30 @@ export default function AirtimeScreen() {
     return (
       <Screen scroll>
         <PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />
-        <Animated.View entering={FadeInDown.duration(280)} style={styles.successCard}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={28} color={Brand.success} />
-          </View>
-          <Text style={styles.successTitle}>Airtime sent</Text>
-          <Text style={styles.successSub}>
-            {receiptAmount || money(amountNumber)} sent to {phone}
-            {selectedNetwork ? ` · ${selectedNetwork.name}` : ''}
-          </Text>
-          {isNigeria ? (
-            <Text style={styles.cashbackAccent}>Cashback: {money(cashback)}</Text>
+        <ServiceSuccess
+          title="Airtime sent"
+          subtitle={`Sent to ${phone}${selectedNetwork ? ` · ${selectedNetwork.name}` : ''}`}
+          amountLabel="Amount charged"
+          amount={receiptAmount || money(amountNumber)}
+          onDismiss={() => setSuccess(false)}
+          tertiaryAction={{
+            label: 'Buy again',
+            onPress: () => setSuccess(false),
+            icon: 'plus',
+          }}>
+          {isNigeria || walletLabel ? (
+            <View style={styles.successExtras}>
+              {isNigeria ? (
+                <Text style={styles.cashbackAccent}>
+                  Cashback: {money(cashback)}
+                </Text>
+              ) : null}
+              {walletLabel ? (
+                <Text style={styles.walletBal}>Wallet balance {walletLabel}</Text>
+              ) : null}
+            </View>
           ) : null}
-          {walletLabel ? (
-            <Text style={styles.walletBal}>Wallet balance {walletLabel}</Text>
-          ) : null}
-          <View style={styles.successActions}>
-            <Button title="Buy again" onPress={() => setSuccess(false)} />
-            <Button
-              title="Back to Home"
-              variant="secondary"
-              onPress={() => router.replace('/(app)/(tabs)')}
-            />
-          </View>
-        </Animated.View>
+        </ServiceSuccess>
       </Screen>
     );
   }
@@ -620,36 +619,7 @@ function makeStyles(colors: ThemeColors) {
     },
     errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
     errorText: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.charcoal },
-    successCard: {
-      borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      padding: 14,
-      alignItems: 'center',
-    },
-    successIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    successTitle: {
-      marginTop: 12,
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.charcoal,
-    },
-    successSub: {
-      marginTop: 8,
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.grayMedium,
-      textAlign: 'center',
-      lineHeight: 20,
-    },
+    successExtras: { alignItems: 'center', gap: 4 },
     cashbackAccent: {
       marginTop: 12,
       fontSize: 14,
@@ -662,6 +632,5 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '500',
       color: colors.grayMedium,
     },
-    successActions: { marginTop: 12, width: '100%', gap: 10 },
   });
 }

@@ -25,11 +25,16 @@ import { FormSkeleton } from '@/components/ui/skeletons';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
+import {
+  getLevelDef,
+  nextKycLevel,
+  normalizeKycLevel,
+  type AccountLevelId,
+} from '@/lib/account-levels';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { toast } from '@/lib/toast';
 
-const ID_TYPES = ['NIN Slip', 'National ID', 'Passport', 'Driver License'] as const;
 const MAX_IMAGE_BYTES = 6_000_000;
 
 type KycImage = {
@@ -42,6 +47,7 @@ type KycImage = {
 type Submission = {
   id: string;
   step: number;
+  targetLevel?: number;
   idType: string | null;
   idNumber: string | null;
   idFrontUrl: string | null;
@@ -55,6 +61,8 @@ type Submission = {
 
 type KycResponse = {
   kycStatus: string;
+  kycLevel?: number;
+  nextLevel?: number | null;
   message?: string;
   submission: Submission | null;
 };
@@ -133,8 +141,9 @@ export default function KycScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [kycStatus, setKycStatus] = useState('unverified');
+  const [kycLevel, setKycLevel] = useState(0);
   const [submission, setSubmission] = useState<Submission | null>(null);
-  const [idType, setIdType] = useState<(typeof ID_TYPES)[number]>('NIN Slip');
+  const [idType, setIdType] = useState('NIN');
   const [idNumber, setIdNumber] = useState('');
   const [idFrontUrl, setIdFrontUrl] = useState<string | null>(null);
   const [idBackUrl, setIdBackUrl] = useState<string | null>(null);
@@ -148,29 +157,55 @@ export default function KycScreen() {
   const backPreview = idBackImage?.preview || idBackUrl;
   const selfiePreview = selfieImage?.preview || selfieUrl;
 
-  const step = useMemo(() => {
-    if (kycStatus === 'verified' || kycStatus === 'pending') return 4;
-    if (selfiePreview) return 3;
-    if (frontPreview && idNumber.trim()) return 2;
-    return 1;
-  }, [kycStatus, selfiePreview, frontPreview, idNumber]);
+  const targetLevel = useMemo(() => {
+    const next = nextKycLevel(kycLevel);
+    if (kycStatus === 'pending' && submission?.targetLevel) {
+      return normalizeKycLevel(submission.targetLevel) || next || 1;
+    }
+    return next;
+  }, [kycLevel, kycStatus, submission?.targetLevel]);
+
+  const levelDef = targetLevel
+    ? getLevelDef(targetLevel as AccountLevelId)
+    : null;
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const json = await api.get<KycResponse>(endpoints.settings.kyc);
+      const level = normalizeKycLevel(json.kycLevel);
       setKycStatus(json.kycStatus || 'unverified');
+      setKycLevel(level);
       setSubmission(json.submission);
-      if (json.submission) {
-        const match = ID_TYPES.find(
-          (t) => t.toLowerCase() === (json.submission!.idType || '').toLowerCase(),
+
+      const next = nextKycLevel(level);
+      const subLevel =
+        normalizeKycLevel(json.submission?.targetLevel) || next || 1;
+      const def = getLevelDef(
+        (json.kycStatus === 'pending' ? subLevel : next || 1) as AccountLevelId,
+      );
+      const types = def?.kyc.idTypes ?? ['NIN'];
+
+      if (json.submission && json.kycStatus === 'pending') {
+        const match = types.find(
+          (t) =>
+            t.toLowerCase() === (json.submission!.idType || '').toLowerCase(),
         );
-        setIdType(match || 'NIN Slip');
+        setIdType(match || types[0]);
         setIdNumber(json.submission.idNumber || '');
         setIdFrontUrl(json.submission.idFrontUrl);
         setIdBackUrl(json.submission.idBackUrl);
         setSelfieUrl(json.submission.selfieUrl);
+      } else if (def) {
+        setIdType(types[0]);
+        setIdNumber('');
+        setIdFrontUrl(null);
+        setIdBackUrl(null);
+        setSelfieUrl(null);
+        setIdFrontImage(null);
+        setIdBackImage(null);
+        setSelfieImage(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load KYC');
@@ -198,18 +233,24 @@ export default function KycScreen() {
   }
 
   async function saveProgress(submit = false) {
-    if (!idNumber.trim()) {
-      toast.error('Enter your ID number');
+    if (!targetLevel || !levelDef) return;
+    if (levelDef.kyc.numberRequired && !idNumber.trim()) {
+      toast.error(`Enter your ${levelDef.kyc.numberLabel}`);
       return;
     }
-    if (submit && !frontPreview) {
-      toast.error('Upload your ID front to submit');
+    if (submit && levelDef.kyc.frontRequired && !frontPreview) {
+      toast.error(`Upload your ${levelDef.kyc.frontLabel}`);
+      return;
+    }
+    if (submit && levelDef.kyc.selfieRequired && !selfiePreview) {
+      toast.error('Upload a selfie to submit');
       return;
     }
 
     setSaving(true);
     try {
       const json = await api.post<KycResponse>(endpoints.settings.kyc, {
+        targetLevel,
         idType,
         idNumber: idNumber.trim(),
         idFrontUrl: idFrontUrl || undefined,
@@ -236,11 +277,12 @@ export default function KycScreen() {
               base64: selfieImage.base64,
             }
           : undefined,
-        step,
+        step: targetLevel,
         submit,
       });
 
       setKycStatus(json.kycStatus || (submit ? 'pending' : kycStatus));
+      setKycLevel(normalizeKycLevel(json.kycLevel));
       setSubmission(json.submission);
       if (json.submission) {
         setIdFrontUrl(json.submission.idFrontUrl);
@@ -250,7 +292,9 @@ export default function KycScreen() {
       setIdFrontImage(null);
       setIdBackImage(null);
       setSelfieImage(null);
-      toast.success(submit ? 'KYC submitted for review' : 'Progress saved');
+      toast.success(
+        submit ? `Level ${targetLevel} submitted for review` : 'Progress saved',
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not save KYC');
     } finally {
@@ -258,11 +302,17 @@ export default function KycScreen() {
     }
   }
 
-  const locked = kycStatus === 'verified' || kycStatus === 'pending';
+  const locked = kycStatus === 'pending' || kycLevel >= 3;
+  const canSubmit = Boolean(
+    levelDef &&
+      (!levelDef.kyc.numberRequired || idNumber.trim()) &&
+      (!levelDef.kyc.frontRequired || frontPreview) &&
+      (!levelDef.kyc.selfieRequired || selfiePreview),
+  );
   const submittedLabel = formatSubmittedAt(
     submission?.submittedAt || submission?.createdAt,
   );
-  const progress = kycStatus === 'verified' ? 1 : Math.min(step, 3) / 3;
+  const progress = kycLevel / 3;
 
   if (loading) {
     return (
@@ -293,11 +343,13 @@ export default function KycScreen() {
       <PageHeader
         title="KYC Verification"
         subtitle={
-          kycStatus === 'verified'
-            ? 'Your identity is verified'
+          kycLevel >= 3
+            ? 'You’re fully verified (Level 3)'
             : kycStatus === 'pending'
-              ? 'Pending verification'
-              : `Step ${Math.min(step, 3)} of 3`
+              ? `Level ${submission?.targetLevel || targetLevel} pending review`
+              : targetLevel
+                ? `Upgrade to Level ${targetLevel}`
+                : 'Verification'
         }
         showBack
       />
@@ -306,6 +358,7 @@ export default function KycScreen() {
         <PendingVerificationView
           submission={submission}
           submittedLabel={submittedLabel}
+          targetLevel={submission?.targetLevel || targetLevel || 1}
         />
       ) : (
         <>
@@ -314,11 +367,11 @@ export default function KycScreen() {
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
 
-            {kycStatus === 'verified' ? (
+            {kycLevel >= 3 ? (
               <StatusCard
                 icon="checkmark-circle"
-                title="Verified"
-                body="You have full access to ORYNO limits and payouts."
+                title="Level 3 · Fully verified"
+                body="Unlimited daily limit unlocked with proof of address."
                 tone="success"
               />
             ) : kycStatus === 'rejected' ? (
@@ -331,20 +384,39 @@ export default function KycScreen() {
                 }
                 tone="error"
               />
+            ) : kycLevel > 0 ? (
+              <StatusCard
+                icon="checkmark-circle"
+                title={`Level ${kycLevel} approved`}
+                body={
+                  levelDef
+                    ? `Next: ${levelDef.requirement} for Level ${targetLevel}.`
+                    : 'Upgrade further to raise your limits.'
+                }
+                tone="success"
+              />
             ) : (
               <Text style={styles.hint}>
-                Complete ID upload and selfie to unlock higher wallet limits.
+                {levelDef?.kyc.helpText ||
+                  'Complete identity verification to unlock higher wallet limits.'}
               </Text>
             )}
           </Animated.View>
 
-          {!locked ? (
+          {!locked && levelDef && targetLevel ? (
             <Animated.View
               entering={FadeInDown.delay(60).duration(280)}
               style={[styles.card, { marginTop: 10 }]}>
-              <Text style={styles.section}>ID type</Text>
+              <Text style={styles.section}>
+                Level {targetLevel} · {levelDef.shortName}
+              </Text>
+              <Text style={[styles.hint, { marginBottom: 12 }]}>
+                {levelDef.kyc.helpText}
+              </Text>
+
+              <Text style={styles.section}>Document type</Text>
               <View style={styles.chips}>
-                {ID_TYPES.map((type) => {
+                {levelDef.kyc.idTypes.map((type) => {
                   const active = idType === type;
                   return (
                     <Pressable
@@ -359,34 +431,45 @@ export default function KycScreen() {
                 })}
               </View>
 
-              <TextField
-                label="ID Number"
-                value={idNumber}
-                onChangeText={setIdNumber}
-                placeholder="e.g. 12345678901"
-                autoCapitalize="characters"
-              />
+              {levelDef.kyc.numberRequired || targetLevel === 3 ? (
+                <TextField
+                  label={levelDef.kyc.numberLabel}
+                  value={idNumber}
+                  onChangeText={setIdNumber}
+                  placeholder={levelDef.kyc.numberPlaceholder}
+                  keyboardType={targetLevel === 2 ? 'number-pad' : 'default'}
+                  maxLength={targetLevel === 2 ? 11 : undefined}
+                  autoCapitalize="characters"
+                />
+              ) : null}
 
               <View style={styles.uploadStack}>
-                <UploadTile
-                  label="ID Front"
-                  preview={frontPreview}
-                  uploading={picking === 'front'}
-                  onPress={() => void onPick('front')}
-                />
-                <UploadTile
-                  label="ID Back (optional)"
-                  preview={backPreview}
-                  uploading={picking === 'back'}
-                  onPress={() => void onPick('back')}
-                />
-                <UploadTile
-                  label="Selfie"
-                  preview={selfiePreview}
-                  uploading={picking === 'selfie'}
-                  onPress={() => void onPick('selfie')}
-                  selfie
-                />
+                {levelDef.kyc.frontRequired ||
+                levelDef.kyc.frontLabel.toLowerCase().includes('optional') ? (
+                  <UploadTile
+                    label={levelDef.kyc.frontLabel}
+                    preview={frontPreview}
+                    uploading={picking === 'front'}
+                    onPress={() => void onPick('front')}
+                  />
+                ) : null}
+                {levelDef.kyc.backLabel ? (
+                  <UploadTile
+                    label={levelDef.kyc.backLabel}
+                    preview={backPreview}
+                    uploading={picking === 'back'}
+                    onPress={() => void onPick('back')}
+                  />
+                ) : null}
+                {levelDef.kyc.selfieRequired ? (
+                  <UploadTile
+                    label="Selfie"
+                    preview={selfiePreview}
+                    uploading={picking === 'selfie'}
+                    onPress={() => void onPick('selfie')}
+                    selfie
+                  />
+                ) : null}
               </View>
 
               <View style={styles.actions}>
@@ -399,9 +482,9 @@ export default function KycScreen() {
                   style={{ flex: 1 }}
                 />
                 <Button
-                  title="Submit KYC"
+                  title={`Submit Level ${targetLevel}`}
                   loading={saving}
-                  disabled={Boolean(picking) || !frontPreview || !idNumber.trim()}
+                  disabled={Boolean(picking) || !canSubmit}
                   onPress={() => void saveProgress(true)}
                   style={{ flex: 1 }}
                 />
@@ -417,9 +500,11 @@ export default function KycScreen() {
 function PendingVerificationView({
   submission,
   submittedLabel,
+  targetLevel,
 }: {
   submission: Submission | null;
   submittedLabel: string | null;
+  targetLevel: number;
 }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -451,7 +536,7 @@ function PendingVerificationView({
             <Ionicons name="shield-checkmark" size={30} color={Brand.white} />
           </View>
         </View>
-        <Text style={styles.pendingEyebrow}>PENDING VERIFICATION</Text>
+        <Text style={styles.pendingEyebrow}>LEVEL {targetLevel} PENDING</Text>
         <Text style={styles.pendingTitle}>We’re reviewing your KYC</Text>
         <Text style={styles.pendingBody}>
           Your documents are in the review queue. You’ll get an in-app notification

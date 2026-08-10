@@ -16,6 +16,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
+import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
@@ -223,15 +224,22 @@ export default function VirtualNumbersScreen() {
           }
           showBack
         />
-        <Animated.View entering={FadeInDown.duration(280)} style={styles.successCard}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={32} color={Brand.orange} />
-          </View>
-          <Text style={styles.successTitle}>Number ready</Text>
-          <Text style={styles.successSub}>
-            Use this number for verification · {receipt}
-          </Text>
-
+        <ServiceSuccess
+          title="Number ready"
+          subtitle="Use this number for verification"
+          amountLabel="Amount charged"
+          amount={receipt || null}
+          onDismiss={() => setSuccess(false)}
+          tertiaryAction={{
+            label: 'Get another number',
+            onPress: () => {
+              setSuccess(false);
+              setPhoneNumber('');
+              setActivationId('');
+              setSmsCode(null);
+            },
+            icon: 'plus',
+          }}>
           <View style={styles.copyStack}>
             <CopyRow
               label="Phone number"
@@ -250,24 +258,7 @@ export default function VirtualNumbersScreen() {
               </View>
             ) : null}
           </View>
-
-          <View style={styles.successActions}>
-            <Button
-              title="Get another number"
-              onPress={() => {
-                setSuccess(false);
-                setPhoneNumber('');
-                setActivationId('');
-                setSmsCode(null);
-              }}
-            />
-            <Button
-              title="Back to Home"
-              variant="secondary"
-              onPress={() => router.replace('/(app)/(tabs)')}
-            />
-          </View>
-        </Animated.View>
+        </ServiceSuccess>
       </Screen>
     );
   }
@@ -463,6 +454,7 @@ export default function VirtualNumbersScreen() {
         visible={countryOpen}
         title="Select country"
         subtitle="Search and choose a country for your number"
+        fullScreen
         onClose={() => {
           setCountryOpen(false);
           setCountryQuery('');
@@ -795,36 +787,7 @@ function makeStyles(colors: ThemeColors) {
     },
     checkSpacer: { width: 24, height: 24 },
     emptySheet: { paddingVertical: 28, alignItems: 'center' },
-    successCard: {
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      padding: 12,
-      alignItems: 'center',
-    },
-    successIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    successTitle: {
-      marginTop: 12,
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.charcoal,
-    },
-    successSub: {
-      marginTop: 8,
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.grayMedium,
-      textAlign: 'center',
-    },
-    copyStack: { width: '100%', gap: 10, marginTop: 14 },
+    copyStack: { width: '100%', gap: 10 },
     copyRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -860,6 +823,5 @@ function makeStyles(colors: ThemeColors) {
       gap: 8,
     },
     pollingText: { fontSize: 12, fontWeight: '500', color: colors.grayMedium },
-    successActions: { width: '100%', gap: 10, marginTop: 14 },
   });
 }

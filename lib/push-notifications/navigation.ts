@@ -18,6 +18,7 @@ export function hrefToAppRoute(href?: string | null): string {
     '/services': '/(app)/(tabs)/services',
     '/profile': '/(app)/(tabs)/profile',
     '/notifications': '/(app)/notifications',
+    '/referrals': '/(app)/referrals',
     '/settings': '/(app)/settings',
     '/settings/kyc': '/(app)/settings/kyc',
     '/settings/security': '/(app)/settings/security',

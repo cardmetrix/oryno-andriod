@@ -69,6 +69,7 @@ export async function syncSessionToDatabase(options?: {
   announceLogin?: boolean;
   countryCode?: string | null;
   forceCountry?: boolean;
+  referralCode?: string | null;
   /** Show country toast after a successful sync (default true). */
   showCountryToast?: boolean;
 }) {
@@ -96,12 +97,25 @@ export async function syncSessionToDatabase(options?: {
         }
       }
 
+      let referralCode = options?.referralCode ?? null;
+      if (!referralCode) {
+        const { readStoredReferralCode, clearStoredReferralCode } = await import(
+          '@/lib/referrals'
+        );
+        referralCode = await readStoredReferralCode();
+        if (referralCode) {
+          // Clear after we attempt attach so we don't re-send forever.
+          void clearStoredReferralCode();
+        }
+      }
+
       const announceLogin = Boolean(options?.announceLogin);
       if (__DEV__) {
         console.log('[ORYNO auth-sync] syncing session', {
           countryCode,
           forceCountry,
           announceLogin,
+          referralCode: Boolean(referralCode),
         });
       }
 
@@ -109,6 +123,7 @@ export async function syncSessionToDatabase(options?: {
         countryCode,
         forceCountry,
         announceLogin,
+        referralCode: referralCode || undefined,
       });
 
       const resolvedCode = result.country?.code || result.user?.countryCode || countryCode;

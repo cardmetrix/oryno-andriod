@@ -91,7 +91,9 @@ export function useSocialCatalog(enabled = true) {
     queryFn: async () => {
       const data = await api.get<{
         services?: Array<Record<string, unknown>>;
+        platforms?: string[];
         demo?: boolean;
+        fallback?: boolean;
       }>(endpoints.services.social);
       return data;
     },

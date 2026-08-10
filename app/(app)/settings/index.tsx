@@ -196,6 +196,12 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/settings/security')}
           />
           <Row
+            icon="speedometer-outline"
+            label="Account Levels"
+            hint={`${data.profile.dailyLimitLabel} daily`}
+            onPress={() => router.push('/(app)/settings/levels')}
+          />
+          <Row
             icon="shield-checkmark-outline"
             label="KYC Verification"
             hint={data.profile.kycLabel}

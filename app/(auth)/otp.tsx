@@ -40,7 +40,13 @@ export default function OtpScreen() {
     if (!sessionId || !setActive) return;
     await setActive({ session: sessionId });
     try {
-      await syncSessionToDatabase(announceLogin ? { announceLogin: true } : undefined);
+      const { readStoredReferralCode } = await import('@/lib/referrals');
+      const referralCode =
+        mode === 'register' ? await readStoredReferralCode() : null;
+      await syncSessionToDatabase({
+        ...(announceLogin ? { announceLogin: true } : {}),
+        referralCode: referralCode || undefined,
+      });
     } catch {
       // session is active even if sync fails once
     }

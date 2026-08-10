@@ -62,6 +62,7 @@ export const endpoints = {
     country: '/api/geo/country',
   },
   profile: '/api/profile',
+  referrals: '/api/referrals',
   settings: {
     root: '/api/settings',
     kyc: '/api/settings/kyc',

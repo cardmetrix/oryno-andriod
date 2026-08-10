@@ -1,7 +1,7 @@
 import { useSignUp } from '@clerk/clerk-expo';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SocialAuth } from '@/components/auth/social-auth';
@@ -11,6 +11,11 @@ import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
+import {
+  normalizeReferralCode,
+  persistReferralCode,
+  readStoredReferralCode,
+} from '@/lib/referrals';
 
 export default function RegisterScreen() {
   const { signUp, isLoaded } = useSignUp();
@@ -20,7 +25,14 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    void readStoredReferralCode().then((code) => {
+      if (code) setReferralCode(code);
+    });
+  }, []);
 
   const onContinue = async () => {
     if (!isLoaded || !signUp) return;
@@ -38,6 +50,8 @@ export default function RegisterScreen() {
     const lastName = parts.slice(1).join(' ') || firstName;
     const username =
       email.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || `user${Date.now() % 100000}`;
+    const referral = normalizeReferralCode(referralCode);
+    if (referral) await persistReferralCode(referral);
 
     setLoading(true);
     try {
@@ -47,7 +61,11 @@ export default function RegisterScreen() {
         firstName,
         lastName,
         username,
-        unsafeMetadata: { fullName: fullName.trim(), phone: phone.trim() },
+        unsafeMetadata: {
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          ...(referral ? { referralCode: referral } : {}),
+        },
       });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       router.push({
@@ -105,6 +123,13 @@ export default function RegisterScreen() {
           onChangeText={setConfirm}
           secureTextEntry
           placeholder="••••••••"
+        />
+        <TextField
+          label="Referral code (optional)"
+          value={referralCode}
+          onChangeText={(v) => setReferralCode(v.toUpperCase())}
+          autoCapitalize="characters"
+          placeholder="e.g. AB12CD34"
         />
         <Button title="Continue" onPress={onContinue} loading={loading} />
         <SocialAuth mode="signUp" />

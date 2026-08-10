@@ -409,16 +409,48 @@ function UserManageSheet({
                 <Section title="KYC">
                   <View style={styles.actionGrid}>
                     <ActionBtn
-                      label="Verify KYC"
+                      label="Set Level 1"
                       primary
-                      disabled={busy || detail.user.kyc === 'verified'}
-                      onPress={() => void patch({ kycStatus: 'verified' }, 'KYC verified')}
+                      disabled={busy}
+                      onPress={() =>
+                        void patch(
+                          { kycStatus: 'verified', kycLevel: 1 },
+                          'Set Level 1 (ID)',
+                        )
+                      }
+                    />
+                    <ActionBtn
+                      label="Set Level 2"
+                      primary
+                      disabled={busy}
+                      onPress={() =>
+                        void patch(
+                          { kycStatus: 'verified', kycLevel: 2 },
+                          'Set Level 2 (BVN)',
+                        )
+                      }
+                    />
+                    <ActionBtn
+                      label="Set Level 3"
+                      primary
+                      disabled={busy}
+                      onPress={() =>
+                        void patch(
+                          { kycStatus: 'verified', kycLevel: 3 },
+                          'Set Level 3 (Address)',
+                        )
+                      }
                     />
                     <ActionBtn
                       label="Reject KYC"
                       danger
                       disabled={busy || detail.user.kyc === 'rejected'}
-                      onPress={() => void patch({ kycStatus: 'rejected' }, 'KYC rejected')}
+                      onPress={() =>
+                        void patch(
+                          { kycStatus: 'rejected', kycLevel: 0 },
+                          'KYC rejected',
+                        )
+                      }
                     />
                     <ActionBtn
                       label="Mark pending"
@@ -431,7 +463,10 @@ function UserManageSheet({
                       label="Reset KYC"
                       disabled={busy || detail.user.kyc === 'unverified'}
                       onPress={() =>
-                        void patch({ kycStatus: 'unverified' }, 'KYC reset to unverified')
+                        void patch(
+                          { kycStatus: 'unverified', kycLevel: 0 },
+                          'KYC reset to unverified',
+                        )
                       }
                     />
                   </View>

@@ -1,10 +1,12 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -24,6 +26,8 @@ import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { unregisterPushToken } from '@/lib/push-notifications';
 import type { ProfileDto } from '@/lib/types';
+
+const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
 
 function initialsFrom(name?: string | null) {
   if (!name) return 'OR';
@@ -46,6 +50,7 @@ export default function ProfileScreen() {
   const [enriching, setEnriching] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [form, setForm] = useState({ fullName: '', phone: '', username: '' });
 
   const bootstrapFromClerk = useMemo(() => {
@@ -56,7 +61,11 @@ export default function ProfileScreen() {
       'ORYNO User';
     const phone = user.primaryPhoneNumber?.phoneNumber || null;
     const username = user.username || null;
-    const avatarUrl = user.imageUrl || null;
+    const metaAvatar =
+      typeof user.publicMetadata?.avatarUrl === 'string'
+        ? user.publicMetadata.avatarUrl
+        : null;
+    const avatarUrl = metaAvatar || user.imageUrl || null;
 
     return {
       id: user.id,
@@ -69,6 +78,7 @@ export default function ProfileScreen() {
       countryCode: null,
       countryName: 'Loading…',
       kycStatus: 'unverified',
+      kycLevel: 0,
       kycLabel: 'Checking…',
       status: 'active',
       dailyLimitLabel: '—',
@@ -132,6 +142,61 @@ export default function ProfileScreen() {
       alert.error('Error', err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onPickPhoto() {
+    if (uploadingAvatar) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      alert.error('Permission needed', 'Allow photo library access to upload a profile photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+      base64: true,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    const base64 = asset.base64;
+    if (!base64) {
+      alert.error('Upload failed', 'Could not read that image. Try another photo.');
+      return;
+    }
+    const approxBytes = Math.ceil((base64.length * 3) / 4);
+    if (approxBytes > MAX_AVATAR_BYTES) {
+      alert.error('Too large', 'Profile photo must be under 4MB.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const data = await api.patch<{ profile?: ProfileDto; error?: string }>(
+        endpoints.profile,
+        {
+          image: {
+            filename: asset.fileName || `avatar-${Date.now()}.jpg`,
+            mime: asset.mimeType || 'image/jpeg',
+            base64,
+          },
+        },
+      );
+      if (!data.profile) throw new Error(data.error || 'Could not save photo');
+      setProfile(data.profile);
+      await user?.reload();
+      alert.success('Updated', 'Profile photo updated.');
+    } catch (err) {
+      alert.error(
+        'Upload failed',
+        err instanceof Error ? err.message : 'Could not upload profile photo.',
+      );
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -218,15 +283,16 @@ export default function ProfileScreen() {
               ) : (
                 <Text style={styles.avatarText}>{display.initials}</Text>
               )}
+              {uploadingAvatar ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color={Brand.white} />
+                </View>
+              ) : null}
             </View>
             <Pressable
-              style={styles.cameraBtn}
-              onPress={() =>
-                alert.info(
-                  'Profile photo',
-                  'Photo upload is available on the ORYNO website for now. Your Clerk avatar will show here when set.',
-                )
-              }
+              style={[styles.cameraBtn, uploadingAvatar && { opacity: 0.6 }]}
+              onPress={() => void onPickPhoto()}
+              disabled={uploadingAvatar}
               accessibilityLabel="Upload profile photo">
               <Ionicons name="camera" size={16} color={Brand.white} />
             </Pressable>
@@ -325,7 +391,7 @@ export default function ProfileScreen() {
               {enriching ? 'Updating limits…' : `${display.dailyLimitLabel} daily`}
             </Text>
           </View>
-          <Pressable onPress={() => router.push('/(app)/settings/kyc')}>
+          <Pressable onPress={() => router.push('/(app)/settings/levels')}>
             <Text style={styles.limitLink}>View Levels</Text>
           </Pressable>
         </View>
@@ -367,6 +433,10 @@ export default function ProfileScreen() {
           </Pressable>
         )}
 
+        <LinkRow
+          label="Refer & Earn"
+          onPress={() => router.push('/(app)/referrals')}
+        />
         <LinkRow label="Settings" onPress={() => router.push('/(app)/settings')} />
         <LinkRow
           label="Security & PIN"
@@ -478,6 +548,12 @@ function makeStyles(colors: ThemeColors) {
   },
   avatarImage: { width: '100%', height: '100%' },
   avatarText: { color: Brand.orange, fontSize: 32, fontWeight: '800' },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cameraBtn: {
     position: 'absolute',
     right: -2,

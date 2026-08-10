@@ -94,8 +94,10 @@ export default function AppLayout() {
       <Stack.Screen name="notifications" options={formSheetScreenOptions} />
       <Stack.Screen name="wallet/add-bank" options={formSheetScreenOptions} />
       <Stack.Screen name="support" />
+      <Stack.Screen name="referrals" />
       <Stack.Screen name="settings/index" />
       <Stack.Screen name="settings/security" />
+      <Stack.Screen name="settings/levels" />
       <Stack.Screen name="settings/kyc" />
       <Stack.Screen name="history/[id]" />
       <Stack.Screen name="history/analytics" />

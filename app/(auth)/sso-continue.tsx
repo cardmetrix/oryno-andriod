@@ -10,6 +10,11 @@ import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { syncSessionToDatabase } from '@/lib/auth-sync';
+import {
+  normalizeReferralCode,
+  persistReferralCode,
+  readStoredReferralCode,
+} from '@/lib/referrals';
 import { toast } from '@/lib/toast';
 
 function firstParam(value: string | string[] | undefined) {
@@ -47,7 +52,11 @@ export default function SsoContinueScreen() {
       void (async () => {
         await setActive({ session: signUp.createdSessionId! });
         try {
-          await syncSessionToDatabase({ announceLogin: mode === 'signIn' });
+          const referral = await readStoredReferralCode();
+          await syncSessionToDatabase({
+            announceLogin: mode === 'signIn',
+            referralCode: referral || undefined,
+          });
         } catch {
           // ignore
         }
@@ -81,6 +90,9 @@ export default function SsoContinueScreen() {
     setLoading(true);
     setError(null);
     try {
+      const storedReferral = normalizeReferralCode(await readStoredReferralCode());
+      if (storedReferral) await persistReferralCode(storedReferral);
+
       await signUp.update({
         ...(needsName || missing.includes('first_name')
           ? { firstName }
@@ -91,23 +103,22 @@ export default function SsoContinueScreen() {
         ...(needsUsername || missing.includes('username')
           ? { username: nextUsername }
           : {}),
-        ...(fullName.trim()
-          ? {
-              unsafeMetadata: {
-                ...(typeof signUp.unsafeMetadata === 'object' &&
-                signUp.unsafeMetadata
-                  ? signUp.unsafeMetadata
-                  : {}),
-                fullName: fullName.trim(),
-              },
-            }
-          : {}),
+        unsafeMetadata: {
+          ...(typeof signUp.unsafeMetadata === 'object' && signUp.unsafeMetadata
+            ? signUp.unsafeMetadata
+            : {}),
+          ...(fullName.trim() ? { fullName: fullName.trim() } : {}),
+          ...(storedReferral ? { referralCode: storedReferral } : {}),
+        },
       });
 
       if (signUp.status === 'complete' && signUp.createdSessionId) {
         await setActive({ session: signUp.createdSessionId });
         try {
-          await syncSessionToDatabase({ announceLogin: mode === 'signIn' });
+          await syncSessionToDatabase({
+            announceLogin: mode === 'signIn',
+            referralCode: storedReferral || undefined,
+          });
         } catch {
           // ignore
         }

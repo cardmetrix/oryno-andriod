@@ -12,6 +12,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
+import { ServiceSuccess } from '@/components/app/service-success';
 import {
   VtpassServicePicker,
   type VtpassServiceOption,
@@ -234,23 +235,18 @@ export default function DataScreen() {
     return (
       <Screen scroll>
         <PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />
-        <Animated.View entering={FadeInDown.duration(280)} style={styles.successCard}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={28} color={Brand.success} />
-          </View>
-          <Text style={styles.successTitle}>Data sent</Text>
-          <Text style={styles.successSub}>
-            {selected.name} · {receipt || money(selected.amount)} to {phone}
-          </Text>
-          <View style={styles.successActions}>
-            <Button title="Buy again" onPress={() => setSuccess(false)} />
-            <Button
-              title="Back to Home"
-              variant="secondary"
-              onPress={() => router.replace('/(app)/(tabs)')}
-            />
-          </View>
-        </Animated.View>
+        <ServiceSuccess
+          title="Data sent"
+          subtitle={`${selected.name} to ${phone}`}
+          amountLabel="Amount charged"
+          amount={receipt || money(selected.amount)}
+          onDismiss={() => setSuccess(false)}
+          tertiaryAction={{
+            label: 'Buy again',
+            onPress: () => setSuccess(false),
+            icon: 'plus',
+          }}
+        />
       </Screen>
     );
   }

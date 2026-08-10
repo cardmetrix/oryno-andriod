@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -18,6 +18,7 @@ import { GiftCardBrandLogo } from '@/components/app/gift-card-brand-logo';
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet, SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
+import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { Brand, type ThemeColors } from '@/constants/theme';
@@ -103,11 +104,8 @@ const FALLBACK_BUY_COUNTRIES = [
   { code: 'AU', label: 'Australia' },
 ];
 
-const SUB_TYPES = [
-  { id: 'cash_receipt' as const, label: 'Cash receipt' },
-  { id: 'debit_receipt' as const, label: 'Debit receipt' },
-  { id: 'no_receipt' as const, label: 'No receipt' },
-];
+/** Physical sell trades always use cash receipt (no UI choice). */
+const PHYSICAL_SUB_TYPE = 'cash_receipt' as const;
 
 function firstParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0];
@@ -176,10 +174,7 @@ export default function GiftCardsScreen() {
     (sellRatesQuery.isLoading && !sellRatesQuery.data);
   const sellDemo = Boolean(sellCatalogQuery.data?.demo || sellRatesQuery.data?.demo);
   const [selectedSell, setSelectedSell] = useState<SellBrand | null>(null);
-  const [cardType, setCardType] = useState<'ecode' | 'physical'>('ecode');
-  const [subType, setSubType] = useState<(typeof SUB_TYPES)[number]['id']>(
-    'cash_receipt',
-  );
+  const [cardType, setCardType] = useState<'ecode' | 'physical'>('physical');
   const [cardCountry, setCardCountry] = useState('US');
   const [cardCurrency, setCardCurrency] = useState('USD');
   const [sellAmount, setSellAmount] = useState('100');
@@ -319,7 +314,9 @@ export default function GiftCardsScreen() {
     setCardCurrency(
       currencyForCardCountry(cardCountry, selectedSell.currencies),
     );
-    setCardType(selectedSell.cardTypes.includes('ecode') ? 'ecode' : 'physical');
+    setCardType(
+      selectedSell.cardTypes.includes('physical') ? 'physical' : 'ecode',
+    );
     setSellAmount(String(selectedSell.denominations[0] || 100));
     setCode('');
     setImages([]);
@@ -354,7 +351,7 @@ export default function GiftCardsScreen() {
           cardType,
           amount: String(value),
         });
-        if (cardType === 'physical') qs.set('subType', subType);
+        if (cardType === 'physical') qs.set('subType', PHYSICAL_SUB_TYPE);
         const data = await api.get<{ quote?: SellQuote }>(
           `${endpoints.services.giftCardSellRates}?${qs}`,
         );
@@ -372,7 +369,7 @@ export default function GiftCardsScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [selectedSell, sellAmount, cardCurrency, cardType, subType]);
+  }, [selectedSell, sellAmount, cardCurrency, cardType]);
 
   useEffect(() => {
     if (!selectedBuy) return;
@@ -471,7 +468,7 @@ export default function GiftCardsScreen() {
         brandName: selectedSell.name,
         cardCountry,
         cardType,
-        subType: cardType === 'physical' ? subType : null,
+        subType: cardType === 'physical' ? PHYSICAL_SUB_TYPE : null,
         cardCurrency,
         cardAmount: Number(sellAmount),
         additionalInfo: cardType === 'ecode' ? code.trim() : null,
@@ -613,38 +610,48 @@ export default function GiftCardsScreen() {
       ) : null}
 
       {mode === 'sell' ? (
-        sellSuccess ? (
-          <SuccessCard
-            icon={sellSuccessStatus === 'completed' ? 'checkmark-circle' : 'time'}
-            iconColor={
-              sellSuccessStatus === 'completed' ? Brand.orange : '#D97706'
+        <>
+        {sellSuccess ? (
+          <ServiceSuccess
+            variant={
+              sellSuccessStatus === 'completed' ? 'success' : 'pending'
             }
             title={
               sellSuccessStatus === 'completed'
-                ? 'Trade completed'
+                ? 'Trade completed!'
                 : 'Trade submitted'
             }
             subtitle={
               sellSuccessStatus === 'completed'
-                ? `${sellReceiptAmount} credited to your wallet.`
-                : `Under review · expected ${sellReceiptAmount}`
+                ? 'Your wallet has been credited successfully.'
+                : 'We’re reviewing your card. You’ll be notified when it’s approved.'
             }
-            meta={sellReceiptRef ? `Ref: ${sellReceiptRef}` : undefined}
-            primary={
+            amountLabel={
+              sellSuccessStatus === 'completed'
+                ? 'Amount credited'
+                : 'Expected amount'
+            }
+            amount={sellReceiptAmount}
+            reference={sellReceiptRef}
+            onDismiss={() => setSellSuccess(false)}
+            primaryAction={
               sellTxId
                 ? {
-                    title: 'View receipt',
+                    label: 'View receipt',
                     onPress: () =>
                       router.push(`/(app)/history/${sellTxId}` as never),
+                    icon: 'receipt',
                   }
-                : undefined
+                : null
             }
-            secondary={{
-              title: 'Sell another',
+            tertiaryAction={{
+              label: 'Sell another gift card',
               onPress: () => setSellSuccess(false),
+              icon: 'plus',
             }}
           />
-        ) : sellLoading || !selectedSell ? (
+        ) : null}
+        {sellLoading || !selectedSell ? (
           <FormSkeleton />
         ) : (
           <View style={styles.stack}>
@@ -700,7 +707,9 @@ export default function GiftCardsScreen() {
               entering={FadeInDown.delay(40).duration(280)}
               style={styles.card}>
               <View style={styles.typeRow}>
-                {selectedSell.cardTypes.map((t) => {
+                {(['physical', 'ecode'] as const)
+                  .filter((t) => selectedSell.cardTypes.includes(t))
+                  .map((t) => {
                   const active = cardType === t;
                   return (
                     <Pressable
@@ -712,7 +721,7 @@ export default function GiftCardsScreen() {
                           styles.typeTabText,
                           active && styles.typeTabTextActive,
                         ]}>
-                        {t === 'ecode' ? 'E-code' : 'Physical'}
+                        {t === 'physical' ? 'Physical' : 'E-code'}
                       </Text>
                     </Pressable>
                   );
@@ -766,18 +775,6 @@ export default function GiftCardsScreen() {
                 placeholderTextColor={colors.mutedForeground}
               />
 
-              {cardType === 'physical' ? (
-                <SelectSheet
-                  label="Receipt type"
-                  title="Receipt type"
-                  value={subType}
-                  onChange={(id) =>
-                    setSubType(id as (typeof SUB_TYPES)[number]['id'])
-                  }
-                  options={SUB_TYPES.map((s) => ({ id: s.id, title: s.label }))}
-                />
-              ) : null}
-
               {cardType === 'ecode' ? (
                 <View style={{ marginTop: 10 }}>
                   <Text style={styles.fieldLabel}>Gift card code</Text>
@@ -786,7 +783,7 @@ export default function GiftCardsScreen() {
                     onChangeText={setCode}
                     autoCapitalize="characters"
                     autoCorrect={false}
-                    placeholder="Paste e-code"
+                    placeholder="Paste E-code"
                     placeholderTextColor={colors.mutedForeground}
                     style={[styles.input, styles.mono]}
                   />
@@ -863,57 +860,67 @@ export default function GiftCardsScreen() {
               ) : null}
             </Animated.View>
           </View>
-        )
-      ) : buySuccess ? (
-        <SuccessCard
-          icon="checkmark-circle"
-          title="Gift card purchased"
-          subtitle={`Charged ${buyReceiptAmount}${
-            selectedBuy ? ` · ${selectedBuy.brandName}` : ''
-          }`}
-          primary={
-            buyTxId
-              ? {
-                  title: 'View receipt',
-                  onPress: () =>
-                    router.push(`/(app)/history/${buyTxId}` as never),
-                }
-              : undefined
-          }
-          secondary={{
-            title: 'Buy another',
-            onPress: () => setBuySuccess(false),
-          }}>
-          {buyCards.length ? (
-            <View style={styles.copyStack}>
-              {buyCards.map((card, i) => (
-                <View key={i} style={styles.copyCard}>
-                  {card.cardNumber ? (
-                    <CopyRow
-                      label="Code"
-                      value={card.cardNumber}
-                      onCopy={() => void copyText(String(card.cardNumber))}
-                    />
-                  ) : null}
-                  {card.pinCode ? (
-                    <CopyRow
-                      label="PIN"
-                      value={card.pinCode}
-                      onCopy={() => void copyText(String(card.pinCode))}
-                    />
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.successMeta}>
-              Code will also be emailed if provided by the issuer.
-            </Text>
-          )}
-        </SuccessCard>
-      ) : buyLoading || !selectedBuy ? (
-        <FormSkeleton />
+        )}
+        </>
       ) : (
+        <>
+        {buySuccess ? (
+          <ServiceSuccess
+            title="Purchase successful!"
+            subtitle={
+              selectedBuy
+                ? `Your ${selectedBuy.brandName} card is ready.`
+                : 'Your gift card is ready.'
+            }
+            amountLabel="Amount charged"
+            amount={buyReceiptAmount}
+            onDismiss={() => setBuySuccess(false)}
+            primaryAction={
+              buyTxId
+                ? {
+                    label: 'View receipt',
+                    onPress: () =>
+                      router.push(`/(app)/history/${buyTxId}` as never),
+                    icon: 'receipt',
+                  }
+                : null
+            }
+            tertiaryAction={{
+              label: 'Buy another gift card',
+              onPress: () => setBuySuccess(false),
+              icon: 'plus',
+            }}>
+            {buyCards.length ? (
+              <View style={styles.copyStack}>
+                {buyCards.map((card, i) => (
+                  <View key={i} style={styles.copyCard}>
+                    {card.cardNumber ? (
+                      <CopyRow
+                        label="Code"
+                        value={card.cardNumber}
+                        onCopy={() => void copyText(String(card.cardNumber))}
+                      />
+                    ) : null}
+                    {card.pinCode ? (
+                      <CopyRow
+                        label="PIN"
+                        value={card.pinCode}
+                        onCopy={() => void copyText(String(card.pinCode))}
+                      />
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.successMeta}>
+                Code will also be emailed if provided by the issuer.
+              </Text>
+            )}
+          </ServiceSuccess>
+        ) : null}
+        {buyLoading || !selectedBuy ? (
+          <FormSkeleton />
+        ) : (
         <View style={styles.stack}>
           <Pressable
             onPress={() => router.push('/(app)/services/gift-cards-live')}
@@ -1048,6 +1055,8 @@ export default function GiftCardsScreen() {
             </View>
           </Animated.View>
         </View>
+        )}
+        </>
       )}
 
       {!sellSuccess && !buySuccess ? (
@@ -1060,6 +1069,7 @@ export default function GiftCardsScreen() {
         visible={changeSellOpen}
         title="Change gift card"
         subtitle="Search and pick another brand to sell"
+        fullScreen
         onClose={() => {
           setChangeSellOpen(false);
           setChangeSellQuery('');
@@ -1113,6 +1123,7 @@ export default function GiftCardsScreen() {
         visible={changeBuyOpen}
         title="Change gift card"
         subtitle="Search and pick another product to buy"
+        fullScreen
         onClose={() => {
           setChangeBuyOpen(false);
           setChangeBuyQuery('');
@@ -1202,48 +1213,6 @@ function FormSkeleton() {
       <View style={[styles.card, { height: 72 }]} />
       <View style={[styles.card, { height: 220 }]} />
     </View>
-  );
-}
-
-function SuccessCard({
-  icon,
-  iconColor = Brand.orange,
-  title,
-  subtitle,
-  meta,
-  primary,
-  secondary,
-  children,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor?: string;
-  title: string;
-  subtitle: string;
-  meta?: string;
-  primary?: { title: string; onPress: () => void };
-  secondary: { title: string; onPress: () => void };
-  children?: ReactNode;
-}) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return (
-    <Animated.View entering={FadeInDown.duration(280)} style={styles.successCard}>
-      <View style={styles.successIcon}>
-        <Ionicons name={icon} size={32} color={iconColor} />
-      </View>
-      <Text style={styles.successTitle}>{title}</Text>
-      <Text style={styles.successSub}>{subtitle}</Text>
-      {meta ? <Text style={styles.successMeta}>{meta}</Text> : null}
-      {children}
-      <View style={styles.successActions}>
-        {primary ? <Button title={primary.title} onPress={primary.onPress} /> : null}
-        <Button
-          title={secondary.title}
-          variant={primary ? 'secondary' : 'primary'}
-          onPress={secondary.onPress}
-        />
-      </View>
-    </Animated.View>
   );
 }
 
@@ -1493,44 +1462,13 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.grayMedium,
     },
-    successCard: {
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      padding: 12,
-      alignItems: 'center',
-    },
-    successIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    successTitle: {
-      marginTop: 12,
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.charcoal,
-    },
-    successSub: {
-      marginTop: 8,
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.grayMedium,
-      textAlign: 'center',
-    },
     successMeta: {
-      marginTop: 8,
       fontSize: 12,
       fontWeight: '500',
       color: colors.grayMedium,
       textAlign: 'center',
     },
-    successActions: { width: '100%', gap: 10, marginTop: 14 },
-    copyStack: { width: '100%', gap: 10, marginTop: 12 },
+    copyStack: { width: '100%', gap: 10 },
     copyCard: {
       borderRadius: 16,
       borderWidth: 1,
