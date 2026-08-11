@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -22,9 +23,11 @@ import { useAppTheme } from '@/context/theme-context';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
+import { APP_VERSION_LABEL } from '@/lib/app-version';
 import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { unregisterPushToken } from '@/lib/push-notifications';
+import { queryKeys } from '@/lib/query-keys';
 import type { ProfileDto } from '@/lib/types';
 
 const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
@@ -46,6 +49,7 @@ export default function ProfileScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { signOut } = useAuth();
   const { user, isLoaded } = useUser();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<ProfileDto | null>(null);
   const [enriching, setEnriching] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -91,6 +95,7 @@ export default function ProfileScreen() {
     try {
       const data = await api.get<{ profile: ProfileDto }>(endpoints.profile);
       setProfile(data.profile);
+      queryClient.setQueryData(queryKeys.profile, { profile: data.profile });
       setForm({
         fullName: data.profile.fullName,
         phone: data.profile.phone || '',
@@ -101,7 +106,7 @@ export default function ProfileScreen() {
     } finally {
       setEnriching(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (!isLoaded || !user || !bootstrapFromClerk) return;
@@ -135,6 +140,7 @@ export default function ProfileScreen() {
       );
       if (!data.profile) throw new Error(data.error || 'Could not save profile');
       setProfile(data.profile);
+      queryClient.setQueryData(queryKeys.profile, { profile: data.profile });
       setEditing(false);
       await user?.reload();
       alert.success('Saved', 'Your profile has been updated.');
@@ -188,6 +194,7 @@ export default function ProfileScreen() {
       );
       if (!data.profile) throw new Error(data.error || 'Could not save photo');
       setProfile(data.profile);
+      queryClient.setQueryData(queryKeys.profile, { profile: data.profile });
       await user?.reload();
       alert.success('Updated', 'Profile photo updated.');
     } catch (err) {
@@ -447,6 +454,14 @@ export default function ProfileScreen() {
           onPress={() => router.push('/(app)/support')}
         />
         <LinkRow
+          label="Terms of Service"
+          onPress={() => router.push('/(app)/terms')}
+        />
+        <LinkRow
+          label="Privacy Policy"
+          onPress={() => router.push('/(app)/privacy')}
+        />
+        <LinkRow
           label="Notifications"
           onPress={() => router.push('/(app)/notifications')}
         />
@@ -470,6 +485,8 @@ export default function ProfileScreen() {
           }}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </Pressable>
+
+        <Text style={styles.versionText}>ORYNO {APP_VERSION_LABEL}</Text>
       </Animated.View>
     </Screen>
   );
@@ -732,6 +749,7 @@ function makeStyles(colors: ThemeColors) {
   linkLabel: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
   signOutBtn: {
     marginTop: 4,
+    marginBottom: 16,
     height: 44,
     borderRadius: 16,
     backgroundColor: colors.grayLight,
@@ -739,6 +757,13 @@ function makeStyles(colors: ThemeColors) {
     justifyContent: 'center',
   },
   signOutText: { color: Brand.error, fontSize: 15, fontWeight: '700' },
+  versionText: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+  },
 });
 }
 

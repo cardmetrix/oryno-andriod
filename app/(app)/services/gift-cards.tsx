@@ -17,7 +17,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { GiftCardBrandLogo } from '@/components/app/gift-card-brand-logo';
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet, SelectSheet } from '@/components/app/picker-sheet';
-import { ServiceInstructions } from '@/components/app/service-instructions';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
@@ -698,7 +697,7 @@ export default function GiftCardsScreen() {
                   }}
                   style={styles.changeBtn}
                   accessibilityLabel="Change gift card">
-                  <Ionicons name="refresh" size={16} color={colors.mutedForeground} />
+                  <Ionicons name="chevron-down" size={16} color={colors.mutedForeground} />
                 </Pressable>
               </View>
             </Animated.View>
@@ -1059,11 +1058,6 @@ export default function GiftCardsScreen() {
         </>
       )}
 
-      {!sellSuccess && !buySuccess ? (
-        <View style={{ marginTop: 8 }}>
-          <ServiceInstructions service="gift-cards" />
-        </View>
-      ) : null}
 
       <PickerSheet
         visible={changeSellOpen}

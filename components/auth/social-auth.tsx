@@ -47,17 +47,19 @@ export function SocialAuth({ mode = 'signIn' }: Props) {
   const finishSession = useCallback(
     async (sessionId: string, setActive: (params: { session: string }) => Promise<void>) => {
       await setActive({ session: sessionId });
-      try {
-        const { readStoredReferralCode } = await import('@/lib/referrals');
-        const referralCode =
-          mode === 'signUp' ? await readStoredReferralCode() : null;
-        await syncSessionToDatabase({
-          announceLogin: mode === 'signIn',
-          referralCode: referralCode || undefined,
-        });
-      } catch {
-        // Session is active even if DB sync fails once
-      }
+      void (async () => {
+        try {
+          const { readStoredReferralCode } = await import('@/lib/referrals');
+          const referralCode =
+            mode === 'signUp' ? await readStoredReferralCode() : null;
+          await syncSessionToDatabase({
+            announceLogin: mode === 'signIn',
+            referralCode: referralCode || undefined,
+          });
+        } catch {
+          // Session is active even if DB sync fails once
+        }
+      })();
       toast.success(mode === 'signUp' ? 'Welcome to ORYNO' : 'Signed in');
       router.replace('/(app)/(tabs)');
     },

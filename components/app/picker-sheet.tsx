@@ -237,6 +237,9 @@ type TriggerProps = {
   disabled?: boolean;
   onPress: () => void;
   icon?: keyof typeof Ionicons.glyphMap;
+  /** Optional provider/network logo shown on the closed field. */
+  image?: string | null;
+  showLogo?: boolean;
 };
 
 /** Compact field that opens a picker sheet. */
@@ -248,6 +251,8 @@ export function PickerTrigger({
   disabled,
   onPress,
   icon = 'chevron-down',
+  image,
+  showLogo,
 }: TriggerProps) {
   const { colors } = useAppTheme();
 
@@ -261,6 +266,15 @@ export function PickerTrigger({
         (disabled || loading) && styles.triggerDisabled,
         pressed && !disabled && { opacity: 0.92 },
       ]}>
+      {showLogo ? (
+        <ServiceLogo
+          key={`${valueLabel || label}-${image || 'fallback'}`}
+          src={image}
+          alt={valueLabel || label}
+          fallback={valueLabel || label}
+          size={36}
+        />
+      ) : null}
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[styles.triggerLabel, { color: colors.mutedForeground }]}>{label}</Text>
         {loading ? (
@@ -312,6 +326,7 @@ export function SelectSheet({
 }) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.id === value);
+  const showLogo = options.some((o) => o.image !== undefined);
 
   return (
     <>
@@ -322,6 +337,8 @@ export function SelectSheet({
         loading={loading}
         disabled={disabled}
         onPress={() => setOpen(true)}
+        showLogo={showLogo && Boolean(value)}
+        image={selected?.image}
       />
       <PickerSheet
         visible={open}

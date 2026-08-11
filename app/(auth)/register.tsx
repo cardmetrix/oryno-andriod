@@ -1,4 +1,5 @@
 import { useSignUp } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -8,7 +9,7 @@ import { SocialAuth } from '@/components/auth/social-auth';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, Radius } from '@/constants/theme';
+import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
 import {
@@ -16,16 +17,19 @@ import {
   persistReferralCode,
   readStoredReferralCode,
 } from '@/lib/referrals';
+import { isValidUsername, normalizeUsername } from '@/lib/username';
 
 export default function RegisterScreen() {
   const { signUp, isLoaded } = useSignUp();
   const { colors } = useAppTheme();
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -36,20 +40,33 @@ export default function RegisterScreen() {
 
   const onContinue = async () => {
     if (!isLoaded || !signUp) return;
-    if (!fullName || !email || !password) {
+    if (!fullName || !username || !email || !password) {
       alert.warning('Missing fields', 'Please complete all required fields.');
+      return;
+    }
+    const nextUsername = normalizeUsername(username);
+    if (!isValidUsername(nextUsername)) {
+      alert.warning(
+        'Invalid username',
+        'Use 3–32 characters: letters, numbers, and underscores.',
+      );
       return;
     }
     if (password !== confirm) {
       alert.warning('Password mismatch', 'Passwords do not match.');
       return;
     }
+    if (!agreed) {
+      alert.warning(
+        'Agreement required',
+        'Please agree to the Terms of Service and Privacy Policy.',
+      );
+      return;
+    }
 
     const parts = fullName.trim().split(/\s+/);
     const firstName = parts[0] ?? fullName;
     const lastName = parts.slice(1).join(' ') || firstName;
-    const username =
-      email.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || `user${Date.now() % 100000}`;
     const referral = normalizeReferralCode(referralCode);
     if (referral) await persistReferralCode(referral);
 
@@ -60,10 +77,11 @@ export default function RegisterScreen() {
         password,
         firstName,
         lastName,
-        username,
+        username: nextUsername,
         unsafeMetadata: {
           fullName: fullName.trim(),
           phone: phone.trim(),
+          legalAccepted: true,
           ...(referral ? { referralCode: referral } : {}),
         },
       });
@@ -102,6 +120,15 @@ export default function RegisterScreen() {
       <View style={styles.form}>
         <TextField label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Chidi Okechukwu" />
         <TextField
+          label="Username"
+          value={username}
+          onChangeText={(v) => setUsername(v.replace(/\s+/g, '').toLowerCase())}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username"
+          placeholder="chidi_ok"
+        />
+        <TextField
           label="Email Address"
           value={email}
           onChangeText={setEmail}
@@ -116,12 +143,20 @@ export default function RegisterScreen() {
           keyboardType="phone-pad"
           placeholder="+234 801 234 5678"
         />
-        <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" />
+        <TextField
+          label="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          secureToggle
+          placeholder="••••••••"
+        />
         <TextField
           label="Confirm Password"
           value={confirm}
           onChangeText={setConfirm}
           secureTextEntry
+          secureToggle
           placeholder="••••••••"
         />
         <TextField
@@ -131,6 +166,40 @@ export default function RegisterScreen() {
           autoCapitalize="characters"
           placeholder="e.g. AB12CD34"
         />
+
+        <Pressable
+          style={styles.agreeRow}
+          onPress={() => setAgreed((v) => !v)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreed }}>
+          <View
+            style={[
+              styles.checkbox,
+              {
+                borderColor: agreed ? Brand.orange : colors.border,
+                backgroundColor: agreed ? Brand.orange : 'transparent',
+              },
+            ]}>
+            {agreed ? (
+              <Ionicons name="checkmark" size={14} color={Brand.white} />
+            ) : null}
+          </View>
+          <Text style={[styles.agreeText, { color: colors.mutedForeground }]}>
+            I agree to the{' '}
+            <Text
+              style={styles.linkInline}
+              onPress={() => router.push('/(auth)/terms')}>
+              Terms of Service
+            </Text>{' '}
+            &{' '}
+            <Text
+              style={styles.linkInline}
+              onPress={() => router.push('/(auth)/privacy')}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </Pressable>
+
         <Button title="Continue" onPress={onContinue} loading={loading} />
         <SocialAuth mode="signUp" />
       </View>
@@ -158,11 +227,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 6,
   },
-  logo: { width: '100%', height: '100%', borderRadius: 999,},
+  logo: { width: '100%', height: '100%', borderRadius: 999 },
   title: { fontSize: 26, fontWeight: '800' },
   sub: { fontSize: 14, textAlign: 'center', paddingHorizontal: 12 },
   form: { gap: 12 },
+  agreeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingTop: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  agreeText: { flex: 1, fontSize: 13, lineHeight: 19 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24, alignItems: 'center' },
   footerText: { fontSize: 14 },
   link: { color: Brand.orange, fontWeight: '700', fontSize: 14 },
+  linkInline: { color: Brand.orange, fontWeight: '700', fontSize: 13 },
 });

@@ -54,7 +54,7 @@ export async function bootstrapSignedInSession(options: {
 
   if (warm) {
     // Background: sync + soft revalidate. Don't block UI.
-    void syncSessionToDatabase({ showCountryToast: false }).catch(() => undefined);
+    void syncSessionToDatabase().catch(() => undefined);
     void queryClient.prefetchQuery({
       queryKey: queryKeys.wallet,
       queryFn: fetchWallet,
@@ -79,7 +79,7 @@ export async function bootstrapSignedInSession(options: {
   }
 
   // Cold first load — normal path: sync, then fetch critical APIs.
-  await withRetries(() => syncSessionToDatabase({ showCountryToast: true }), 3);
+  await withRetries(() => syncSessionToDatabase(), 3);
 
   await withRetries(
     () =>

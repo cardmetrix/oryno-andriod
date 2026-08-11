@@ -15,11 +15,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  TransactionPinModal,
+  type TransactionPinModalMode,
+} from '@/components/app/transaction-pin-modal';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { alert } from '@/lib/alert';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { formatNaira } from '@/lib/format';
 import type { BankAccountSummary, BankOption } from '@/lib/types';
@@ -64,18 +68,28 @@ export default function WithdrawSheet() {
   const [resolving, setResolving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasPin, setHasPin] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinMode, setPinMode] = useState<TransactionPinModalMode>('confirm');
+  const [pinError, setPinError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadingBanks(true);
     try {
-      const json = await api.get<{
-        banks?: BankAccountSummary[];
-        options?: BankOption[];
-      }>(endpoints.wallet.banks);
+      const [json, settings] = await Promise.all([
+        api.get<{
+          banks?: BankAccountSummary[];
+          options?: BankOption[];
+        }>(endpoints.wallet.banks),
+        api
+          .get<{ security?: { hasPin?: boolean } }>(endpoints.settings.root)
+          .catch(() => null),
+      ]);
       const banks = json.banks ?? [];
       const options = dedupeBanks(json.options ?? []);
       setSavedBanks(banks);
       setBankOptions(options);
+      setHasPin(Boolean(settings?.security?.hasPin));
       const primary = banks.find((b) => b.isPrimary) ?? banks[0];
       if (primary) {
         setSelectedBankId(primary.id);
@@ -163,10 +177,19 @@ export default function WithdrawSheet() {
     setError(null);
   }
 
-  async function onWithdraw() {
+  function openPinModal() {
     if (!canWithdraw) return;
+    setError(null);
+    setPinError(null);
+    setPinMode(hasPin ? 'confirm' : 'create');
+    setPinModalOpen(true);
+  }
+
+  async function submitWithdrawWithPin(payload: { pin: string; isCreate: boolean }) {
+    if (!canWithdraw && !submitting) return;
     setSubmitting(true);
     setError(null);
+    setPinError(null);
     try {
       let bankAccountId = selectedBankId;
 
@@ -195,8 +218,12 @@ export default function WithdrawSheet() {
       }>(endpoints.wallet.withdraw, {
         amount: amountNumber,
         bankAccountId,
+        pin: payload.pin,
+        ...(payload.isCreate ? { newPin: payload.pin } : {}),
       });
 
+      if (payload.isCreate) setHasPin(true);
+      setPinModalOpen(false);
       invalidateWallet();
       alert.success(
         'Withdrawal submitted',
@@ -204,6 +231,23 @@ export default function WithdrawSheet() {
       );
       router.back();
     } catch (e) {
+      if (e instanceof ApiError) {
+        const body = (e.body ?? {}) as {
+          error?: string;
+          code?: string;
+          hasPin?: boolean;
+        };
+        const code = typeof body.code === 'string' ? body.code : '';
+        if (code.startsWith('pin_') || body.hasPin === false || e.status === 423) {
+          if (typeof body.hasPin === 'boolean') setHasPin(body.hasPin);
+          setPinError(body.error || e.message || 'PIN verification failed');
+          return;
+        }
+        setPinModalOpen(false);
+        setError(body.error || e.message || 'Withdrawal failed');
+        return;
+      }
+      setPinModalOpen(false);
       setError(e instanceof Error ? e.message : 'Withdrawal failed');
     } finally {
       setSubmitting(false);
@@ -459,7 +503,7 @@ export default function WithdrawSheet() {
           <Pressable
             style={[styles.submitBtn, !canWithdraw && { opacity: 0.5 }]}
             disabled={!canWithdraw}
-            onPress={() => void onWithdraw()}>
+            onPress={openPinModal}>
             {submitting ? (
               <ActivityIndicator color={Brand.white} />
             ) : (
@@ -472,6 +516,23 @@ export default function WithdrawSheet() {
           </Pressable>
         </ScrollView>
       )}
+
+      <TransactionPinModal
+        visible={pinModalOpen}
+        mode={pinMode}
+        loading={submitting}
+        error={pinError}
+        confirmLabel={
+          pinMode === 'create' ? 'Set PIN & withdraw' : 'Confirm withdrawal'
+        }
+        onClose={() => {
+          if (!submitting) {
+            setPinModalOpen(false);
+            setPinError(null);
+          }
+        }}
+        onConfirm={(payload) => void submitWithdrawWithPin(payload)}
+      />
     </View>
   );
 }

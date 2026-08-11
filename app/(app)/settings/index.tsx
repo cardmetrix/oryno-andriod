@@ -311,7 +311,13 @@ export default function SettingsScreen() {
           <Row
             icon="chatbubbles-outline"
             label="Live Chat"
-            onPress={() => router.push('/(app)/support')}
+            onPress={() => {
+              void (async () => {
+                const { openLiveChat } = await import('@/lib/support');
+                const opened = await openLiveChat();
+                if (!opened) router.push('/(app)/support');
+              })();
+            }}
           />
           <Row
             icon="information-circle-outline"

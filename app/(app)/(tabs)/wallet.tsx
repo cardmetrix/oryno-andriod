@@ -4,13 +4,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import Animated, {
@@ -59,7 +59,8 @@ export default function WalletScreen() {
   const [walletView, setWalletView] = useState<PagerItem>('local');
   const [usdPanel, setUsdPanel] = useState<UsdPanel>('fund');
   const pagerRef = useRef<ScrollView>(null);
-  const pageWidth = Dimensions.get('window').width - 40;
+  const { width: windowWidth } = useWindowDimensions();
+  const [pageWidth, setPageWidth] = useState(windowWidth - 32);
   const skipNextFocusRefresh = useRef(true);
 
   const softRefresh = useCallback(async () => {
@@ -184,8 +185,12 @@ export default function WalletScreen() {
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
         onMomentumScrollEnd={onPagerScroll}
-        style={{ marginHorizontal: 0 }}>
-        <View style={{ width: pageWidth, paddingRight: 8 }}>
+        onLayout={(e) => {
+          const next = Math.round(e.nativeEvent.layout.width);
+          if (next > 0 && next !== pageWidth) setPageWidth(next);
+        }}
+        style={styles.pager}>
+        <View style={{ width: pageWidth }}>
           <WalletLocalCard
             currency={data.totals.currency ?? data.primary.currency}
             balanceFormatted={data.primary.balanceFormatted}
@@ -196,7 +201,7 @@ export default function WalletScreen() {
             onToggleHidden={() => setHidden((v) => !v)}
           />
         </View>
-        <View style={{ width: pageWidth, paddingLeft: 8 }}>
+        <View style={{ width: pageWidth }}>
           <UsdWalletCard
             usd={data.usd}
             hidden={hidden}
@@ -447,6 +452,7 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 12,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 14 },
+    pager: { width: '100%' },
     pagerHint: { alignItems: 'center', marginTop: 10, gap: 8 },
     dots: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     dot: {

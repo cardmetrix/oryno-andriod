@@ -21,74 +21,77 @@ import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
+import { isCrispConfigured, openLiveChat, SUPPORT_EMAIL } from '@/lib/support';
+import { SUPPORT_FAQS, SUPPORT_PHONE, SUPPORT_TOPICS } from '@/lib/support-config';
 
-const faqs = [
-  {
-    q: 'How do I fund my ORYNO wallet?',
-    a: 'Go to Wallet → Fund, choose card, bank transfer, or USSD, enter an amount, and confirm. Funds usually appear within seconds after a successful payment.',
-  },
-  {
-    q: 'Why is my airtime or data purchase delayed?',
-    a: 'Most top-ups are instant. If a network is slow, your order stays in Processing and you’ll get a notification when it completes or fails with an automatic wallet refund.',
-  },
-  {
-    q: 'How do withdrawals work?',
-    a: 'Withdraw from Wallet → Withdraw. ORYNO detects your country and routes payouts through the correct local bank or mobile money provider. Typical timing is 5–30 minutes.',
-  },
-  {
-    q: 'When will gift cards launch?',
-    a: 'Gift card buy & sell is coming soon. Tap Notify me on the Gift Cards screen to get an alert when it goes live in your country.',
-  },
-  {
-    q: 'How do I verify my account (KYC)?',
-    a: 'Open Settings → KYC Verification and follow the steps. Some features may require KYC depending on your country configuration and transaction limits.',
-  },
-];
+type TicketRow = {
+  id: string;
+  reference: string;
+  subject: string;
+  status: string;
+  updatedAt: string;
+};
 
-const tickets = [
-  {
-    id: 'ORY-1042',
-    subject: 'Data bundle not activated',
-    status: 'In progress',
-    updated: '2 hrs ago',
-  },
-  {
-    id: 'ORY-0988',
-    subject: 'Wallet funding confirmation',
-    status: 'Resolved',
-    updated: 'Yesterday',
-  },
-];
+function statusLabel(status: string) {
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
-const topics = [
-  'Wallet & Funding',
-  'Airtime / Data',
-  'Bill Payments',
-  'Virtual Numbers',
-  'Rent Email',
-  'Account & Security',
-  'Other',
-];
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.max(0, Math.floor(diff / 60_000));
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days}d ago`;
+}
 
 export default function SupportScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { user } = useUser();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [chatOpen, setChatOpen] = useState(false);
   const [ticketOpen, setTicketOpen] = useState(false);
   const [ticketSent, setTicketSent] = useState(false);
-  const [ticketRef, setTicketRef] = useState('ORY-1107');
-  const [topic, setTopic] = useState(topics[0]);
+  const [ticketRef, setTicketRef] = useState('');
+  const [topic, setTopic] = useState<(typeof SUPPORT_TOPICS)[number]>(SUPPORT_TOPICS[0]);
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [chatDraft, setChatDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
 
   useEffect(() => {
     const fromClerk = user?.primaryEmailAddress?.emailAddress;
     if (fromClerk) setEmail(fromClerk);
   }, [user?.primaryEmailAddress?.emailAddress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const json = await api.get<{ tickets?: TicketRow[] }>(endpoints.support.tickets);
+        if (!cancelled) setTickets(json.tickets ?? []);
+      } catch {
+        if (!cancelled) setTickets([]);
+      } finally {
+        if (!cancelled) setLoadingTickets(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function openChat() {
+    const opened = await openLiveChat();
+    if (!opened) {
+      setTicketOpen(true);
+      setTopic('Other');
+    }
+  }
 
   async function submitTicket() {
     if (!message.trim()) {
@@ -101,17 +104,25 @@ export default function SupportScreen() {
     }
     setSubmitting(true);
     try {
-      await api.post(endpoints.support.errorReport, {
-        errorMessage: `[${topic}]\n\n${message.trim()}`,
-        page: 'mobile-support',
-        userNote: topic,
-        url: 'oryno-africa://support',
-      });
-      const ref = `ORY-${1100 + Math.floor(Math.random() * 80)}`;
+      const json = await api.post<{ ticket?: { reference: string } }>(
+        endpoints.support.tickets,
+        { topic, email, message: message.trim() },
+      );
+      const ref = json.ticket?.reference || 'ORY';
       setTicketRef(ref);
       setTicketSent(true);
       setTicketOpen(false);
       setMessage('');
+      setTickets((prev) => [
+        {
+          id: ref,
+          reference: ref,
+          subject: `${topic} — ${message.trim().slice(0, 72)}`,
+          status: 'open',
+          updatedAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
     } catch (e) {
       alert.error('Error', e instanceof Error ? e.message : 'Could not contact support');
     } finally {
@@ -142,16 +153,13 @@ export default function SupportScreen() {
               <Text style={styles.heroEyebrow}>ORYNO Support</Text>
               <Text style={styles.heroTitle}>We’re here to help</Text>
               <Text style={styles.heroSub}>
-                Average reply under 10 minutes · 24/7 for urgent wallet issues
+                Live chat with an agent, or open a ticket and we’ll email you.
               </Text>
             </View>
           </View>
           <Pressable
             style={({ pressed }) => [styles.heroCta, pressed && { opacity: 0.92 }]}
-            onPress={() => {
-              setChatOpen(true);
-              setTicketOpen(false);
-            }}>
+            onPress={() => void openChat()}>
             <Ionicons name="chatbubble-ellipses-outline" size={16} color="#111" />
             <Text style={styles.heroCtaText}>Start Live Chat</Text>
           </Pressable>
@@ -162,11 +170,8 @@ export default function SupportScreen() {
         <ActionCard
           icon="chatbubble-ellipses-outline"
           title="Live Chat"
-          subtitle="Chat with an agent"
-          onPress={() => {
-            setChatOpen(true);
-            setTicketOpen(false);
-          }}
+          subtitle={isCrispConfigured() ? 'Chat with an agent' : 'Opens a ticket'}
+          onPress={() => void openChat()}
         />
         <ActionCard
           icon="ticket-outline"
@@ -174,15 +179,14 @@ export default function SupportScreen() {
           subtitle="Trackable support request"
           onPress={() => {
             setTicketOpen(true);
-            setChatOpen(false);
             setTicketSent(false);
           }}
         />
         <ActionCard
           icon="mail-outline"
           title="Email us"
-          subtitle="support@oryno.com"
-          onPress={() => void Linking.openURL('mailto:support@oryno.com')}
+          subtitle={SUPPORT_EMAIL}
+          onPress={() => void Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
         />
       </Animated.View>
 
@@ -207,39 +211,45 @@ export default function SupportScreen() {
           <Text style={styles.ticketsMeta}>Last 30 days</Text>
         </View>
         <View style={styles.ticketList}>
-          {tickets.map((ticket) => {
-            const resolved = ticket.status === 'Resolved';
-            return (
-              <View key={ticket.id} style={styles.ticketRow}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.ticketSubject} numberOfLines={1}>
-                    {ticket.subject}
-                  </Text>
-                  <Text style={styles.ticketMeta}>
-                    {ticket.id} · Updated {ticket.updated}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    resolved ? styles.statusResolved : styles.statusProgress,
-                  ]}>
-                  <Ionicons
-                    name="time-outline"
-                    size={12}
-                    color={resolved ? Brand.success : Brand.orange}
-                  />
-                  <Text
+          {loadingTickets ? (
+            <Text style={styles.ticketMeta}>Loading tickets…</Text>
+          ) : tickets.length === 0 ? (
+            <Text style={styles.ticketMeta}>No tickets yet. Open one above or start live chat.</Text>
+          ) : (
+            tickets.map((ticket) => {
+              const resolved = ticket.status === 'resolved' || ticket.status === 'closed';
+              return (
+                <View key={ticket.id} style={styles.ticketRow}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.ticketSubject} numberOfLines={1}>
+                      {ticket.subject}
+                    </Text>
+                    <Text style={styles.ticketMeta}>
+                      {ticket.reference} · {timeAgo(ticket.updatedAt)}
+                    </Text>
+                  </View>
+                  <View
                     style={[
-                      styles.statusText,
-                      { color: resolved ? Brand.success : Brand.orange },
+                      styles.statusBadge,
+                      resolved ? styles.statusResolved : styles.statusProgress,
                     ]}>
-                    {ticket.status}
-                  </Text>
+                    <Ionicons
+                      name="time-outline"
+                      size={12}
+                      color={resolved ? Brand.success : Brand.orange}
+                    />
+                    <Text
+                      style={[
+                        styles.statusText,
+                        { color: resolved ? Brand.success : Brand.orange },
+                      ]}>
+                      {statusLabel(ticket.status)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </View>
       </Animated.View>
 
@@ -249,12 +259,12 @@ export default function SupportScreen() {
           Quick answers for common ORYNO questions
         </Text>
         <View style={styles.faqList}>
-          {faqs.map((faq, index) => {
+          {SUPPORT_FAQS.map((faq, index) => {
             const open = openFaq === index;
             return (
               <View
                 key={faq.q}
-                style={[styles.faqItem, index < faqs.length - 1 && styles.faqBorder]}>
+                style={[styles.faqItem, index < SUPPORT_FAQS.length - 1 && styles.faqBorder]}>
                 <Pressable
                   style={styles.faqRow}
                   onPress={() => setOpenFaq(open ? null : index)}>
@@ -280,56 +290,23 @@ export default function SupportScreen() {
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.callTitle}>Still need help?</Text>
-            <Text style={styles.callSub}>Call +234 800 000 ORYNO · Mon–Sun, 8am–10pm</Text>
+            <Text style={styles.callSub}>
+              {SUPPORT_PHONE
+                ? `Call ${SUPPORT_PHONE} · or email ${SUPPORT_EMAIL}`
+                : `Email ${SUPPORT_EMAIL} and we’ll get back to you.`}
+            </Text>
           </View>
         </View>
         <Pressable
           style={({ pressed }) => [styles.callBtn, pressed && { opacity: 0.9 }]}
-          onPress={() => void Linking.openURL('tel:+2348000000000')}>
-          <Text style={styles.callBtnText}>Call support</Text>
+          onPress={() =>
+            void Linking.openURL(
+              SUPPORT_PHONE ? `tel:${SUPPORT_PHONE}` : `mailto:${SUPPORT_EMAIL}`,
+            )
+          }>
+          <Text style={styles.callBtnText}>{SUPPORT_PHONE ? 'Call support' : 'Email support'}</Text>
         </Pressable>
       </Animated.View>
-
-      <PickerSheet
-        visible={chatOpen}
-        title="Live chat"
-        subtitle="Agent typically joins in under a minute"
-        onClose={() => setChatOpen(false)}>
-        <View style={styles.chatBox}>
-          <ChatBubble
-            from="agent"
-            text="Hi 👋 Welcome to ORYNO Support. How can we help today?"
-          />
-          <ChatBubble from="user" text="I need help confirming a wallet funding." />
-          <ChatBubble
-            from="agent"
-            text="Sure — share the amount and approximate time, and we’ll check it right away."
-          />
-        </View>
-        <View style={styles.chatComposer}>
-          <TextInput
-            value={chatDraft}
-            onChangeText={setChatDraft}
-            placeholder="Type your message…"
-            placeholderTextColor={colors.mutedForeground}
-            style={styles.chatInput}
-          />
-          <Pressable
-            style={({ pressed }) => [styles.sendBtn, pressed && { opacity: 0.9 }]}
-            onPress={() => {
-              if (!chatDraft.trim()) return;
-              alert.info(
-                'Message queued',
-                'Live agents aren’t connected in this build yet. Open a ticket and we’ll follow up by email.',
-              );
-              setChatDraft('');
-              setChatOpen(false);
-              setTicketOpen(true);
-            }}>
-            <Text style={styles.sendText}>Send</Text>
-          </Pressable>
-        </View>
-      </PickerSheet>
 
       <PickerSheet
         visible={ticketOpen}
@@ -338,7 +315,7 @@ export default function SupportScreen() {
         onClose={() => setTicketOpen(false)}>
         <Text style={styles.fieldLabel}>Topic</Text>
         <View style={styles.topicChips}>
-          {topics.map((item) => {
+          {SUPPORT_TOPICS.map((item) => {
             const active = topic === item;
             return (
               <Pressable
@@ -416,19 +393,6 @@ function ActionCard({
         <Text style={styles.actionSub}>{subtitle}</Text>
       </View>
     </Pressable>
-  );
-}
-
-function ChatBubble({ from, text }: { from: 'agent' | 'user'; text: string }) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const isUser = from === 'user';
-  return (
-    <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAgent]}>
-        <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>{text}</Text>
-      </View>
-    </View>
   );
 }
 

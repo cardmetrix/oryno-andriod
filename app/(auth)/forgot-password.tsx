@@ -98,6 +98,7 @@ export default function ForgotPasswordScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              secureToggle
               placeholder="••••••••"
             />
             <Button

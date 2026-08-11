@@ -39,17 +39,19 @@ export default function OtpScreen() {
     const setActive = mode === 'login' ? setSignInActive : setSignUpActive;
     if (!sessionId || !setActive) return;
     await setActive({ session: sessionId });
-    try {
-      const { readStoredReferralCode } = await import('@/lib/referrals');
-      const referralCode =
-        mode === 'register' ? await readStoredReferralCode() : null;
-      await syncSessionToDatabase({
-        ...(announceLogin ? { announceLogin: true } : {}),
-        referralCode: referralCode || undefined,
-      });
-    } catch {
-      // session is active even if sync fails once
-    }
+    void (async () => {
+      try {
+        const { readStoredReferralCode } = await import('@/lib/referrals');
+        const referralCode =
+          mode === 'register' ? await readStoredReferralCode() : null;
+        await syncSessionToDatabase({
+          ...(announceLogin ? { announceLogin: true } : {}),
+          referralCode: referralCode || undefined,
+        });
+      } catch {
+        // session is active even if sync fails once
+      }
+    })();
     router.replace('/(app)/(tabs)');
   };
 

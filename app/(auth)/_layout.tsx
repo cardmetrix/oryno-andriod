@@ -20,6 +20,8 @@ export default function AuthLayout() {
       <Stack.Screen name="sso-callback" options={{ animation: 'none' }} />
       <Stack.Screen name="sso-continue" />
       <Stack.Screen name="splash" options={{ animation: 'fade' }} />
+      <Stack.Screen name="terms" />
+      <Stack.Screen name="privacy" />
     </Stack>
   );
 }

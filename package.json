@@ -1,7 +1,7 @@
 {
   "name": "oryno-africa",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "scripts": {
     "start": "expo start",
     "start:prod-api": "EXPO_PUBLIC_API_URL=https://www.orynoafrica.com EXPO_PUBLIC_API_PREFIX=/api/external/v1 expo start -c",

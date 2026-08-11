@@ -14,7 +14,6 @@ import {
   View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
 import { captureRef } from 'react-native-view-shot';
 
 import { PageHeader } from '@/components/app/page-header';
@@ -219,13 +218,7 @@ export default function HistoryDetailScreen() {
             </View>
 
             <View style={styles.heroCenter}>
-              <View style={styles.typeIcon}>
-                {credit ? (
-                  <ArrowDownLeftIcon size={24} color={Brand.white} />
-                ) : (
-                  <ArrowUpRightIcon size={24} color={Brand.white} />
-                )}
-              </View>
+              <StatusHeroIcon status={tx.status} />
               <Text style={styles.txTitle}>{tx.title}</Text>
               <Text style={styles.txAmount}>{tx.amount}</Text>
               <StatusPill status={tx.status} />
@@ -233,12 +226,15 @@ export default function HistoryDetailScreen() {
           </LinearGradient>
 
           <View style={styles.details}>
-            <DetailRow label="Category" value={tx.categoryLabel} />
-            <DetailRow label="Details" value={tx.subtitle} />
-            <DetailRow label="Type" value={credit ? 'Credit' : 'Debit'} />
-            <DetailRow label="Date" value={tx.createdAtFormatted} />
-            <DetailRow label="Reference" value={tx.reference} mono />
-            <DetailRow label="Currency" value={tx.currency ?? 'NGN'} last />
+            <ReceiptWatermark />
+            <View style={styles.detailsContent}>
+              <DetailRow label="Category" value={tx.categoryLabel} />
+              <DetailRow label="Details" value={tx.subtitle} />
+              <DetailRow label="Type" value={credit ? 'Credit' : 'Debit'} />
+              <DetailRow label="Date" value={tx.createdAtFormatted} />
+              <DetailRow label="Reference" value={tx.reference} mono />
+              <DetailRow label="Currency" value={tx.currency ?? 'NGN'} last />
+            </View>
           </View>
 
           <Text style={styles.footer}>
@@ -281,54 +277,57 @@ export default function HistoryDetailScreen() {
   );
 }
 
-function ArrowDownLeftIcon({ size, color }: { size: number; color: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M17 7L7 17"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M17 17H7V7"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function ArrowUpRightIcon({ size, color }: { size: number; color: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M7 17L17 7"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M7 7H17V17"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
 function statusLabel(status: string) {
   const s = status.toLowerCase();
   if (s === 'failed') return 'Failed';
   if (s === 'pending') return 'Pending';
   if (s === 'success' || s === 'completed') return 'Completed';
   return status;
+}
+
+function StatusHeroIcon({ status }: { status: string }) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const label = statusLabel(status);
+  const icon =
+    label === 'Failed'
+      ? ('close-circle' as const)
+      : label === 'Pending'
+        ? ('time' as const)
+        : ('checkmark-circle' as const);
+
+  return (
+    <View style={styles.typeIcon}>
+      <Ionicons name={icon} size={56} color={Brand.white} />
+    </View>
+  );
+}
+
+function ReceiptWatermark() {
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const marks = useMemo(() => Array.from({ length: 30 }, (_, i) => i), []);
+  const ink = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(28,28,30,0.055)';
+  // Color logos read stronger than gray text — keep them a touch fainter.
+  const logoOpacity = isDark ? 0.035 : 0.025;
+
+  return (
+    <View pointerEvents="none" style={styles.watermarkWrap}>
+      <View style={styles.watermarkGrid}>
+        {marks.map((i) => (
+          <View key={i} style={styles.watermarkMark}>
+            <Image
+              source={require('@/assets/images/oryno-logo.png')}
+              style={[styles.watermarkLogo, { opacity: logoOpacity }]}
+              contentFit="cover"
+              tintColor={isDark ? 'rgba(255,255,255,0.9)' : 'rgba(28,28,30,0.9)'}
+            />
+            <Text style={[styles.watermarkLabel, { color: ink }]}>ORYNO</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -457,14 +456,50 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
     },
     typeIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 16,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.25)',
+      width: 56,
+      height: 56,
+      borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    watermarkWrap: {
+      ...StyleSheet.absoluteFillObject,
+      overflow: 'hidden',
+    },
+    watermarkGrid: {
+      position: 'absolute',
+      top: -40,
+      left: -60,
+      right: -60,
+      bottom: -40,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignContent: 'center',
+      justifyContent: 'center',
+      gap: 18,
+      columnGap: 28,
+      transform: [{ rotate: '-32deg' }, { scale: 1.05 }],
+    },
+    watermarkMark: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      width: 108,
+    },
+    watermarkLogo: {
+      width: 18,
+      height: 18,
+      borderRadius: 999,
+    },
+    watermarkLabel: {
+      fontSize: 13,
+      fontWeight: '800',
+      letterSpacing: 0.4,
+    },
+    detailsContent: {
+      position: 'relative',
+      zIndex: 1,
     },
     txTitle: {
       marginTop: 12,
@@ -496,6 +531,8 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '700',
     },
     details: {
+      position: 'relative',
+      overflow: 'hidden',
       paddingHorizontal: 12,
       paddingVertical: 4,
     },

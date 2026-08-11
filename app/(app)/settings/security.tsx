@@ -97,7 +97,12 @@ export default function SecurityScreen() {
       setCurrentPin('');
       setPin('');
       setConfirmPin('');
-      alert.success('Saved', 'Transaction PIN updated.');
+      alert.success(
+        security?.hasPin ? 'PIN changed' : 'PIN created',
+        security?.hasPin
+          ? 'Your transaction PIN was updated. You’ll get an email and push alert.'
+          : 'Your transaction PIN is ready. You’ll get an email and push alert.',
+      );
     }
   }
 

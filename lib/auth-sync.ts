@@ -4,15 +4,12 @@ import { api } from '@/lib/api';
 import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { detectUserCountry } from '@/lib/geo';
-import { toast } from '@/lib/toast';
 import type { SyncResponse } from '@/lib/types';
 
 const COUNTRY_STORAGE_KEY = 'oryno_country';
 const LOGIN_ANNOUNCED_KEY = 'oryno_login_announced';
 
 let inflight: Promise<SyncResponse> | null = null;
-/** Session-scoped country toast dedupe (like website sessionStorage). */
-let countryToastToken: string | null = null;
 
 export async function markLoginAnnounced() {
   try {
@@ -53,32 +50,16 @@ async function persistCountry(info: ReturnType<typeof getCountryInfo>) {
   }
 }
 
-/** Show the website-style “Country detected” toast once per app session. */
-export function maybeShowCountryToast(countryCode?: string | null) {
-  if (!countryCode) return;
-  const info = getCountryInfo(countryCode);
-  const token = `${info.code}:${info.currency}`;
-  if (countryToastToken === token) return;
-  countryToastToken = token;
-  toast.success(`Country detected: ${info.name}`, {
-    description: `Your wallet currency is ${info.currency} (${info.currencySymbol})`,
-  });
-}
-
 export async function syncSessionToDatabase(options?: {
   announceLogin?: boolean;
   countryCode?: string | null;
   forceCountry?: boolean;
   referralCode?: string | null;
-  /** Show country toast after a successful sync (default true). */
-  showCountryToast?: boolean;
 }) {
   if (inflight) {
     if (__DEV__) console.log('[ORYNO auth-sync] reusing in-flight sync');
     return inflight;
   }
-
-  const showCountryToast = options?.showCountryToast !== false;
 
   inflight = (async () => {
     try {
@@ -130,7 +111,6 @@ export async function syncSessionToDatabase(options?: {
       const info = resolvedCode ? getCountryInfo(resolvedCode) : null;
       if (info) {
         await persistCountry(info);
-        if (showCountryToast) maybeShowCountryToast(info.code);
       }
 
       if (announceLogin) await markLoginAnnounced();

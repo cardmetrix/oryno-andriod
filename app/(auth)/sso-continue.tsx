@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
-import { Brand, Radius, type ThemeColors } from '@/constants/theme';
+import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { syncSessionToDatabase } from '@/lib/auth-sync';
 import {
@@ -16,6 +16,7 @@ import {
   readStoredReferralCode,
 } from '@/lib/referrals';
 import { toast } from '@/lib/toast';
+import { isValidUsername, normalizeUsername } from '@/lib/username';
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -51,15 +52,17 @@ export default function SsoContinueScreen() {
     if (signUp.status === 'complete' && signUp.createdSessionId && setActive) {
       void (async () => {
         await setActive({ session: signUp.createdSessionId! });
-        try {
-          const referral = await readStoredReferralCode();
-          await syncSessionToDatabase({
-            announceLogin: mode === 'signIn',
-            referralCode: referral || undefined,
-          });
-        } catch {
-          // ignore
-        }
+        void (async () => {
+          try {
+            const referral = await readStoredReferralCode();
+            await syncSessionToDatabase({
+              announceLogin: mode === 'signIn',
+              referralCode: referral || undefined,
+            });
+          } catch {
+            // ignore
+          }
+        })();
         router.replace('/(app)/(tabs)');
       })();
     }
@@ -69,7 +72,6 @@ export default function SsoContinueScreen() {
     missing.includes('first_name') ||
     missing.includes('last_name') ||
     missing.length === 0;
-  const needsUsername = missing.includes('username');
 
   const onSubmit = async () => {
     if (!isLoaded || !signUp || !setActive) return;
@@ -77,13 +79,14 @@ export default function SsoContinueScreen() {
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
     const firstName = parts[0] || '';
     const lastName = parts.slice(1).join(' ') || firstName;
-    const nextUsername =
-      username.trim() ||
-      signUp.emailAddress?.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) ||
-      `user${Date.now() % 100000}`;
+    const nextUsername = normalizeUsername(username);
 
     if (needsName && !firstName) {
       setError('Enter your full name to continue.');
+      return;
+    }
+    if (!isValidUsername(nextUsername)) {
+      setError('Username must be 3–32 characters: letters, numbers, and underscores.');
       return;
     }
 
@@ -100,9 +103,7 @@ export default function SsoContinueScreen() {
         ...(needsName || missing.includes('last_name')
           ? { lastName: lastName || firstName }
           : {}),
-        ...(needsUsername || missing.includes('username')
-          ? { username: nextUsername }
-          : {}),
+        username: nextUsername,
         unsafeMetadata: {
           ...(typeof signUp.unsafeMetadata === 'object' && signUp.unsafeMetadata
             ? signUp.unsafeMetadata
@@ -114,14 +115,10 @@ export default function SsoContinueScreen() {
 
       if (signUp.status === 'complete' && signUp.createdSessionId) {
         await setActive({ session: signUp.createdSessionId });
-        try {
-          await syncSessionToDatabase({
-            announceLogin: mode === 'signIn',
-            referralCode: storedReferral || undefined,
-          });
-        } catch {
-          // ignore
-        }
+        void syncSessionToDatabase({
+          announceLogin: mode === 'signIn',
+          referralCode: storedReferral || undefined,
+        }).catch(() => undefined);
         toast.success('Welcome to ORYNO');
         router.replace('/(app)/(tabs)');
         return;
@@ -169,20 +166,19 @@ export default function SsoContinueScreen() {
             label="Full name"
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Chidi Okechukwu"
+            placeholder="John Doe"
             autoComplete="name"
           />
         ) : null}
-        {needsUsername ? (
-          <TextField
-            label="Username"
-            value={username}
-            onChangeText={setUsername}
-            placeholder="chidi"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        ) : null}
+        <TextField
+          label="Username"
+          value={username}
+          onChangeText={(v) => setUsername(v.replace(/\s+/g, '').toLowerCase())}
+          placeholder="john_doe"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username"
+        />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button title="Continue" loading={loading} onPress={() => void onSubmit()} />
         <Button

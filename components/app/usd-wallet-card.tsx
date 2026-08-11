@@ -55,6 +55,23 @@ export function UsdWalletCard({
   countryCode: string;
 }) {
   const balance = usd?.balanceFormatted ?? '$0.00';
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+  const [waitlistBusy, setWaitlistBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const json = await api.get<{ joined?: boolean }>(endpoints.waitlist.usdCard);
+        if (!cancelled) setWaitlistJoined(Boolean(json.joined));
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <View style={styles.card}>
@@ -80,7 +97,7 @@ export function UsdWalletCard({
         </View>
         <View style={styles.badge}>
           <Ionicons name="shield-checkmark" size={13} color={Brand.orange} />
-          <Text style={styles.badgeText}>USD</Text>
+          <Text style={styles.badgeText}>Protected</Text>
         </View>
       </View>
 
@@ -234,10 +251,6 @@ export function UsdWalletActionsPanel({
       {panel === 'fund' ? (
         <>
           <Text style={styles.panelTitle}>Fund USD wallet</Text>
-          <Text style={styles.panelSub}>
-            Pay with Paystack (local currency) or convert from your {localCurrency} balance (
-            {localBalanceFormatted}).
-          </Text>
           <View style={styles.segRow}>
             <Pressable
               style={[styles.seg, fundMethod === 'paystack' && styles.segActive]}
@@ -260,9 +273,6 @@ export function UsdWalletActionsPanel({
       ) : (
         <>
           <Text style={styles.panelTitle}>Convert currencies</Text>
-          <Text style={styles.panelSub}>
-            Live open-market rate + 1% ORYNO commission.
-          </Text>
           <View style={styles.segRow}>
             <Pressable
               style={[styles.seg, direction === 'to_usd' && styles.segActive]}
@@ -347,7 +357,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     overflow: 'hidden',
-    minHeight: 148,
+    minHeight: 140,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
@@ -369,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  top: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  top: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   eyebrowText: {
     color: 'rgba(255,255,255,0.65)',
@@ -378,17 +388,37 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
   },
   balance: {
-    marginTop: 8,
+    marginTop: 4,
     color: Brand.white,
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
     letterSpacing: -0.6,
   },
   holder: {
-    marginTop: 6,
+    marginTop: 3,
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
+  },
+  waitlistBtn: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+    maxWidth: '100%',
+  },
+  waitlistText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 11,
+    fontWeight: '700',
+    flexShrink: 1,
   },
   badge: {
     flexDirection: 'row',
@@ -396,34 +426,34 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
   },
   badgeText: { color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: '800' },
-  actions: { marginTop: 14, flexDirection: 'row', gap: 10 },
+  actions: { marginTop: 10, flexDirection: 'row', gap: 8 },
   fundBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 16,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: Brand.white,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   fundActive: { backgroundColor: Brand.orange },
   fundText: { color: '#111', fontSize: 14, fontWeight: '800' },
   convertBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 16,
+    height: 40,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.1)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
   },
@@ -434,28 +464,31 @@ const styles = StyleSheet.create({
 function makePanelStyles(colors: ThemeColors) {
   return StyleSheet.create({
     panel: {
-      marginTop: 12,
-      borderRadius: 22,
+      marginTop: 10,
+      marginBottom: 28,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 12,
+      paddingHorizontal: 10,
+      paddingTop: 10,
+      paddingBottom: 10,
     },
     panelTitle: { fontSize: 14, fontWeight: '700', color: colors.foreground },
     panelSub: {
-      marginTop: 4,
+      marginTop: 2,
       fontSize: 12,
       color: colors.mutedForeground,
-      lineHeight: 17,
+      lineHeight: 16,
     },
-    segRow: { marginTop: 12, flexDirection: 'row', gap: 8 },
+    segRow: { marginTop: 8, flexDirection: 'row', gap: 6 },
     seg: {
       flex: 1,
-      borderRadius: 14,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingVertical: 11,
-      paddingHorizontal: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 8,
       alignItems: 'center',
       backgroundColor: colors.background,
     },
@@ -466,58 +499,58 @@ function makePanelStyles(colors: ThemeColors) {
     segText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
     segTextActive: { color: Brand.orange },
     fieldLabel: {
-      marginTop: 10,
-      fontSize: 13,
+      marginTop: 8,
+      fontSize: 12,
       fontWeight: '600',
       color: colors.foreground,
     },
     input: {
-      marginTop: 8,
-      height: 44,
-      borderRadius: 14,
+      marginTop: 6,
+      height: 40,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.muted,
       paddingHorizontal: 10,
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.foreground,
     },
-    presets: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    presets: { marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     preset: {
       borderRadius: 999,
       backgroundColor: colors.muted,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
     },
     presetActive: { backgroundColor: colors.foreground },
     presetText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
     presetTextActive: { color: colors.background },
     preview: {
-      marginTop: 10,
-      borderRadius: 16,
+      marginTop: 8,
+      borderRadius: 14,
       backgroundColor: colors.muted,
       paddingHorizontal: 10,
-      paddingVertical: 12,
+      paddingVertical: 8,
     },
     previewLabel: { fontSize: 12, color: colors.mutedForeground },
     previewValue: {
       marginTop: 2,
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: '800',
       color: colors.foreground,
     },
     previewReceive: {
-      marginTop: 8,
+      marginTop: 4,
       fontSize: 12,
       fontWeight: '700',
       color: Brand.orange,
     },
-    error: { marginTop: 10, fontSize: 13, fontWeight: '600', color: Brand.error },
+    error: { marginTop: 8, fontSize: 13, fontWeight: '600', color: Brand.error },
     cta: {
-      marginTop: 10,
-      height: 44,
-      borderRadius: 14,
+      marginTop: 8,
+      height: 42,
+      borderRadius: 12,
       backgroundColor: Brand.orange,
       alignItems: 'center',
       justifyContent: 'center',

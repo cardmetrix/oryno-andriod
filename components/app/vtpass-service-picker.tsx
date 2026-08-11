@@ -32,7 +32,8 @@ export function VtpassServicePicker({
     id: s.serviceID,
     title: s.name,
     subtitle: value === s.serviceID ? 'Selected' : 'Tap to select',
-    image: s.image,
+    // Always pass image (null → letter fallback) so logos show in the sheet.
+    image: s.image ?? null,
   }));
 
   return (

@@ -69,6 +69,10 @@ export const endpoints = {
   },
   support: {
     errorReport: '/api/support/error-report',
+    tickets: '/api/support/tickets',
+  },
+  waitlist: {
+    usdCard: '/api/waitlist/usd-card',
   },
   /** Friendly service aliases (preferred) — backed by oryno-website /api/services/*. */
   services: {

@@ -2,9 +2,9 @@
   "expo": {
     "name": "ORYNO",
     "slug": "oryno",
-    "version": "1.0.0",
+    "version": "0.2.0",
     "orientation": "portrait",
-    "icon": "./assets/images/oryno-icon.png",
+    "icon": "./assets/images/oryno-app-icon.png",
     "scheme": "oryno",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -20,9 +20,10 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/oryno-icon.png"
+        "foregroundImage": "./assets/images/oryno-adaptive-icon.png",
+        "monochromeImage": "./assets/images/oryno-monochrome-icon.png"
       },
-      "icon": "./assets/images/oryno-icon.png",
+      "icon": "./assets/images/oryno-android-icon.png",
       "edgeToEdgeEnabled": true,
       "package": "com.oryno.africa",
       "googleServicesFile": "./google-services.json",

@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { api } from '@/lib/api';
+import { APP_VERSION } from '@/lib/app-version';
 
 import { ANDROID_ALERTS_CHANNEL_ID, ANDROID_DEFAULT_CHANNEL_ID } from './constants';
 import { formatPushError, pushDebug } from './debug';
@@ -91,7 +92,7 @@ export async function syncPushTokenWithServer(token: string): Promise<void> {
     token,
     platform: Platform.OS,
     deviceId: Device.osInternalBuildId ?? Device.modelId ?? undefined,
-    appVersion: Constants.expoConfig?.version ?? undefined,
+    appVersion: Constants.expoConfig?.version ?? APP_VERSION,
   });
 }
 

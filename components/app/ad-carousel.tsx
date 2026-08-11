@@ -16,7 +16,7 @@ const DEFAULT_COLORS = [
   'rgba(28,28,30,0.35)',
   'transparent',
 ] as const;
-const CAROUSEL_HEIGHT = 118;
+const CAROUSEL_HEIGHT = 96;
 
 function isExternalHref(href: string) {
   return /^https?:\/\//i.test(href.trim());
@@ -147,16 +147,16 @@ export function AdCarousel() {
 const styles = StyleSheet.create({
   wrap: {
     height: CAROUSEL_HEIGHT,
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 10,
+    marginTop: 6,
   },
   placeholder: {
     height: CAROUSEL_HEIGHT,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 10,
+    marginTop: 6,
   },
   image: { ...StyleSheet.absoluteFillObject },
   progressTrack: {
@@ -173,57 +173,58 @@ const styles = StyleSheet.create({
   },
   dots: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 8,
+    right: 8,
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
   },
   dot: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.45)',
   },
   dotActive: {
-    width: 16,
+    width: 14,
     backgroundColor: Brand.white,
   },
   copy: {
     flex: 1,
     justifyContent: 'flex-end',
-    padding: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: Brand.orange,
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    marginBottom: 4,
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginBottom: 2,
   },
   badgeText: {
     color: Brand.white,
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   title: {
     color: Brand.white,
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   subtitle: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
-    marginTop: 1,
+    fontSize: 11,
+    marginTop: 0,
   },
   ctaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
+    gap: 3,
+    marginTop: 4,
   },
   cta: {
     color: 'rgba(255,255,255,0.95)',

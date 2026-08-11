@@ -23,11 +23,7 @@ export default function LoginScreen() {
   const finish = async (sessionId: string | null | undefined) => {
     if (!sessionId || !setActive) return;
     await setActive({ session: sessionId });
-    try {
-      await syncSessionToDatabase({ announceLogin: true });
-    } catch {
-      // session is active even if sync fails once
-    }
+    void syncSessionToDatabase({ announceLogin: true }).catch(() => undefined);
     router.replace('/(app)/(tabs)');
   };
 

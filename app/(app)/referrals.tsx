@@ -168,7 +168,7 @@ export default function ReferralsScreen() {
             <Ionicons name="gift-outline" size={22} color={Brand.white} />
           </View>
           <Text style={styles.heroEyebrow}>Referral bonus</Text>
-          <Text style={styles.heroTitle}>{data.program.bonusLabel} each</Text>
+          <Text style={styles.heroTitle}>{data.program.bonusLabel} Each</Text>
           <Text style={styles.heroBody}>{data.program.description}</Text>
         </LinearGradient>
       </Animated.View>

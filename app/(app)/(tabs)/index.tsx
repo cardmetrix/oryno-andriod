@@ -9,6 +9,7 @@ import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useAdminAccess } from '@/hooks/use-admin-access';
 import { useNotificationsQuery } from '@/hooks/use-notifications-query';
+import { useProfile } from '@/hooks/use-profile';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { useWallet } from '@/hooks/use-wallet';
 import { useUser } from '@clerk/clerk-expo';
@@ -54,6 +55,7 @@ export default function HomeScreen() {
   const { user } = useUser();
   const { colors } = useAppTheme();
   const { data, loading, error, refresh } = useWallet();
+  const { profile, refresh: refreshProfile } = useProfile();
   const {
     unreadCount,
     refresh: refreshNotifications,
@@ -66,7 +68,13 @@ export default function HomeScreen() {
     user?.firstName ||
     user?.fullName?.split(' ')[0] ||
     'there';
-  const avatarUrl = user?.imageUrl || null;
+  const avatarUrl =
+    profile?.avatarUrl ||
+    (typeof user?.publicMetadata?.avatarUrl === 'string'
+      ? user.publicMetadata.avatarUrl
+      : null) ||
+    user?.imageUrl ||
+    null;
   const initials = useMemo(() => {
     const name =
       data?.user.fullName || user?.fullName || user?.firstName || firstName || 'OR';
@@ -80,7 +88,7 @@ export default function HomeScreen() {
     );
   }, [data?.user.fullName, user?.fullName, user?.firstName, firstName]);
   const currency = data?.primary.currency ?? data?.country?.currency ?? 'NGN';
-  const recent = (data?.recent ?? []).slice(0, 3);
+  const recent = (data?.recent ?? []).slice(0, 2);
 
   useFocusEffect(
     useCallback(() => {
@@ -90,7 +98,7 @@ export default function HomeScreen() {
   );
 
   const { pulling, onRefresh } = usePullRefresh(async () => {
-    await Promise.all([refresh(), refreshNotifications()]);
+    await Promise.all([refresh(), refreshNotifications(), refreshProfile()]);
   });
 
   if (loading && !data) {
@@ -110,12 +118,16 @@ export default function HomeScreen() {
           onPress={() => router.push('/(app)/(tabs)/profile')}
           accessibilityLabel="Open profile">
           <View style={styles.logoWell}>
-              <Image
-                source={require('@/assets/images/oryno-logo.png')}
-                style={styles.logo}
-                contentFit="cover"
-              />
-            </View>
+            <Image
+              source={
+                avatarUrl
+                  ? { uri: avatarUrl }
+                  : require('@/assets/images/oryno-logo.png')
+              }
+              style={[styles.logo, !avatarUrl && styles.logoFallback]}
+              contentFit="cover"
+            />
+          </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text
               style={[styles.pageTitle, { color: colors.foreground }]}
@@ -215,9 +227,10 @@ export default function HomeScreen() {
       <View
         style={[
           styles.panel,
+          styles.txPanel,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}>
-        <View style={styles.panelHead}>
+        <View style={[styles.panelHead, styles.txPanelHead]}>
           <Text style={[styles.panelTitle, { color: colors.foreground }]}>
             Recent Transactions
           </Text>
@@ -232,7 +245,7 @@ export default function HomeScreen() {
         {recent.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="receipt-outline" size={28} color={Brand.orange} />
+              <Ionicons name="receipt-outline" size={20} color={Brand.orange} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               No transactions yet
@@ -303,7 +316,7 @@ const styles = StyleSheet.create({
     color: Brand.orange,
   },
   pageTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
@@ -362,6 +375,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
+  txPanel: {
+    marginTop: 6,
+    padding: 8,
+    marginBottom: 28,
+  },
+  txPanelHead: {
+    marginBottom: 2,
+  },
   logoWell: {
     width: 34,
     height: 34,
@@ -373,7 +394,10 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '100%',
-    height: '100%', borderRadius: 999,
+    height: '100%',
+    borderRadius: 999,
+  },
+  logoFallback: {
     transform: [{ scale: 1.22 }],
   },
   panelHead: {
@@ -437,47 +461,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
   },
-  txList: { marginHorizontal: -4, gap: 0 },
-  emptyWrap: { alignItems: 'center', paddingVertical: 10, paddingHorizontal: 8 },
+  txList: { marginHorizontal: -2, gap: 0 },
+  emptyWrap: { alignItems: 'center', paddingVertical: 4, paddingHorizontal: 6 },
   emptyIcon: {
-    width: 52,
-    height: 44,
-    borderRadius: 18,
+    width: 40,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: Brand.orangeMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,106,0,0.16)',
   },
-  emptyTitle: { fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
+  emptyTitle: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
   emptySub: {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 17,
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
     textAlign: 'center',
   },
   emptyActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
+    gap: 6,
+    marginTop: 8,
     justifyContent: 'center',
   },
   emptyPrimary: {
     backgroundColor: Brand.orange,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   emptyPrimaryText: { color: Brand.white, fontWeight: '700', fontSize: 12 },
   emptySecondary: {
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   emptySecondaryText: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
 });

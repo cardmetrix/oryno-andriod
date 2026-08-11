@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { Redirect, router } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useEffect, useRef } from 'react';
 
 import { SplashLoading } from '@/components/ui/splash-loading';
@@ -16,14 +16,7 @@ export default function SsoCallbackScreen() {
   useEffect(() => {
     if (!isLoaded || !isSignedIn || synced.current) return;
     synced.current = true;
-    void (async () => {
-      try {
-        await syncSessionToDatabase({ announceLogin: true });
-      } catch {
-        // enter app anyway
-      }
-      router.replace('/(app)/(tabs)');
-    })();
+    void syncSessionToDatabase({ announceLogin: true }).catch(() => undefined);
   }, [isLoaded, isSignedIn]);
 
   if (!isLoaded) {
@@ -31,7 +24,7 @@ export default function SsoCallbackScreen() {
   }
 
   if (isSignedIn) {
-    return <SplashLoading />;
+    return <Redirect href="/(app)/(tabs)" />;
   }
 
   return <Redirect href="/(auth)/login" />;

@@ -1,7 +1,7 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, Stack } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { SplashLoading } from '@/components/ui/splash-loading';
 import {
@@ -15,54 +15,25 @@ export default function AppLayout() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const { colors } = useAppTheme();
   const queryClient = useQueryClient();
-  const [ready, setReady] = useState(false);
   const bootStarted = useRef(false);
 
   useEffect(() => {
-    if (!isLoaded) return;
-
     if (!isSignedIn) {
       bootStarted.current = false;
-      setReady(true);
       return;
     }
-
-    if (bootStarted.current) {
-      setReady(true);
-      return;
-    }
+    if (!isLoaded || bootStarted.current) return;
 
     bootStarted.current = true;
-    let cancelled = false;
     const warm = hasWarmAppCache(queryClient);
-
-    (async () => {
-      try {
-        if (warm) {
-          // Fast path: show cached home immediately, refresh in background.
-          if (!cancelled) setReady(true);
-          await bootstrapSignedInSession({ queryClient, getToken, warm: true });
-          return;
-        }
-
-        // First load: keep splash until sync + wallet succeed.
-        await bootstrapSignedInSession({ queryClient, getToken, warm: false });
-        if (!cancelled) setReady(true);
-      } catch (error) {
-        if (__DEV__) {
-          console.warn('[ORYNO app] cold boot failed — entering app anyway', error);
-        }
-        // Still enter so user isn't stuck on splash forever.
-        if (!cancelled) setReady(true);
+    void bootstrapSignedInSession({ queryClient, getToken, warm }).catch((error) => {
+      if (__DEV__) {
+        console.warn('[ORYNO app] boot failed', error);
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    });
   }, [isLoaded, isSignedIn, getToken, queryClient]);
 
-  if (!isLoaded || !ready) {
+  if (!isLoaded) {
     return <SplashLoading />;
   }
 
@@ -95,6 +66,8 @@ export default function AppLayout() {
       <Stack.Screen name="wallet/add-bank" options={formSheetScreenOptions} />
       <Stack.Screen name="support" />
       <Stack.Screen name="referrals" />
+      <Stack.Screen name="terms" />
+      <Stack.Screen name="privacy" />
       <Stack.Screen name="settings/index" />
       <Stack.Screen name="settings/security" />
       <Stack.Screen name="settings/levels" />
