@@ -177,9 +177,10 @@ export default function HomeScreen() {
       <View
         style={[
           styles.panel,
+          styles.qaPanel,
           { backgroundColor: colors.card, borderColor: colors.border },
         ]}>
-        <View style={styles.panelHead}>
+        <View style={[styles.panelHead, styles.qaHead]}>
           <Text style={[styles.panelTitle, { color: colors.foreground }]}>Quick Actions</Text>
           <Pressable
             style={styles.linkRow}
@@ -188,19 +189,20 @@ export default function HomeScreen() {
             <Ionicons name="arrow-forward" size={13} color={Brand.orange} />
           </Pressable>
         </View>
-        <View style={styles.grid}>
+        <View style={styles.qaGrid}>
           {chunkActions(quickActions, 3).map((row, rowIndex) => (
-            <View key={`qa-row-${rowIndex}`} style={styles.gridRow}>
+            <View key={`qa-row-${rowIndex}`} style={styles.qaGridRow}>
               {row.map((action) => (
                 <Pressable
                   key={action.label}
                   style={({ pressed }) => [
                     styles.action,
+                    styles.qaAction,
                     { backgroundColor: colors.muted },
                     pressed && styles.actionPressed,
                   ]}
                   onPress={() => router.push(action.href as never)}>
-                  <View style={[styles.actionIcon, { backgroundColor: colors.card }]}>
+                  <View style={[styles.actionIcon, styles.qaActionIcon, { backgroundColor: colors.card }]}>
                     {action.renderIcon ? (
                       action.renderIcon(Brand.orange)
                     ) : (
@@ -289,7 +291,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
     paddingTop: 0,
-    paddingBottom: 8,
+    paddingBottom: 32,
   },
   headerIdentity: {
     flex: 1,
@@ -375,6 +377,33 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
+  qaPanel: {
+    marginTop: 6,
+    padding: 8,
+  },
+  qaHead: {
+    marginBottom: 4,
+  },
+  qaGrid: {
+    gap: 4,
+    width: '100%',
+  },
+  qaGridRow: {
+    flexDirection: 'row',
+    gap: 4,
+    width: '100%',
+  },
+  qaAction: {
+    gap: 2,
+    paddingVertical: 5,
+    paddingHorizontal: 2,
+    borderRadius: 12,
+  },
+  qaActionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+  },
   txPanel: {
     marginTop: 6,
     padding: 8,
@@ -409,15 +438,6 @@ const styles = StyleSheet.create({
   panelTitle: { fontSize: 14, fontWeight: '700' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   link: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
-  grid: {
-    gap: 6,
-    width: '100%',
-  },
-  gridRow: {
-    flexDirection: 'row',
-    gap: 6,
-    width: '100%',
-  },
   action: {
     flexGrow: 1,
     flexShrink: 1,

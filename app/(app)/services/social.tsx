@@ -75,6 +75,65 @@ function isCustomCommentsService(service: {
   return /\bcustom\s*comments?\b/.test(hay);
 }
 
+const EMPTY_COMMENTS_DRAFT = '1. ';
+
+function parseNumberedComments(text: string): string[] {
+  const comments: string[] = [];
+  for (const line of text.replace(/\r\n/g, '\n').split('\n')) {
+    const match = line.match(/^\d+\.\s?(.*)$/);
+    if (match) {
+      comments.push(match[1]);
+    } else if (comments.length) {
+      comments[comments.length - 1] = comments[comments.length - 1]
+        ? `${comments[comments.length - 1]} ${line}`
+        : line;
+    } else if (line.trim()) {
+      comments.push(line);
+    }
+  }
+  return comments.length ? comments : [''];
+}
+
+function applyEnterCommentNumber(
+  prev: string,
+  next: string,
+  maxQuantity: number,
+): { text: string; cursor: number | null } {
+  if (!next.trim()) {
+    return { text: EMPTY_COMMENTS_DRAFT, cursor: EMPTY_COMMENTS_DRAFT.length };
+  }
+
+  const normalized = next.replace(/\r\n/g, '\n');
+  const prevBreaks = (prev.match(/\n/g) || []).length;
+  const nextBreaks = (normalized.match(/\n/g) || []).length;
+  const needsFirstNumber = !/^\d+\.\s?/.test(normalized);
+
+  if (nextBreaks <= prevBreaks && !needsFirstNumber) {
+    return { text: normalized, cursor: null };
+  }
+
+  const lines = normalized.split('\n');
+  const out: string[] = [];
+  let numbered = 0;
+  let cursor: number | null = null;
+
+  for (const line of lines) {
+    if (/^\d+\.\s?/.test(line)) {
+      numbered += 1;
+      if (numbered > maxQuantity) break;
+      out.push(line);
+      continue;
+    }
+    numbered += 1;
+    if (numbered > maxQuantity) break;
+    const prefix = `${numbered}. `;
+    out.push(prefix + line);
+    cursor = out.join('\n').length - line.length;
+  }
+
+  return { text: out.join('\n') || EMPTY_COMMENTS_DRAFT, cursor };
+}
+
 export default function SocialScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -86,7 +145,11 @@ export default function SocialScreen() {
   const [quality, setQuality] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [quantityText, setQuantityText] = useState('');
-  const [customComments, setCustomComments] = useState<string[]>(['']);
+  const [commentsDraft, setCommentsDraft] = useState(EMPTY_COMMENTS_DRAFT);
+  const [commentSelection, setCommentSelection] = useState({
+    start: EMPTY_COMMENTS_DRAFT.length,
+    end: EMPTY_COMMENTS_DRAFT.length,
+  });
   const [profileUrl, setProfileUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,7 +224,7 @@ export default function SocialScreen() {
     setQuality(firstQuality);
     setSelectedId(firstPkg?.service ?? null);
     setQuantityText('');
-    setCustomComments(['']);
+    setCommentsDraft(EMPTY_COMMENTS_DRAFT);
     setError(null);
   }, [catalogQuery.dataUpdatedAt, catalogQuery.error, services, platforms]);
 
@@ -210,6 +273,10 @@ export default function SocialScreen() {
     null;
 
   const isCustomComments = selected ? isCustomCommentsService(selected) : false;
+  const customComments = useMemo(
+    () => parseNumberedComments(commentsDraft),
+    [commentsDraft],
+  );
   const filledComments = useMemo(
     () => customComments.map((c) => c.trim()).filter(Boolean),
     [customComments],
@@ -238,7 +305,7 @@ export default function SocialScreen() {
     if (!selected) return 'Choose a package first';
     if (isCustomComments) {
       if (!filledComments.length) {
-        return `Add ${minQuantity.toLocaleString()}–${maxQuantity.toLocaleString()} custom comments (one per row)`;
+        return `Add ${minQuantity.toLocaleString()}–${maxQuantity.toLocaleString()} custom comments`;
       }
       if (!quantityValid) {
         if (filledComments.length < minQuantity) {
@@ -286,14 +353,13 @@ export default function SocialScreen() {
     if (!selected) return;
     setSelectedId(selected.service);
     if (isCustomCommentsService(selected)) {
-      setCustomComments((prev) => {
-        if (prev.some((c) => c.trim())) return prev;
-        return [''];
-      });
+      setCommentsDraft((prev) =>
+        parseNumberedComments(prev).some((c) => c.trim()) ? prev : EMPTY_COMMENTS_DRAFT,
+      );
       setQuantityText('');
       return;
     }
-    setCustomComments(['']);
+    setCommentsDraft(EMPTY_COMMENTS_DRAFT);
     setQuantityText((prev) => {
       const n = parseQuantityInput(prev);
       if (n == null) return prev;
@@ -379,7 +445,7 @@ export default function SocialScreen() {
     );
     setSelectedId(match?.service ?? null);
     setQuantityText('');
-    setCustomComments(['']);
+    setCommentsDraft(EMPTY_COMMENTS_DRAFT);
   }
 
   function onMetricChange(next: string) {
@@ -401,7 +467,7 @@ export default function SocialScreen() {
     );
     setSelectedId(match?.service ?? null);
     setQuantityText('');
-    setCustomComments(['']);
+    setCommentsDraft(EMPTY_COMMENTS_DRAFT);
   }
 
   function onQualityChange(next: string) {
@@ -414,31 +480,25 @@ export default function SocialScreen() {
     );
     setSelectedId(match?.service ?? null);
     setQuantityText('');
-    setCustomComments(['']);
+    setCommentsDraft(EMPTY_COMMENTS_DRAFT);
   }
 
   function onPackageChange(serviceId: string) {
     setSelectedId(Number(serviceId));
     setQuantityText('');
-    setCustomComments(['']);
+    setCommentsDraft(EMPTY_COMMENTS_DRAFT);
   }
 
-  function updateComment(index: number, value: string) {
-    setCustomComments((prev) => prev.map((c, i) => (i === index ? value : c)));
-  }
-
-  function addCommentRow() {
-    setCustomComments((prev) => {
-      if (prev.length >= maxQuantity) return prev;
-      return [...prev, ''];
-    });
-  }
-
-  function removeCommentRow(index: number) {
-    setCustomComments((prev) => {
-      if (prev.length <= 1) return [''];
-      return prev.filter((_, i) => i !== index);
-    });
+  function onCommentsDraftChange(value: string) {
+    const { text, cursor } = applyEnterCommentNumber(
+      commentsDraft,
+      value,
+      maxQuantity,
+    );
+    setCommentsDraft(text);
+    if (cursor != null) {
+      setCommentSelection({ start: cursor, end: cursor });
+    }
   }
 
   function onQuantityTextChange(raw: string) {
@@ -529,7 +589,7 @@ export default function SocialScreen() {
               setSuccess(false);
               setStatusLabel(null);
               setQuantityText('');
-              setCustomComments(['']);
+              setCommentsDraft(EMPTY_COMMENTS_DRAFT);
             },
             icon: 'plus',
           }}>
@@ -721,41 +781,22 @@ export default function SocialScreen() {
                   {filledComments.length.toLocaleString()}/{maxQuantity.toLocaleString()}
                 </Text>
               </View>
-              <View style={styles.commentsList}>
-                {customComments.map((comment, index) => (
-                  <View key={`comment-${index}`} style={styles.commentRow}>
-                    <Text style={styles.commentIndex}>{index + 1}</Text>
-                    <TextInput
-                      value={comment}
-                      onChangeText={(value) => updateComment(index, value)}
-                      placeholder={`Comment ${index + 1}`}
-                      placeholderTextColor={colors.mutedForeground}
-                      style={styles.commentInput}
-                    />
-                    <Pressable
-                      disabled={customComments.length <= 1}
-                      onPress={() => removeCommentRow(index)}
-                      style={({ pressed }) => [
-                        styles.commentRemoveBtn,
-                        customComments.length <= 1 && { opacity: 0.4 },
-                        pressed && { opacity: 0.85 },
-                      ]}>
-                      <Ionicons name="trash-outline" size={18} color={colors.mutedForeground} />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-              <Pressable
-                disabled={customComments.length >= maxQuantity}
-                onPress={addCommentRow}
-                style={({ pressed }) => [
-                  styles.addCommentBtn,
-                  customComments.length >= maxQuantity && { opacity: 0.4 },
-                  pressed && { opacity: 0.9 },
-                ]}>
-                <Ionicons name="add" size={18} color={colors.charcoal} />
-                <Text style={styles.addCommentText}>Add more</Text>
-              </Pressable>
+              <Text style={styles.commentsHint}>
+                Click enter to write your next comment
+              </Text>
+              <TextInput
+                value={commentsDraft}
+                onChangeText={onCommentsDraftChange}
+                onSelectionChange={(e) => setCommentSelection(e.nativeEvent.selection)}
+                selection={commentSelection}
+                placeholder="1. Write your first comment"
+                placeholderTextColor={colors.mutedForeground}
+                multiline
+                scrollEnabled
+                blurOnSubmit={false}
+                textAlignVertical="top"
+                style={styles.commentsEditor}
+              />
               <Text
                 style={[
                   styles.qtyHint,
@@ -944,54 +985,29 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     commentsCount: { fontSize: 12, fontWeight: '600', color: colors.grayMedium },
-    commentsList: { gap: 8 },
-    commentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    commentIndex: {
-      width: 22,
-      textAlign: 'center',
+    commentsHint: {
+      marginBottom: 8,
       fontSize: 12,
-      fontWeight: '700',
+      fontWeight: '500',
       color: colors.grayMedium,
     },
-    commentInput: {
-      flex: 1,
-      height: 48,
+    commentsEditor: {
+      minHeight: 140,
+      maxHeight: 220,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       paddingHorizontal: 12,
+      paddingVertical: 10,
       fontSize: 14,
       fontWeight: '600',
       color: colors.charcoal,
+      lineHeight: 22,
     },
-    commentRemoveBtn: {
-      width: 48,
-      height: 48,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.grayLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    addCommentBtn: {
-      marginTop: 10,
-      height: 44,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.grayLight,
-      paddingHorizontal: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      alignSelf: 'flex-start',
-    },
-    addCommentText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     previewCard: {
       flexDirection: 'row',
       alignItems: 'flex-start',

@@ -697,7 +697,7 @@ export default function GiftCardsScreen() {
                   }}
                   style={styles.changeBtn}
                   accessibilityLabel="Change gift card">
-                  <Ionicons name="chevron-down" size={16} color={colors.mutedForeground} />
+                  <Ionicons name="chevron-down" size={16} color={Brand.orange} />
                 </Pressable>
               </View>
             </Animated.View>
@@ -954,7 +954,7 @@ export default function GiftCardsScreen() {
                 }}
                 style={styles.changeBtn}
                 accessibilityLabel="Change gift card">
-                <Ionicons name="refresh" size={16} color={colors.mutedForeground} />
+                 <Ionicons name="chevron-down" size={16} color={Brand.orange} />
               </Pressable>
             </View>
             {selectedBuy.redeemHint ? (

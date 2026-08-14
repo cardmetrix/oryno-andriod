@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -13,7 +12,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet } from '@/components/app/picker-sheet';
-import { ServiceInstructions } from '@/components/app/service-instructions';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
@@ -394,8 +392,6 @@ export default function EmailsScreen() {
           </View>
         </View>
       </Animated.View>
-
-      <ServiceInstructions service="emails" />
 
       <PickerSheet
         visible={domainOpen}

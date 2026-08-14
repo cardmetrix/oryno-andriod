@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
@@ -10,12 +11,42 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { Radius } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 
+/** Lucide `Home` paths (same glyph as `lucide-react`). */
+function LucideHome({
+  size,
+  color,
+  strokeWidth,
+}: {
+  size: number;
+  color: string;
+  strokeWidth: number;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M15 20v-7a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v7"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="butt"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  index: 'home',
   wallet: 'wallet',
   services: 'grid',
   history: 'time',
@@ -23,7 +54,6 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 const OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
-  index: 'home-outline',
   wallet: 'wallet-outline',
   services: 'grid-outline',
   history: 'time-outline',
@@ -74,9 +104,21 @@ export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTa
                   ? options.tabBarLabel
                   : options.title ?? route.name;
               const focused = state.index === index;
-              const iconName = focused
-                ? ICONS[route.name] ?? 'ellipse'
-                : OUTLINE[route.name] ?? 'ellipse-outline';
+              const color = focused ? colors.tint : colors.mutedForeground;
+              const icon =
+                route.name === 'index' ? (
+                  <LucideHome size={22} color={color} strokeWidth={focused ? 2.25 : 1.75} />
+                ) : (
+                  <Ionicons
+                    name={
+                      focused
+                        ? ICONS[route.name] ?? 'ellipse'
+                        : OUTLINE[route.name] ?? 'ellipse-outline'
+                    }
+                    size={22}
+                    color={color}
+                  />
+                );
 
               const onPress = () => {
                 const event = navigation.emit({
@@ -96,7 +138,7 @@ export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTa
                 <TabItem
                   key={route.key}
                   label={label}
-                  iconName={iconName}
+                  icon={icon}
                   focused={focused}
                   onPress={onPress}
                   activeColor={colors.tint}
@@ -114,7 +156,7 @@ export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTa
 
 function TabItem({
   label,
-  iconName,
+  icon,
   focused,
   onPress,
   activeColor,
@@ -122,7 +164,7 @@ function TabItem({
   pillColor,
 }: {
   label: string;
-  iconName: keyof typeof Ionicons.glyphMap;
+  icon: ReactNode;
   focused: boolean;
   onPress: () => void;
   activeColor: string;
@@ -154,11 +196,7 @@ function TabItem({
             style={[styles.activePill, { backgroundColor: pillColor }]}
           />
         ) : null}
-        <Ionicons
-          name={iconName}
-          size={22}
-          color={focused ? activeColor : inactiveColor}
-        />
+        {icon}
         <Text
           style={[
             styles.label,
