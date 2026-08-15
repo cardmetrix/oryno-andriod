@@ -33,8 +33,11 @@ export default function AdminWalletsScreen() {
   const { data, loading, error, reload } = useAdminQuery<{ wallets: WalletRow[] }>(path);
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Wallets" subtitle="Balances and freeze status" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Wallets" subtitle="Balances and freeze status" />}>
       <TextInput
         value={q}
         onChangeText={setQ}

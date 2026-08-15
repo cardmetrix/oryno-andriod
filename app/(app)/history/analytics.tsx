@@ -66,19 +66,23 @@ export default function HistoryAnalyticsScreen() {
       : 0;
 
   return (
-    <Screen scroll refreshing={pulling} onRefresh={onRefresh}>
-      <PageHeader
-        title="Analysis"
-        subtitle={activeMonth?.longLabel ?? 'Spending insights'}
-        showBack
-        right={
-          <Pressable style={styles.monthChip} onPress={() => setMonthSheet(true)}>
-            <Text style={styles.monthChipText}>{activeMonth?.label ?? '—'}</Text>
-            <Ionicons name="chevron-down" size={14} color={Brand.orange} />
-          </Pressable>
-        }
-      />
-
+    <Screen
+      scroll
+      refreshing={pulling}
+      onRefresh={onRefresh}
+      header={
+        <PageHeader
+          title="Analysis"
+          subtitle={activeMonth?.longLabel ?? 'Spending insights'}
+          showBack
+          right={
+            <Pressable style={styles.monthChip} onPress={() => setMonthSheet(true)}>
+              <Text style={styles.monthChipText}>{activeMonth?.label ?? '—'}</Text>
+              <Ionicons name="chevron-down" size={14} color={Brand.orange} />
+            </Pressable>
+          }
+        />
+      }>
       {loading && !items.length ? (
         <View style={styles.panel}>
           <Text style={styles.muted}>Loading insights…</Text>

@@ -58,12 +58,15 @@ export default function AccountLevelsScreen() {
 
   if (loading && !profile) {
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Account Levels"
-          subtitle="Increase your daily limit by verifying your identity"
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Account Levels"
+            subtitle="Increase your daily limit by verifying your identity"
+            showBack
+          />
+        }>
         <FormSkeleton />
       </Screen>
     );
@@ -83,13 +86,14 @@ export default function AccountLevelsScreen() {
             }}
           />
         </View>
+      }
+      header={
+        <PageHeader
+          title="Account Levels"
+          subtitle="Increase your daily limit by verifying your identity"
+          showBack
+        />
       }>
-      <PageHeader
-        title="Account Levels"
-        subtitle="Increase your daily limit by verifying your identity"
-        showBack
-      />
-
       <Animated.View entering={FadeInDown.duration(280)} style={styles.heroWrap}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}

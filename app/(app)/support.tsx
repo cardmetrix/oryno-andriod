@@ -131,13 +131,15 @@ export default function SupportScreen() {
   }
 
   return (
-    <Screen scroll>
-      <PageHeader
-        title="Help & Support"
-        subtitle="Live chat, tickets, and FAQs"
-        showBack
-      />
-
+    <Screen
+      scroll
+      header={
+        <PageHeader
+          title="Help & Support"
+          subtitle="Live chat, tickets, and FAQs"
+          showBack
+        />
+      }>
       <Animated.View entering={FadeInDown.duration(280)} style={styles.heroWrap}>
         <LinearGradient
           colors={[Brand.orange, Brand.orangeSoft]}

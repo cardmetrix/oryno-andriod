@@ -304,18 +304,22 @@ export default function AdminAdsScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="Ads"
-        subtitle="Home carousel creatives, schedule & archive"
-        actions={
-          <Pressable style={styles.addBtn} onPress={openCreate}>
-            <Ionicons name="add" size={18} color={Brand.white} />
-            <Text style={styles.addText}>Add</Text>
-          </Pressable>
-        }
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Ads"
+          subtitle="Home carousel creatives, schedule & archive"
+          actions={
+            <Pressable style={styles.addBtn} onPress={openCreate}>
+              <Ionicons name="add" size={18} color={Brand.white} />
+              <Text style={styles.addText}>Add</Text>
+            </Pressable>
+          }
+        />
+      }>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

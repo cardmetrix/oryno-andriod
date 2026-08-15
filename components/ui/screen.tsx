@@ -19,6 +19,8 @@ type Props = ViewProps & {
   onRefresh?: () => void;
   /** Soft content enter motion (default true). */
   animate?: boolean;
+  /** Fixed top bar (e.g. PageHeader). Stays pinned while content scrolls. */
+  header?: ReactNode;
   /** Fixed bottom bar (e.g. primary CTA). Stays pinned while content scrolls. */
   footer?: ReactNode;
 };
@@ -30,6 +32,7 @@ export function Screen({
   refreshing,
   onRefresh,
   animate = true,
+  header,
   footer,
   style,
   ...props
@@ -64,7 +67,13 @@ export function Screen({
   const body = scroll ? (
     <ScrollView
       style={styles.flex}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPad }]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingBottom: scrollBottomPad,
+          paddingTop: header ? 12 : 0,
+        },
+      ]}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -79,31 +88,46 @@ export function Screen({
       {content}
     </ScrollView>
   ) : (
-    <View style={styles.flex}>{content}</View>
+    <View style={[styles.flex, header ? styles.bodyAfterHeader : null]}>{content}</View>
+  );
+
+  const shell = (
+    <View style={styles.flex}>
+      {header ? (
+        <View
+          style={[
+            styles.headerBar,
+            padded && styles.padded,
+            {
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}>
+          {header}
+        </View>
+      ) : null}
+      {body}
+      {footer ? (
+        <View
+          style={[
+            styles.footer,
+            {
+              paddingBottom: Math.max(insets.bottom, 10),
+              backgroundColor: colors.background,
+              borderTopColor: colors.border,
+            },
+          ]}>
+          {footer}
+        </View>
+      ) : null}
+    </View>
   );
 
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
       edges={inAdmin ? ['left', 'right'] : ['top', 'left', 'right']}>
-      {footer ? (
-        <View style={styles.flex}>
-          {body}
-          <View
-            style={[
-              styles.footer,
-              {
-                paddingBottom: Math.max(insets.bottom, 10),
-                backgroundColor: colors.background,
-                borderTopColor: colors.border,
-              },
-            ]}>
-            {footer}
-          </View>
-        </View>
-      ) : (
-        body
-      )}
+      {header || footer ? shell : body}
     </SafeAreaView>
   );
 }
@@ -113,6 +137,13 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   padded: { paddingHorizontal: 16 },
   scrollContent: { flexGrow: 1 },
+  bodyAfterHeader: { paddingTop: 12 },
+  headerBar: {
+    paddingTop: 2,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    zIndex: 20,
+  },
   footer: {
     paddingHorizontal: 16,
     paddingTop: 10,

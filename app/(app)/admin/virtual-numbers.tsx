@@ -27,8 +27,11 @@ export default function AdminVirtualNumbersScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Virtual Numbers" subtitle="Stock and active rentals" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Virtual Numbers" subtitle="Stock and active rentals" />}>
       {loading && !data ? <AdminLoading variant="stats" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

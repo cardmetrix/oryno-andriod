@@ -32,8 +32,11 @@ export default function AdminReferralsScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Referrals" subtitle="Codes and earnings" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Referrals" subtitle="Codes and earnings" />}>
       {loading && !data ? <AdminLoading variant="stats" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

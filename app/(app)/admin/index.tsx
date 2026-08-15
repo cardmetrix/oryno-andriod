@@ -44,27 +44,31 @@ export default function AdminOverviewScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="Overview"
-        subtitle="Live pulse across users, wallets, and country configs"
-        actions={
-          <>
-            <Pressable
-              style={({ pressed }) => [styles.btnSecondary, pressed && { opacity: 0.9 }]}
-              onPress={() => router.push('/(app)/admin/countries' as never)}>
-              <Text style={styles.btnSecondaryText}>Countries</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.92 }]}
-              onPress={() => router.push('/(app)/admin/reports' as never)}>
-              <Text style={styles.btnPrimaryText}>Reports</Text>
-              <Ionicons name="arrow-up" size={14} color={Brand.white} />
-            </Pressable>
-          </>
-        }
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Overview"
+          subtitle="Live pulse across users, wallets, and country configs"
+          actions={
+            <>
+              <Pressable
+                style={({ pressed }) => [styles.btnSecondary, pressed && { opacity: 0.9 }]}
+                onPress={() => router.push('/(app)/admin/countries' as never)}>
+                <Text style={styles.btnSecondaryText}>Countries</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.btnPrimary, pressed && { opacity: 0.92 }]}
+                onPress={() => router.push('/(app)/admin/reports' as never)}>
+                <Text style={styles.btnPrimaryText}>Reports</Text>
+                <Ionicons name="arrow-up" size={14} color={Brand.white} />
+              </Pressable>
+            </>
+          }
+        />
+      }>
       {loading && !data ? <AdminLoading variant="overview" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
 

@@ -247,8 +247,9 @@ export default function AirtimeScreen() {
 
   if (success) {
     return (
-      <Screen scroll>
-        <PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />
+      <Screen
+        scroll
+        header={<PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />}>
         <ServiceSuccess
           title="Airtime sent"
           subtitle={`Sent to ${phone}${selectedNetwork ? ` · ${selectedNetwork.name}` : ''}`}
@@ -295,9 +296,8 @@ export default function AirtimeScreen() {
               : `Buy airtime · ${money(amountNumber)}`}
           </Text>
         </Pressable>
-      }>
-      <PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />
-
+      }
+      header={<PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />}>
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>

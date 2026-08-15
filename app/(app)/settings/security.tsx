@@ -108,12 +108,14 @@ export default function SecurityScreen() {
 
   if (loading && !security) {
     return (
-      <Screen>
-        <PageHeader
-          title="Security Settings"
-          subtitle="2FA, biometrics, and transaction PIN"
-          showBack
-        />
+      <Screen
+        header={
+          <PageHeader
+            title="Security Settings"
+            subtitle="2FA, biometrics, and transaction PIN"
+            showBack
+          />
+        }>
         <SecuritySkeleton />
       </Screen>
     );
@@ -121,8 +123,8 @@ export default function SecurityScreen() {
 
   if (error && !security) {
     return (
-      <Screen>
-        <PageHeader title="Security Settings" showBack />
+      <Screen
+        header={<PageHeader title="Security Settings" showBack />}>
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>Couldn’t load security</Text>
           <Text style={styles.errorSub}>{error}</Text>
@@ -137,13 +139,17 @@ export default function SecurityScreen() {
   if (!security) return null;
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={load}>
-      <PageHeader
-        title="Security Settings"
-        subtitle="2FA, biometrics, and transaction PIN"
-        showBack
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={load}
+      header={
+        <PageHeader
+          title="Security Settings"
+          subtitle="2FA, biometrics, and transaction PIN"
+          showBack
+        />
+      }>
       <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
         <SecurityRow
           icon="shield-checkmark-outline"

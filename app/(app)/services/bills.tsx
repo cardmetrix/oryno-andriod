@@ -228,8 +228,9 @@ export default function BillsScreen() {
 
   if (!countryLoading && !isNigeria) {
     return (
-      <Screen scroll>
-        <PageHeader title="Bill Payments" subtitle="TV & electricity" showBack />
+      <Screen
+        scroll
+        header={<PageHeader title="Bill Payments" subtitle="TV & electricity" showBack />}>
         <Animated.View entering={FadeInDown.duration(280)} style={styles.gateCard}>
           <View style={styles.gateIcon}>
             <Ionicons name="flash-outline" size={28} color={Brand.orange} />
@@ -255,12 +256,15 @@ export default function BillsScreen() {
 
   if (success) {
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Bill Payments"
-          subtitle="TV subscriptions & electricity"
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Bill Payments"
+            subtitle="TV subscriptions & electricity"
+            showBack
+          />
+        }>
         <ServiceSuccess
           title="Bill paid"
           subtitle={
@@ -303,13 +307,14 @@ export default function BillsScreen() {
             {submitting ? 'Paying bill…' : `Pay bill · ${money(amountNumber)}`}
           </Text>
         </Pressable>
+      }
+      header={
+        <PageHeader
+          title="Bill Payments"
+          subtitle="TV subscriptions & electricity"
+          showBack
+        />
       }>
-      <PageHeader
-        title="Bill Payments"
-        subtitle="TV subscriptions & electricity"
-        showBack
-      />
-
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>

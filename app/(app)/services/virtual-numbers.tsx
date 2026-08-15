@@ -214,14 +214,17 @@ export default function VirtualNumbersScreen() {
   if (success) {
     const codeLabel = smsCode || (polling ? 'Waiting for SMS…' : '—');
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Virtual Numbers"
-          subtitle={
-            liveMode ? 'Live SMS verification numbers' : 'SMS verification numbers'
-          }
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Virtual Numbers"
+            subtitle={
+              liveMode ? 'Live SMS verification numbers' : 'SMS verification numbers'
+            }
+            showBack
+          />
+        }>
         <ServiceSuccess
           title="Number ready"
           subtitle="Use this number for verification"
@@ -277,15 +280,16 @@ export default function VirtualNumbersScreen() {
           loading={submitting}
           onPress={() => void onSubmit()}
         />
+      }
+      header={
+        <PageHeader
+          title="Virtual Numbers"
+          subtitle={
+            liveMode ? 'Live SMS verification numbers' : 'SMS verification numbers'
+          }
+          showBack
+        />
       }>
-      <PageHeader
-        title="Virtual Numbers"
-        subtitle={
-          liveMode ? 'Live SMS verification numbers' : 'SMS verification numbers'
-        }
-        showBack
-      />
-
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>

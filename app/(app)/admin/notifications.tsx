@@ -266,19 +266,23 @@ export default function AdminNotificationsScreen() {
         : individualEmail.trim() || 'one email';
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="Notifications & Email"
-        subtitle="Draft or send branded emails and in-app alerts to one user, selected users, or everyone"
-        actions={
-          <Pressable
-            onPress={resetComposer}
-            style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.9 }]}>
-            <Text style={styles.newBtnText}>New message</Text>
-          </Pressable>
-        }
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Notifications & Email"
+          subtitle="Draft or send branded emails and in-app alerts to one user, selected users, or everyone"
+          actions={
+            <Pressable
+              onPress={resetComposer}
+              style={({ pressed }) => [styles.newBtn, pressed && { opacity: 0.9 }]}>
+              <Text style={styles.newBtnText}>New message</Text>
+            </Pressable>
+          }
+        />
+      }>
       {loading && !data ? <AdminLoading variant="overview" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
 

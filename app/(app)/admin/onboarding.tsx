@@ -234,18 +234,22 @@ export default function AdminOnboardingScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="Onboarding"
-        subtitle="App intro slides — image, title & description"
-        actions={
-          <Pressable style={styles.addBtn} onPress={openCreate}>
-            <Ionicons name="add" size={18} color={Brand.white} />
-            <Text style={styles.addText}>Add</Text>
-          </Pressable>
-        }
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Onboarding"
+          subtitle="App intro slides — image, title & description"
+          actions={
+            <Pressable style={styles.addBtn} onPress={openCreate}>
+              <Ionicons name="add" size={18} color={Brand.white} />
+              <Text style={styles.addText}>Add</Text>
+            </Pressable>
+          }
+        />
+      }>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

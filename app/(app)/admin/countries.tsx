@@ -107,20 +107,24 @@ export default function AdminCountriesScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="Countries"
-        subtitle="Add markets and set Live, Suspended, or Disabled"
-        actions={
-          <Pressable
-            onPress={() => setAddOpen(true)}
-            style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.92 }]}>
-            <Ionicons name="add" size={16} color={Brand.white} />
-            <Text style={styles.addBtnText}>Add country</Text>
-          </Pressable>
-        }
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Countries"
+          subtitle="Add markets and set Live, Suspended, or Disabled"
+          actions={
+            <Pressable
+              onPress={() => setAddOpen(true)}
+              style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.92 }]}>
+              <Ionicons name="add" size={16} color={Brand.white} />
+              <Text style={styles.addBtnText}>Add country</Text>
+            </Pressable>
+          }
+        />
+      }>
       {loading && !data ? <AdminLoading variant="cards" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
 

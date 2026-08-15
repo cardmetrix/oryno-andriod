@@ -28,8 +28,11 @@ export default function AdminGatewaysScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Gateways" subtitle="Payment rails" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Gateways" subtitle="Payment rails" />}>
       {loading && !data ? <AdminLoading variant="cards" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

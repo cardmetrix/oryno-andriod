@@ -106,8 +106,9 @@ export default function HistoryScreen() {
 
   if (loading && !items.length && !error) {
     return (
-      <Screen scroll>
-        <HistoryHeader downloading={false} onDownload={() => undefined} />
+      <Screen
+        scroll
+        header={<HistoryHeader downloading={false} onDownload={() => undefined} />}>
         <HistorySkeleton />
       </Screen>
     );
@@ -115,8 +116,9 @@ export default function HistoryScreen() {
 
   if (error && !items.length) {
     return (
-      <Screen scroll>
-        <HistoryHeader downloading={false} onDownload={() => undefined} />
+      <Screen
+        scroll
+        header={<HistoryHeader downloading={false} onDownload={() => undefined} />}>
         <View style={styles.stateCard}>
           <View style={styles.stateIcon}>
             <Ionicons name="cloud-offline-outline" size={26} color={Brand.error} />
@@ -134,12 +136,16 @@ export default function HistoryScreen() {
   }
 
   return (
-    <Screen scroll refreshing={pulling} onRefresh={onRefresh}>
-      <HistoryHeader
-        downloading={downloading}
-        onDownload={() => setSheet('statement')}
-      />
-
+    <Screen
+      scroll
+      refreshing={pulling}
+      onRefresh={onRefresh}
+      header={
+        <HistoryHeader
+          downloading={downloading}
+          onDownload={() => setSheet('statement')}
+        />
+      }>
       <View style={styles.filterRow}>
         <FilterPill
           label={categoryLabel}
@@ -392,8 +398,8 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 12,
-      marginTop: 4,
-      marginBottom: 10,
+      marginTop: 0,
+      marginBottom: 0,
     },
     title: {
       fontSize: 28,

@@ -316,8 +316,8 @@ export default function KycScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <PageHeader title="KYC Verification" subtitle="Unlock higher limits" showBack />
+      <Screen
+        header={<PageHeader title="KYC Verification" subtitle="Unlock higher limits" showBack />}>
         <FormSkeleton />
       </Screen>
     );
@@ -325,8 +325,8 @@ export default function KycScreen() {
 
   if (error && !submission) {
     return (
-      <Screen>
-        <PageHeader title="KYC Verification" showBack />
+      <Screen
+        header={<PageHeader title="KYC Verification" showBack />}>
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>Couldn’t load KYC</Text>
           <Text style={styles.errorSub}>{error}</Text>
@@ -339,21 +339,25 @@ export default function KycScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={load}>
-      <PageHeader
-        title="KYC Verification"
-        subtitle={
-          kycLevel >= 3
-            ? 'You’re fully verified (Level 3)'
-            : kycStatus === 'pending'
-              ? `Level ${submission?.targetLevel || targetLevel} pending review`
-              : targetLevel
-                ? `Upgrade to Level ${targetLevel}`
-                : 'Verification'
-        }
-        showBack
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={load}
+      header={
+        <PageHeader
+          title="KYC Verification"
+          subtitle={
+            kycLevel >= 3
+              ? 'You’re fully verified (Level 3)'
+              : kycStatus === 'pending'
+                ? `Level ${submission?.targetLevel || targetLevel} pending review`
+                : targetLevel
+                  ? `Upgrade to Level ${targetLevel}`
+                  : 'Verification'
+          }
+          showBack
+        />
+      }>
       {kycStatus === 'pending' ? (
         <PendingVerificationView
           submission={submission}

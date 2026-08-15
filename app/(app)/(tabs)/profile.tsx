@@ -218,9 +218,14 @@ export default function ProfileScreen() {
 
   if (!isLoaded || !display) {
     return (
-      <Screen scroll>
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.sub}>Manage your ORYNO identity</Text>
+      <Screen
+        scroll
+        header={
+          <View>
+            <Text style={styles.title}>Profile</Text>
+            <Text style={styles.sub}>Manage your ORYNO identity</Text>
+          </View>
+        }>
         <ProfileSkeleton />
       </Screen>
     );
@@ -266,10 +271,16 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <Screen scroll refreshing={pulling} onRefresh={onRefresh}>
-      <Text style={styles.title}>Profile</Text>
-      <Text style={styles.sub}>Manage your ORYNO identity</Text>
-
+    <Screen
+      scroll
+      refreshing={pulling}
+      onRefresh={onRefresh}
+      header={
+        <View>
+          <Text style={styles.title}>Profile</Text>
+          <Text style={styles.sub}>Manage your ORYNO identity</Text>
+        </View>
+      }>
       {/* Hero — matches website orange banner + avatar */}
       <Animated.View entering={FadeInDown.duration(300)} style={styles.heroShell}>
         <LinearGradient
@@ -517,12 +528,12 @@ function makeStyles(colors: ThemeColors) {
     fontSize: 28,
     fontWeight: '800',
     color: colors.charcoal,
-    marginTop: 8,
+    marginTop: 0,
     letterSpacing: -0.4,
   },
   sub: {
     color: colors.grayMedium,
-    marginBottom: 12,
+    marginBottom: 0,
     marginTop: 4,
     fontSize: 14,
     fontWeight: '500',

@@ -155,8 +155,7 @@ export default function WalletScreen() {
 
   if (error && !data) {
     return (
-      <Screen scroll>
-        <WalletHeader />
+      <Screen scroll header={<WalletHeader />}>
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>Wallet unavailable</Text>
           <Text style={styles.errorSub}>{error}</Text>
@@ -175,9 +174,7 @@ export default function WalletScreen() {
   const showLocalSections = walletView === 'local';
 
   return (
-    <Screen scroll refreshing={pulling} onRefresh={onRefresh}>
-      <WalletHeader />
-
+    <Screen scroll refreshing={pulling} onRefresh={onRefresh} header={<WalletHeader />}>
       <ScrollView
         ref={pagerRef}
         horizontal
@@ -403,8 +400,8 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 12,
-      marginTop: 4,
-      marginBottom: 12,
+      marginTop: 0,
+      marginBottom: 0,
     },
     title: {
       fontSize: 28,

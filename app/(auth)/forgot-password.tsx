@@ -74,8 +74,9 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <Screen scroll>
-      <PageHeader title="Forgot Password" subtitle="Reset via email code" />
+    <Screen
+      scroll
+      header={<PageHeader title="Forgot Password" subtitle="Reset via email code" />}>
       <View style={styles.form}>
         {!pending ? (
           <>

@@ -122,12 +122,16 @@ export default function AdminKycScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="KYC Management"
-        subtitle="Review identity submissions and approve or reject"
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="KYC Management"
+          subtitle="Review identity submissions and approve or reject"
+        />
+      }>
       <View style={styles.filters}>
         {FILTERS.map((f) => (
           <Pressable

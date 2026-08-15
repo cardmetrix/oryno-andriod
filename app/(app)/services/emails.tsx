@@ -202,12 +202,15 @@ export default function EmailsScreen() {
     const codeLabel =
       code || message || (polling ? 'Waiting for email…' : '—');
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Rent Email"
-          subtitle="Temporary inboxes for OTP & sign-ups"
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Rent Email"
+            subtitle="Temporary inboxes for OTP & sign-ups"
+            showBack
+          />
+        }>
         <ServiceSuccess
           title="Email reserved"
           subtitle="Copy the address and watch for codes"
@@ -264,13 +267,14 @@ export default function EmailsScreen() {
           loading={submitting}
           onPress={() => void onSubmit()}
         />
+      }
+      header={
+        <PageHeader
+          title="Rent Email"
+          subtitle="Temporary inboxes for OTP & sign-ups"
+          showBack
+        />
       }>
-      <PageHeader
-        title="Rent Email"
-        subtitle="Temporary inboxes for OTP & sign-ups"
-        showBack
-      />
-
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>

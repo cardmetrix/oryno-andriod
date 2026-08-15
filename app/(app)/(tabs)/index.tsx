@@ -110,54 +110,57 @@ export default function HomeScreen() {
   }
 
   return (
-    <Screen scroll refreshing={pulling} onRefresh={onRefresh}>
-      {/* Matches website DashboardHeader */}
-      <View style={styles.header}>
-        <Pressable
-          style={styles.headerIdentity}
-          onPress={() => router.push('/(app)/(tabs)/profile')}
-          accessibilityLabel="Open profile">
-          <View style={styles.logoWell}>
-            <Image
-              source={
-                avatarUrl
-                  ? { uri: avatarUrl }
-                  : require('@/assets/images/oryno-logo.png')
-              }
-              style={[styles.logo, !avatarUrl && styles.logoFallback]}
-              contentFit="cover"
-            />
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              style={[styles.pageTitle, { color: colors.foreground }]}
-              numberOfLines={1}>
-              Welcome back, {firstName} 👋
-            </Text>
-          </View>
-        </Pressable>
-
-        <View style={styles.headerActions}>
+    <Screen
+      scroll
+      refreshing={pulling}
+      onRefresh={onRefresh}
+      header={
+        <View style={styles.header}>
           <Pressable
-            style={[styles.bell, { backgroundColor: colors.muted }]}
-            onPress={() => router.push('/(app)/notifications')}
-            accessibilityLabel={
-              unreadCount > 0
-                ? `Notifications, ${unreadCount} unread`
-                : 'Notifications'
-            }>
-            <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
-            {unreadCount > 0 ? (
-              <View style={[styles.bellBadge, { borderColor: colors.muted }]}>
-                <Text style={styles.bellBadgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
-              </View>
-            ) : null}
+            style={styles.headerIdentity}
+            onPress={() => router.push('/(app)/(tabs)/profile')}
+            accessibilityLabel="Open profile">
+            <View style={styles.logoWell}>
+              <Image
+                source={
+                  avatarUrl
+                    ? { uri: avatarUrl }
+                    : require('@/assets/images/oryno-logo.png')
+                }
+                style={[styles.logo, !avatarUrl && styles.logoFallback]}
+                contentFit="cover"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[styles.pageTitle, { color: colors.foreground }]}
+                numberOfLines={1}>
+                Welcome back, {firstName} 👋
+              </Text>
+            </View>
           </Pressable>
-        </View>
-      </View>
 
+          <View style={styles.headerActions}>
+            <Pressable
+              style={[styles.bell, { backgroundColor: colors.muted }]}
+              onPress={() => router.push('/(app)/notifications')}
+              accessibilityLabel={
+                unreadCount > 0
+                  ? `Notifications, ${unreadCount} unread`
+                  : 'Notifications'
+              }>
+              <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
+              {unreadCount > 0 ? (
+                <View style={[styles.bellBadge, { borderColor: colors.muted }]}>
+                  <Text style={styles.bellBadgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
+        </View>
+      }>
       <WalletCard
         balanceFormatted={data?.primary.balanceFormatted}
         label={`${currency} Wallet`}
@@ -290,8 +293,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    paddingTop: 0,
-    paddingBottom: 32,
+    paddingTop: 2,
+    paddingBottom: 0,
   },
   headerIdentity: {
     flex: 1,

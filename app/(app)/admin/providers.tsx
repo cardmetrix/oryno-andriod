@@ -28,8 +28,11 @@ export default function AdminProvidersScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Providers" subtitle="Integration modes" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Providers" subtitle="Integration modes" />}>
       {loading && !data ? <AdminLoading variant="cards" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

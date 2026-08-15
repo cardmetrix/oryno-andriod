@@ -58,12 +58,16 @@ export default function AdminSettingsScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading || saving} onRefresh={reload}>
-      <AdminPageHeader
-        title="Admin Settings"
-        subtitle="Console preferences, security, and operational defaults"
-      />
-
+    <Screen
+      scroll
+      refreshing={loading || saving}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Admin Settings"
+          subtitle="Console preferences, security, and operational defaults"
+        />
+      }>
       {loading && !settings ? <AdminLoading variant="settings" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
 

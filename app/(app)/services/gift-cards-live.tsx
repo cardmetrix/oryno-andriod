@@ -223,13 +223,17 @@ export default function GiftCardsLiveScreen() {
   }
 
   return (
-    <Screen scroll refreshing={refreshing} onRefresh={() => void onRefresh()}>
-      <PageHeader
-        title="Gift Card Live"
-        subtitle="Live rates · tap a card to trade"
-        showBack
-      />
-
+    <Screen
+      scroll
+      refreshing={refreshing}
+      onRefresh={() => void onRefresh()}
+      header={
+        <PageHeader
+          title="Gift Card Live"
+          subtitle="Live rates · tap a card to trade"
+          showBack
+        />
+      }>
       <View style={styles.modeTabs}>
         {(['sell', 'buy'] as const).map((tab) => {
           const active = mode === tab;

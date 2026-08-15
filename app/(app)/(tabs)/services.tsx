@@ -42,10 +42,14 @@ export default function ServicesScreen() {
   const rows = chunkRows(visible, 3);
 
   return (
-    <Screen scroll>
-      <Text style={styles.title}>All Services</Text>
-      <Text style={styles.sub}>One app. Endless possibilities.</Text>
-
+    <Screen
+      scroll
+      header={
+        <View>
+          <Text style={styles.title}>All Services</Text>
+          <Text style={styles.sub}>One app. Endless possibilities.</Text>
+        </View>
+      }>
       <Animated.View entering={FadeInDown.duration(320)} style={styles.heroShell}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}
@@ -193,12 +197,12 @@ function makeStyles(colors: ThemeColors) {
     fontSize: 24,
     fontWeight: '800',
     color: colors.charcoal,
-    marginTop: 4,
+    marginTop: 0,
     letterSpacing: -0.4,
   },
   sub: {
     color: colors.grayMedium,
-    marginBottom: 8,
+    marginBottom: 0,
     marginTop: 2,
     fontSize: 13,
     fontWeight: '500',

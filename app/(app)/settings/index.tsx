@@ -108,12 +108,14 @@ export default function SettingsScreen() {
 
   if (loading && !data) {
     return (
-      <Screen>
-        <PageHeader
-          title="Settings"
-          subtitle="Preferences, security, and support"
-          showBack
-        />
+      <Screen
+        header={
+          <PageHeader
+            title="Settings"
+            subtitle="Preferences, security, and support"
+            showBack
+          />
+        }>
         <SettingsSkeleton />
       </Screen>
     );
@@ -121,8 +123,8 @@ export default function SettingsScreen() {
 
   if (error && !data) {
     return (
-      <Screen>
-        <PageHeader title="Settings" showBack />
+      <Screen
+        header={<PageHeader title="Settings" showBack />}>
         <View
           style={[
             styles.errorCard,
@@ -148,13 +150,17 @@ export default function SettingsScreen() {
   const verified = data.profile.kycStatus === 'verified';
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={load}>
-      <PageHeader
-        title="Settings"
-        subtitle="Preferences, security, and support"
-        showBack
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={load}
+      header={
+        <PageHeader
+          title="Settings"
+          subtitle="Preferences, security, and support"
+          showBack
+        />
+      }>
       <Animated.View entering={FadeInDown.duration(280)} style={styles.accountHeroWrap}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}

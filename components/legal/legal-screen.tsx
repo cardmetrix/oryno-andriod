@@ -30,8 +30,9 @@ export function LegalScreen({
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   return (
-    <Screen scroll>
-      <PageHeader title={title} subtitle={`Effective ${LEGAL_EFFECTIVE_DATE}`} />
+    <Screen
+      scroll
+      header={<PageHeader title={title} subtitle={`Effective ${LEGAL_EFFECTIVE_DATE}`} />}>
       <Text style={styles.intro}>{intro}</Text>
 
       <View style={styles.sections}>

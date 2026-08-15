@@ -26,8 +26,11 @@ export default function AdminReportsScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Reports" subtitle="Last 30 days" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Reports" subtitle="Last 30 days" />}>
       {loading && !data ? <AdminLoading variant="reports" /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

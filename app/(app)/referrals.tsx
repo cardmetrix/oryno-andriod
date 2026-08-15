@@ -123,12 +123,15 @@ export default function ReferralsScreen() {
 
   if (loading && !data) {
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Refer & Earn"
-          subtitle="Invite friends and earn when they transact"
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Refer & Earn"
+            subtitle="Invite friends and earn when they transact"
+            showBack
+          />
+        }>
         <FormSkeleton />
       </Screen>
     );
@@ -136,12 +139,15 @@ export default function ReferralsScreen() {
 
   if (!data) {
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Refer & Earn"
-          subtitle="Invite friends and earn when they transact"
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Refer & Earn"
+            subtitle="Invite friends and earn when they transact"
+            showBack
+          />
+        }>
         <View style={styles.empty}>
           <Text style={styles.emptyText}>Couldn’t load your referral details.</Text>
           <Button title="Retry" onPress={() => void load()} />
@@ -151,13 +157,15 @@ export default function ReferralsScreen() {
   }
 
   return (
-    <Screen scroll>
-      <PageHeader
-        title="Refer & Earn"
-        subtitle="Invite friends and earn when they transact"
-        showBack
-      />
-
+    <Screen
+      scroll
+      header={
+        <PageHeader
+          title="Refer & Earn"
+          subtitle="Invite friends and earn when they transact"
+          showBack
+        />
+      }>
       <Animated.View entering={FadeInDown.duration(280)} style={styles.heroWrap}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}

@@ -569,17 +569,20 @@ export default function GiftCardsScreen() {
             );
 
   return (
-    <Screen scroll footer={stickyFooter}>
-      <PageHeader
-        title="Gift Cards"
-        subtitle={
-          mode === 'sell'
-            ? 'Sell gift cards for Naira wallet credit'
-            : 'Buy digital gift cards with your wallet'
-        }
-        showBack
-      />
-
+    <Screen
+      scroll
+      footer={stickyFooter}
+      header={
+        <PageHeader
+          title="Gift Cards"
+          subtitle={
+            mode === 'sell'
+              ? 'Sell gift cards for Naira wallet credit'
+              : 'Buy digital gift cards with your wallet'
+          }
+          showBack
+        />
+      }>
       <View style={styles.modeTabs}>
         {(['sell', 'buy'] as const).map((tab) => {
           const active = mode === tab;

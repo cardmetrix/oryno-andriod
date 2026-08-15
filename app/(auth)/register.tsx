@@ -118,7 +118,7 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.form}>
-        <TextField label="Full Name" value={fullName} onChangeText={setFullName} placeholder="Chidi Okechukwu" />
+        <TextField label="Full Name" value={fullName} onChangeText={setFullName} placeholder="John Doe" />
         <TextField
           label="Username"
           value={username}
@@ -126,7 +126,7 @@ export default function RegisterScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="username"
-          placeholder="chidi_ok"
+          placeholder="john_doe"
         />
         <TextField
           label="Email Address"

@@ -565,16 +565,19 @@ export default function SocialScreen() {
 
   if (success && selected) {
     return (
-      <Screen scroll>
-        <PageHeader
-          title="Social Boosting"
-          subtitle={
-            liveMode
-              ? 'Live boosts · followers, likes, views'
-              : 'Grow followers, likes, views'
-          }
-          showBack
-        />
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Social Boosting"
+            subtitle={
+              liveMode
+                ? 'Live boosts · followers, likes, views'
+                : 'Grow followers, likes, views'
+            }
+            showBack
+          />
+        }>
         <ServiceSuccess
           variant={polling ? 'pending' : 'success'}
           title="Boost ordered"
@@ -622,17 +625,18 @@ export default function SocialScreen() {
             {submitting ? 'Processing…' : submitLabel}
           </Text>
         </Pressable>
+      }
+      header={
+        <PageHeader
+          title="Social Boosting"
+          subtitle={
+            liveMode
+              ? 'Live boosts · followers, likes, views'
+              : 'Grow followers, likes, views'
+          }
+          showBack
+        />
       }>
-      <PageHeader
-        title="Social Boosting"
-        subtitle={
-          liveMode
-            ? 'Live boosts · followers, likes, views'
-            : 'Grow followers, likes, views'
-        }
-        showBack
-      />
-
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>

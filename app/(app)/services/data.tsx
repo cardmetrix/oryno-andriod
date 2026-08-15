@@ -233,8 +233,9 @@ export default function DataScreen() {
 
   if (success && selected) {
     return (
-      <Screen scroll>
-        <PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />
+      <Screen
+        scroll
+        header={<PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />}>
         <ServiceSuccess
           title="Data sent"
           subtitle={`${selected.name} to ${phone}`}
@@ -271,9 +272,8 @@ export default function DataScreen() {
                 : 'Select a plan'}
           </Text>
         </Pressable>
-      }>
-      <PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />
-
+      }
+      header={<PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />}>
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>

@@ -124,12 +124,16 @@ export default function AdminUsersScreen() {
   const { data, loading, error, reload } = useAdminQuery<{ users: UserRow[] }>(path);
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader
-        title="Users"
-        subtitle="Balances, KYC, suspend / activate, and wallet controls"
-      />
-
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={
+        <AdminPageHeader
+          title="Users"
+          subtitle="Balances, KYC, suspend / activate, and wallet controls"
+        />
+      }>
       <View style={styles.searchWrap}>
         <Ionicons name="search" size={16} color={colors.mutedForeground} />
         <TextInput

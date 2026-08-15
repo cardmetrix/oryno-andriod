@@ -318,15 +318,19 @@ export default function AdminPricingScreen() {
   }
 
   return (
-    <Screen scroll refreshing={loading || catalogLoading} onRefresh={() => {
-      void load();
-      void loadCatalog();
-    }}>
-      <AdminPageHeader
-        title="Service pricing"
-        subtitle="Select a service to browse live prices, then update any item."
-      />
-
+    <Screen
+      scroll
+      refreshing={loading || catalogLoading}
+      onRefresh={() => {
+        void load();
+        void loadCatalog();
+      }}
+      header={
+        <AdminPageHeader
+          title="Service pricing"
+          subtitle="Select a service to browse live prices, then update any item."
+        />
+      }>
       {loading && !data ? <AdminLoading variant="cards" /> : null}
       {error ? <AdminError message={error} onRetry={load} /> : null}
 

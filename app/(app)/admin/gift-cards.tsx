@@ -32,8 +32,11 @@ export default function AdminGiftCardsScreen() {
   );
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Gift Cards" subtitle="Rates and recent orders" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Gift Cards" subtitle="Rates and recent orders" />}>
       {loading && !data ? <AdminLoading /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

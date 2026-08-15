@@ -42,7 +42,7 @@ export function PageHeader({ title, subtitle, showBack = true, right }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingTop: 4, paddingBottom: 8 },
+  wrap: { paddingTop: 2, paddingBottom: 0 },
   row: { flexDirection: 'row', alignItems: 'center' },
   back: {
     width: 36,

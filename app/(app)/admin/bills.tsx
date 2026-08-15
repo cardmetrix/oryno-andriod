@@ -36,8 +36,11 @@ export default function AdminBillsScreen() {
   const { data, loading, error, reload } = useAdminQuery<Response>(endpoints.admin.bills);
 
   return (
-    <Screen scroll refreshing={loading} onRefresh={reload}>
-      <AdminPageHeader title="Bill Providers" subtitle="Catalog and recent payments" />
+    <Screen
+      scroll
+      refreshing={loading}
+      onRefresh={reload}
+      header={<AdminPageHeader title="Bill Providers" subtitle="Catalog and recent payments" />}>
       {loading && !data ? <AdminLoading /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
       {data ? (

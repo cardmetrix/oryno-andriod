@@ -166,8 +166,8 @@ export default function HistoryDetailScreen() {
 
   if (loading) {
     return (
-      <Screen>
-        <PageHeader title="Receipt" subtitle="Transaction details" showBack />
+      <Screen
+        header={<PageHeader title="Receipt" subtitle="Transaction details" showBack />}>
         <ReceiptSkeleton />
       </Screen>
     );
@@ -175,8 +175,8 @@ export default function HistoryDetailScreen() {
 
   if (!tx || error) {
     return (
-      <Screen>
-        <PageHeader title="Receipt" subtitle="Transaction details" showBack />
+      <Screen
+        header={<PageHeader title="Receipt" subtitle="Transaction details" showBack />}>
         <View style={styles.errorCard}>
           <Text style={styles.errorTitle}>Receipt unavailable</Text>
           <Text style={styles.errorSub}>
@@ -193,9 +193,9 @@ export default function HistoryDetailScreen() {
   const credit = tx.type === 'credit';
 
   return (
-    <Screen scroll>
-      <PageHeader title="Receipt" subtitle="Transaction details" showBack />
-
+    <Screen
+      scroll
+      header={<PageHeader title="Receipt" subtitle="Transaction details" showBack />}>
       <Animated.View entering={FadeInDown.duration(280)}>
         <View ref={receiptRef} collapsable={false} style={styles.receiptCard}>
           <LinearGradient

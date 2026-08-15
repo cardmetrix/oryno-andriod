@@ -24,12 +24,14 @@ export default function AdminMoreScreen() {
   const items = adminNav.filter((item) => !PRIMARY.has(item.href));
 
   return (
-    <Screen scroll>
-      <AdminPageHeader
-        title="More"
-        subtitle="All admin modules and console tools"
-      />
-
+    <Screen
+      scroll
+      header={
+        <AdminPageHeader
+          title="More"
+          subtitle="All admin modules and console tools"
+        />
+      }>
       <View style={styles.grid}>
         {items.map((item) => (
           <Pressable
