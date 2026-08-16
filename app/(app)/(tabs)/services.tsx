@@ -302,8 +302,6 @@ function makeStyles(colors: ThemeColors) {
     justifyContent: 'center',
     gap: 6,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.grayDivider,
     backgroundColor: colors.card,
     paddingHorizontal: 6,
     paddingVertical: 10,
@@ -311,7 +309,6 @@ function makeStyles(colors: ThemeColors) {
     overflow: 'hidden',
   },
   cardPressed: {
-    borderColor: 'rgba(255,106,0,0.3)',
     backgroundColor: Brand.orangeMuted,
     transform: [{ scale: 0.97 }],
   },

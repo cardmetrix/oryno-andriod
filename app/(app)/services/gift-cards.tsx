@@ -1293,8 +1293,6 @@ function makeStyles(colors: ThemeColors) {
     backLinkText: { fontSize: 13, fontWeight: '700', color: colors.grayMedium },
     card: {
       borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       padding: 10,
     },

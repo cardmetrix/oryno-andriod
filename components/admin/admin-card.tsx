@@ -34,8 +34,6 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 10,
       backgroundColor: colors.card,
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.border,
       padding: 12,
     },
     head: {

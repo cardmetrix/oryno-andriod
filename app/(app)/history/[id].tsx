@@ -610,8 +610,6 @@ function makeStyles(colors: ThemeColors) {
     errorCard: {
       marginTop: 12,
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.card,
       paddingHorizontal: 12,
       paddingVertical: 40,

@@ -162,8 +162,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(0,0,0,0.05)',
   },
   creditBg: { backgroundColor: 'rgba(52,199,89,0.12)' },
   debitBg: { backgroundColor: Brand.orangeMuted },

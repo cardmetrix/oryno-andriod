@@ -264,8 +264,6 @@ function makeStyles(colors: ThemeColors) {
   backText: { fontSize: 14, fontWeight: '700', color: colors.foreground },
   card: {
     borderRadius: Radius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.card,
     padding: 14,
     shadowColor: '#0F0F12',

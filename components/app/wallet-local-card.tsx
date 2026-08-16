@@ -35,7 +35,7 @@ export function WalletLocalCard({
     <View
       style={[
         styles.shell,
-        { borderColor: colors.border, backgroundColor: colors.card },
+        { backgroundColor: colors.card },
       ]}>
       <LinearGradient
         colors={['#FF8124', Brand.orange, '#E85D00']}
@@ -104,7 +104,6 @@ const styles = StyleSheet.create({
   shell: {
     borderRadius: Radius.card,
     overflow: 'hidden',
-    borderWidth: 1,
     shadowColor: '#0F0F12',
     shadowOpacity: 0.08,
     shadowRadius: 18,

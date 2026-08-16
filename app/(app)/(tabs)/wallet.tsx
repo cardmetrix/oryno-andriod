@@ -427,8 +427,6 @@ function makeStyles(colors: ThemeColors) {
     },
     errorCard: {
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       paddingHorizontal: 12,
       paddingVertical: 28,
@@ -462,8 +460,6 @@ function makeStyles(colors: ThemeColors) {
     statCard: {
       flex: 1,
       borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       padding: 10,
     },
@@ -490,8 +486,6 @@ function makeStyles(colors: ThemeColors) {
     panel: {
       marginTop: 12,
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       padding: 12,
     },

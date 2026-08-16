@@ -358,8 +358,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     overflow: 'hidden',
     minHeight: 140,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   glowA: {
     position: 'absolute',
@@ -467,8 +465,6 @@ function makePanelStyles(colors: ThemeColors) {
       marginTop: 10,
       marginBottom: 28,
       borderRadius: 18,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.card,
       paddingHorizontal: 10,
       paddingTop: 10,

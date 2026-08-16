@@ -114,6 +114,7 @@ export default function HomeScreen() {
       scroll
       refreshing={pulling}
       onRefresh={onRefresh}
+      headerBorder={false}
       header={
         <View style={styles.header}>
           <Pressable
@@ -181,7 +182,7 @@ export default function HomeScreen() {
         style={[
           styles.panel,
           styles.qaPanel,
-          { backgroundColor: colors.card, borderColor: colors.border },
+          { backgroundColor: colors.card },
         ]}>
         <View style={[styles.panelHead, styles.qaHead]}>
           <Text style={[styles.panelTitle, { color: colors.foreground }]}>Quick Actions</Text>
@@ -233,7 +234,7 @@ export default function HomeScreen() {
         style={[
           styles.panel,
           styles.txPanel,
-          { backgroundColor: colors.card, borderColor: colors.border },
+          { backgroundColor: colors.card },
         ]}>
         <View style={[styles.panelHead, styles.txPanelHead]}>
           <Text style={[styles.panelTitle, { color: colors.foreground }]}>
@@ -371,7 +372,6 @@ const styles = StyleSheet.create({
   panel: {
     marginTop: 8,
     borderRadius: 16,
-    borderWidth: 1,
     padding: 10,
     overflow: 'hidden',
     shadowColor: '#0F0F12',
@@ -451,8 +451,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 8,
     paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: 'transparent',
     overflow: 'hidden',
   },
   actionSpacer: {
@@ -463,7 +461,6 @@ const styles = StyleSheet.create({
   },
   actionPressed: {
     backgroundColor: Brand.orangeMuted,
-    borderColor: 'rgba(255,106,0,0.18)',
     opacity: 0.92,
   },
   actionIcon: {
@@ -494,8 +491,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,106,0,0.16)',
   },
   emptyTitle: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
   emptySub: {

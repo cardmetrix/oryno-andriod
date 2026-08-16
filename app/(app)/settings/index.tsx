@@ -528,7 +528,6 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     borderRadius: 22,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   iconBubble: {
@@ -592,7 +591,6 @@ const styles = StyleSheet.create({
   errorCard: {
     marginTop: 12,
     borderRadius: Radius.card,
-    borderWidth: 1,
     padding: 12,
     alignItems: 'center',
   },

@@ -446,8 +446,6 @@ function makeStyles(colors: ThemeColors) {
   grid: { gap: 10 },
   card: {
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.muted,
     padding: 10,
   },

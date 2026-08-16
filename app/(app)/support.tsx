@@ -490,8 +490,6 @@ function makeStyles(colors: ThemeColors) {
   panel: {
     marginBottom: 12,
     borderRadius: Radius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.card,
     padding: 14,
   },

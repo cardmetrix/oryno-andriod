@@ -540,8 +540,6 @@ function makeStyles(colors: ThemeColors) {
     stack: { gap: 10 },
     card: {
       borderRadius: 22,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       padding: 12,
     },

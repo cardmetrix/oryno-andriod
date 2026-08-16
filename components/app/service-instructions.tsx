@@ -39,8 +39,6 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     card: {
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.card,
       padding: 12,
       marginBottom: 4,

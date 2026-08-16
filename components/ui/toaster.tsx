@@ -65,7 +65,7 @@ export function Toaster() {
         key={toast.id}
         entering={FadeInUp.duration(220)}
         exiting={FadeOutUp.duration(180)}
-        style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}>
+        style={[styles.card, { backgroundColor: tone.bg }]}>
         <Ionicons name={tone.icon} size={20} color={tone.color} />
         <View style={styles.copy}>
           <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
@@ -106,7 +106,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
     borderRadius: 16,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     shadowColor: '#1C1C1E',

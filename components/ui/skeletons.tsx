@@ -376,8 +376,6 @@ function makeStyles(colors: ThemeColors) {
   },
   card: {
     borderRadius: Radius.card,
-    borderWidth: 1,
-    borderColor: colors.grayDivider,
     padding: 12,
     backgroundColor: colors.card,
   },

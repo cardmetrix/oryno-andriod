@@ -909,8 +909,6 @@ function makeStyles(colors: ThemeColors) {
     card: {
       marginBottom: 8,
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
       padding: 10,
     },
@@ -1017,8 +1015,6 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'flex-start',
       gap: 12,
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
       backgroundColor: colors.grayLight,
       paddingHorizontal: 10,
       paddingVertical: 10,

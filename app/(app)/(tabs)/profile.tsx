@@ -1,10 +1,10 @@
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useAuth, useReverification, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
+import { OtpInput } from '@/components/auth/otp-input';
 import { Screen } from '@/components/ui/screen';
 import { ProfileSkeleton } from '@/components/ui/skeletons';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
@@ -24,6 +25,11 @@ import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
 import { APP_VERSION_LABEL } from '@/lib/app-version';
+import {
+  clerkErrorMessage,
+  isValidEmail,
+  normalizeEmail,
+} from '@/lib/clerk-errors';
 import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { unregisterPushToken } from '@/lib/push-notifications';
@@ -31,6 +37,10 @@ import { queryKeys } from '@/lib/query-keys';
 import type { ProfileDto } from '@/lib/types';
 
 const MAX_AVATAR_BYTES = 4 * 1024 * 1024;
+
+type EmailAddressResource = NonNullable<
+  NonNullable<ReturnType<typeof useUser>['user']>['emailAddresses'][number]
+>;
 
 function initialsFrom(name?: string | null) {
   if (!name) return 'OR';
@@ -55,7 +65,21 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [form, setForm] = useState({ fullName: '', phone: '', username: '' });
+  const [form, setForm] = useState({
+    fullName: '',
+    phone: '',
+    username: '',
+    email: '',
+  });
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [emailCode, setEmailCode] = useState('');
+  const [emailObj, setEmailObj] = useState<EmailAddressResource | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
+
+  const createEmailAddress = useReverification((email: string) =>
+    user?.createEmailAddress({ email }),
+  );
 
   const bootstrapFromClerk = useMemo(() => {
     if (!user) return null;
@@ -100,6 +124,7 @@ export default function ProfileScreen() {
         fullName: data.profile.fullName,
         phone: data.profile.phone || '',
         username: data.profile.username || '',
+        email: data.profile.email || '',
       });
     } catch {
       // Keep Clerk bootstrap visible
@@ -118,6 +143,7 @@ export default function ProfileScreen() {
             fullName: bootstrapFromClerk.fullName,
             phone: bootstrapFromClerk.phone || '',
             username: bootstrapFromClerk.username || '',
+            email: bootstrapFromClerk.email || '',
           },
     );
     void loadProfile();
@@ -125,30 +151,134 @@ export default function ProfileScreen() {
 
   const { pulling, onRefresh } = usePullRefresh(loadProfile);
 
+  useEffect(() => {
+    if (!verifyingEmail || resendSeconds <= 0) return;
+    const id = setTimeout(() => setResendSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [verifyingEmail, resendSeconds]);
+
   const display = profile || bootstrapFromClerk;
 
+  async function syncProfileFields() {
+    const data = await api.patch<{ profile?: ProfileDto; error?: string }>(
+      endpoints.profile,
+      {
+        fullName: form.fullName.trim(),
+        phone: form.phone.trim(),
+        username: form.username.trim(),
+      },
+    );
+    if (!data.profile) throw new Error(data.error || 'Could not save profile');
+    setProfile(data.profile);
+    queryClient.setQueryData(queryKeys.profile, { profile: data.profile });
+    return data.profile;
+  }
+
+  async function startEmailChange(nextEmail: string) {
+    if (!user) throw new Error('Not signed in');
+    const existing = user.emailAddresses.find(
+      (e) => normalizeEmail(e.emailAddress) === nextEmail,
+    );
+    const target = existing ?? (await createEmailAddress(nextEmail)) ?? null;
+    if (!target) throw new Error('Could not add that email address.');
+    if (target.verification?.status !== 'verified') {
+      await target.prepareVerification({ strategy: 'email_code' });
+    }
+    setEmailObj(target);
+    setEmailCode('');
+    setVerifyingEmail(true);
+    setResendSeconds(45);
+  }
+
   async function saveProfile() {
+    if (!user) return;
+    const nextEmail = normalizeEmail(form.email);
+    const currentEmail = normalizeEmail(display?.email || '');
+    if (!isValidEmail(nextEmail)) {
+      alert.error('Invalid email', 'Enter a valid email address.');
+      return;
+    }
+
     setSaving(true);
     try {
-      const data = await api.patch<{ profile?: ProfileDto; error?: string }>(
-        endpoints.profile,
-        {
-          fullName: form.fullName.trim(),
-          phone: form.phone.trim(),
-          username: form.username.trim(),
-        },
-      );
-      if (!data.profile) throw new Error(data.error || 'Could not save profile');
-      setProfile(data.profile);
-      queryClient.setQueryData(queryKeys.profile, { profile: data.profile });
+      await syncProfileFields();
+
+      if (nextEmail !== currentEmail) {
+        await startEmailChange(nextEmail);
+        alert.success('Check your email', 'We sent a verification code to your new address.');
+        return;
+      }
+
       setEditing(false);
-      await user?.reload();
+      await user.reload();
       alert.success('Saved', 'Your profile has been updated.');
     } catch (err) {
-      alert.error('Error', err instanceof Error ? err.message : 'Save failed');
+      alert.error('Error', clerkErrorMessage(err, 'Save failed'));
     } finally {
       setSaving(false);
     }
+  }
+
+  async function verifyEmailCode(code = emailCode) {
+    if (!user || !emailObj) return;
+    const cleaned = code.replace(/\D/g, '');
+    if (cleaned.length < 6) {
+      alert.error('Code required', 'Enter the 6-digit code from your email.');
+      return;
+    }
+    setEmailBusy(true);
+    try {
+      let target = emailObj;
+      if (target.verification?.status !== 'verified') {
+        const result = await target.attemptVerification({ code: cleaned });
+        if (result.verification.status !== 'verified') {
+          throw new Error('Invalid or expired verification code.');
+        }
+        target = result;
+      }
+
+      await user.update({ primaryEmailAddressId: target.id });
+      const refreshed = await user.reload();
+      await Promise.all(
+        refreshed.emailAddresses
+          .filter((e) => e.id !== target.id)
+          .map((e) => e.destroy().catch(() => null)),
+      );
+
+      const nextProfile = await syncProfileFields();
+      setForm((f) => ({ ...f, email: nextProfile.email }));
+      setVerifyingEmail(false);
+      setEmailObj(null);
+      setEmailCode('');
+      setEditing(false);
+      await user.reload();
+      alert.success('Updated', 'Your email has been updated.');
+    } catch (err) {
+      alert.error('Verification failed', clerkErrorMessage(err, 'Could not verify email'));
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  async function resendEmailCode() {
+    if (!emailObj || resendSeconds > 0) return;
+    setEmailBusy(true);
+    try {
+      await emailObj.prepareVerification({ strategy: 'email_code' });
+      setResendSeconds(45);
+      alert.success('Sent', 'A new verification code was sent.');
+    } catch (err) {
+      alert.error('Error', clerkErrorMessage(err, 'Could not resend code'));
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
+  function resetEmailVerification() {
+    setVerifyingEmail(false);
+    setEmailObj(null);
+    setEmailCode('');
+    setResendSeconds(0);
   }
 
   async function onPickPhoto() {
@@ -352,7 +482,31 @@ export default function ProfileScreen() {
 
       {/* Details / Edit */}
       <Animated.View entering={FadeInDown.delay(60).duration(300)} style={styles.card}>
-        {editing ? (
+        {verifyingEmail ? (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.editForm}>
+            <Text style={[styles.inputLabel, { marginTop: 0 }]}>
+              Verify your new email
+            </Text>
+            <Text style={styles.editHint}>
+              Enter the 6-digit code we sent to {normalizeEmail(form.email)}.
+            </Text>
+            <View style={{ marginTop: 12 }}>
+              <OtpInput
+                value={emailCode}
+                onChange={setEmailCode}
+                onComplete={(code) => void verifyEmailCode(code)}
+              />
+            </View>
+            <Pressable
+              disabled={emailBusy || resendSeconds > 0}
+              onPress={() => void resendEmailCode()}
+              style={{ marginTop: 12, alignSelf: 'center' }}>
+              <Text style={styles.limitLink}>
+                {resendSeconds > 0 ? `Resend in ${resendSeconds}s` : 'Resend code'}
+              </Text>
+            </Pressable>
+          </Animated.View>
+        ) : editing ? (
           <Animated.View entering={FadeIn.duration(200)} style={styles.editForm}>
             <FieldLabel label="Full Name" />
             <TextInput
@@ -369,6 +523,16 @@ export default function ProfileScreen() {
               style={styles.input}
               placeholderTextColor={colors.grayMedium}
             />
+            <FieldLabel label="Email Address" />
+            <TextInput
+              value={form.email}
+              onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              style={styles.input}
+              placeholderTextColor={colors.grayMedium}
+            />
             <FieldLabel label="Phone Number" />
             <TextInput
               value={form.phone}
@@ -378,7 +542,8 @@ export default function ProfileScreen() {
               placeholderTextColor={colors.grayMedium}
             />
             <Text style={styles.editHint}>
-              Email is managed by your Clerk login and can’t be edited here.
+              Changing your email sends a verification code to the new address.
+              Your login email updates after you verify.
             </Text>
           </Animated.View>
         ) : (
@@ -417,16 +582,47 @@ export default function ProfileScreen() {
 
       {/* Actions */}
       <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.actions}>
-        {editing ? (
+        {verifyingEmail ? (
+          <View style={styles.editActions}>
+            <Pressable
+              style={styles.cancelBtn}
+              onPress={() => {
+                resetEmailVerification();
+                setForm({
+                  fullName: display.fullName,
+                  phone: display.phone || '',
+                  username: display.username || '',
+                  email: display.email || '',
+                });
+              }}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.saveBtn, (emailBusy || emailCode.length < 6) && { opacity: 0.6 }]}
+              disabled={emailBusy || emailCode.length < 6}
+              onPress={() => void verifyEmailCode()}>
+              {emailBusy ? (
+                <Text style={styles.saveText}>Verifying…</Text>
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color={Brand.white} />
+                  <Text style={styles.saveText}>Verify</Text>
+                </>
+              )}
+            </Pressable>
+          </View>
+        ) : editing ? (
           <View style={styles.editActions}>
             <Pressable
               style={styles.cancelBtn}
               onPress={() => {
                 setEditing(false);
+                resetEmailVerification();
                 setForm({
                   fullName: display.fullName,
                   phone: display.phone || '',
                   username: display.username || '',
+                  email: display.email || '',
                 });
               }}>
               <Text style={styles.cancelText}>Cancel</Text>
@@ -642,8 +838,6 @@ function makeStyles(colors: ThemeColors) {
   card: {
     marginTop: 12,
     borderRadius: Radius.card,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.card,
     overflow: 'hidden',
   },

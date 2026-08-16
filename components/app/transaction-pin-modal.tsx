@@ -182,8 +182,6 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
       width: '100%',
       maxWidth: 360,
       borderRadius: Radius.xl,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.card,
       padding: 22,
     },

@@ -716,8 +716,6 @@ function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     card: {
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.card,
       padding: 12,
     },
@@ -986,8 +984,6 @@ function makeStyles(colors: ThemeColors) {
     errorCard: {
       marginTop: 12,
       borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.card,
       padding: 12,
       alignItems: 'center',

@@ -21,6 +21,8 @@ type Props = ViewProps & {
   animate?: boolean;
   /** Fixed top bar (e.g. PageHeader). Stays pinned while content scrolls. */
   header?: ReactNode;
+  /** Show hairline under the header. Default true. */
+  headerBorder?: boolean;
   /** Fixed bottom bar (e.g. primary CTA). Stays pinned while content scrolls. */
   footer?: ReactNode;
 };
@@ -33,6 +35,7 @@ export function Screen({
   onRefresh,
   animate = true,
   header,
+  headerBorder = true,
   footer,
   style,
   ...props
@@ -102,6 +105,7 @@ export function Screen({
               backgroundColor: colors.background,
               borderBottomColor: colors.border,
             },
+            !headerBorder && styles.headerBarNoBorder,
           ]}>
           {header}
         </View>
@@ -143,6 +147,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     zIndex: 20,
+  },
+  headerBarNoBorder: {
+    borderBottomWidth: 0,
   },
   footer: {
     paddingHorizontal: 16,

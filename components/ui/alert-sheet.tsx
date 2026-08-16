@@ -122,7 +122,7 @@ export function AlertSheetHost() {
             entering={FadeInUp.duration(280).springify().damping(16)}
             style={[
               styles.card,
-              { backgroundColor: colors.card, borderColor: colors.border },
+              { backgroundColor: colors.card },
             ]}>
             <Pressable
               onPress={onDismiss}
@@ -212,7 +212,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#0F0F12',
     shadowOpacity: 0.2,
     shadowRadius: 32,

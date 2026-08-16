@@ -375,8 +375,6 @@ function makeStyles(colors: ThemeColors) {
     errorText: { color: Brand.error, fontSize: 13, fontWeight: '600' },
     emptyCard: {
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
       backgroundColor: colors.muted,
       padding: 16,
       alignItems: 'center',
