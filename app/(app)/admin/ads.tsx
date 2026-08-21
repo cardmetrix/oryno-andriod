@@ -28,6 +28,7 @@ import { endpoints } from '@/lib/endpoints';
 import { toast } from '@/lib/toast';
 
 type AdStatus = 'draft' | 'live' | 'paused' | 'archived';
+type AdPlacement = 'home_carousel' | 'services_carousel' | 'promo_banner';
 
 type Ad = {
   id: string;
@@ -36,6 +37,8 @@ type Ad = {
   imageUrl: string;
   href: string;
   badge: string | null;
+  placement: AdPlacement;
+  placementLabel?: string;
   status: AdStatus;
   statusLabel: string;
   sortOrder: number;
@@ -52,6 +55,13 @@ type StatusOption = {
   description: string;
 };
 
+type PlacementOption = {
+  value: AdPlacement;
+  label: string;
+  description?: string;
+  maxLive?: number;
+};
+
 type ServiceLinkOption = {
   id: string;
   label: string;
@@ -61,7 +71,9 @@ type ServiceLinkOption = {
 type Response = {
   ads: Ad[];
   statusOptions: StatusOption[];
+  placementOptions?: PlacementOption[];
   serviceLinkOptions?: ServiceLinkOption[];
+  liveCountsByPlacement?: Record<string, number>;
 };
 
 type FormState = {
@@ -70,12 +82,24 @@ type FormState = {
   linkOptionId: string;
   href: string;
   badge: string;
+  placement: AdPlacement;
   status: AdStatus;
   sortOrder: string;
   endsAt: string;
   imageUrl: string;
   image?: { filename: string; mime: string; base64: string; preview: string };
 };
+
+const FALLBACK_PLACEMENTS: PlacementOption[] = [
+  { value: 'home_carousel', label: 'Home carousel' },
+  {
+    value: 'services_carousel',
+    label: 'Services carousel',
+    description: 'Under services list (max 3 live)',
+    maxLive: 3,
+  },
+  { value: 'promo_banner', label: 'Promo banner' },
+];
 
 const FALLBACK_LINKS: ServiceLinkOption[] = [
   { id: 'custom', label: 'Custom URL (enter manually)', href: '' },
@@ -100,6 +124,7 @@ const EMPTY_FORM = (): FormState => ({
   linkOptionId: 'gift-cards',
   href: '/services/gift-cards',
   badge: '',
+  placement: 'home_carousel',
   status: 'live',
   sortOrder: '0',
   endsAt: '',
@@ -139,6 +164,7 @@ export default function AdminAdsScreen() {
     endpoints.admin.ads,
   );
   const [filter, setFilter] = useState<'' | AdStatus>('');
+  const [placementFilter, setPlacementFilter] = useState<'' | AdPlacement>('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ad | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM());
@@ -148,14 +174,30 @@ export default function AdminAdsScreen() {
   const serviceLinkOptions = data?.serviceLinkOptions?.length
     ? data.serviceLinkOptions
     : FALLBACK_LINKS;
+  const placementOptions = data?.placementOptions?.length
+    ? data.placementOptions
+    : FALLBACK_PLACEMENTS;
 
   const ads = useMemo(() => {
-    const rows = data?.ads ?? [];
-    if (!filter) return rows;
-    return rows.filter((a) => a.status === filter);
-  }, [data?.ads, filter]);
+    let rows = data?.ads ?? [];
+    if (filter) rows = rows.filter((a) => a.status === filter);
+    if (placementFilter) {
+      rows = rows.filter((a) => a.placement === placementFilter);
+    }
+    return rows;
+  }, [data?.ads, filter, placementFilter]);
 
   const isCustomLink = form.linkOptionId === 'custom';
+  const selectedPlacement = placementOptions.find((p) => p.value === form.placement);
+  const formMaxLive = selectedPlacement?.maxLive;
+  const formLiveCount =
+    data?.liveCountsByPlacement?.[form.placement] ??
+    (data?.ads ?? []).filter(
+      (a) =>
+        a.placement === form.placement &&
+        a.status === 'live' &&
+        a.id !== editing?.id,
+    ).length;
 
   function openCreate() {
     setEditing(null);
@@ -172,6 +214,7 @@ export default function AdminAdsScreen() {
       linkOptionId: link.linkOptionId,
       href: link.href,
       badge: ad.badge || '',
+      placement: ad.placement || 'home_carousel',
       status: ad.status,
       sortOrder: String(ad.sortOrder),
       endsAt: ad.endsAt ? ad.endsAt.slice(0, 16) : '',
@@ -237,6 +280,7 @@ export default function AdminAdsScreen() {
         subtitle: form.subtitle.trim() || null,
         href: form.href.trim(),
         badge: form.badge.trim() || null,
+        placement: form.placement,
         status: form.status,
         sortOrder: Number(form.sortOrder) || 0,
         endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
@@ -311,7 +355,7 @@ export default function AdminAdsScreen() {
       header={
         <AdminPageHeader
           title="Ads"
-          subtitle="Home carousel creatives, schedule & archive"
+          subtitle="Home & services carousel creatives, links & schedule"
           actions={
             <Pressable style={styles.addBtn} onPress={openCreate}>
               <Ionicons name="add" size={18} color={Brand.white} />
@@ -324,9 +368,39 @@ export default function AdminAdsScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filters}>
+        <Pressable
+          onPress={() => setPlacementFilter('')}
+          style={[styles.chip, placementFilter === '' && styles.chipActive]}>
+          <Text
+            style={[
+              styles.chipText,
+              placementFilter === '' && styles.chipTextActive,
+            ]}>
+            all placements
+          </Text>
+        </Pressable>
+        {placementOptions.map((opt) => {
+          const active = placementFilter === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => setPlacementFilter(opt.value)}
+              style={[styles.chip, active && styles.chipActive]}>
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filters}>
         {STATUS_FILTERS.map((key) => {
           const active = filter === key;
-          const label = key ? key : 'all';
+          const label = key ? key : 'all status';
           return (
             <Pressable
               key={label}
@@ -371,6 +445,8 @@ export default function AdminAdsScreen() {
                   {ad.subtitle || ad.href}
                 </Text>
                 <Text style={styles.meta}>
+                  {ad.placementLabel || ad.placement}
+                  {' · '}
                   Order {ad.sortOrder}
                   {ad.endsAt
                     ? ` · Expires ${new Date(ad.endsAt).toLocaleString()}`
@@ -443,6 +519,37 @@ export default function AdminAdsScreen() {
           </View>
 
           <ScrollView contentContainerStyle={styles.modalBody}>
+            <Text style={styles.label}>Placement</Text>
+            <View style={styles.linkOptions}>
+              {placementOptions.map((opt) => {
+                const active = form.placement === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() =>
+                      setForm((f) => ({ ...f, placement: opt.value }))
+                    }
+                    style={[styles.linkChip, active && styles.linkChipOn]}>
+                    <Text
+                      style={[
+                        styles.linkChipText,
+                        active && styles.linkChipTextOn,
+                      ]}
+                      numberOfLines={1}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {formMaxLive != null ? (
+              <Text style={styles.linkHint}>
+                Max {formMaxLive} live
+                {form.status === 'live'
+                  ? ` · ${formLiveCount}/${formMaxLive} other live`
+                  : ''}
+              </Text>
+            ) : null}
             <Field
               label="Title"
               value={form.title}

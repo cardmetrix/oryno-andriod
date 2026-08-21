@@ -114,7 +114,6 @@ export default function HomeScreen() {
       scroll
       refreshing={pulling}
       onRefresh={onRefresh}
-      headerBorder={false}
       header={
         <View style={styles.header}>
           <Pressable

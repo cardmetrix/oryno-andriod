@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-import { fetchHomeAds } from '@/hooks/use-ads';
+import { fetchAds } from '@/hooks/use-ads';
 import { fetchNotifications } from '@/hooks/use-notifications-query';
 import { fetchProfile } from '@/hooks/use-profile';
 import { fetchWallet } from '@/hooks/use-wallet';
@@ -72,7 +72,12 @@ export async function bootstrapSignedInSession(options: {
     });
     void queryClient.prefetchQuery({
       queryKey: queryKeys.ads('home_carousel'),
-      queryFn: fetchHomeAds,
+      queryFn: () => fetchAds('home_carousel'),
+      staleTime: STALE.ads,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.ads('services_carousel'),
+      queryFn: () => fetchAds('services_carousel'),
       staleTime: STALE.ads,
     });
     return;
@@ -107,7 +112,12 @@ export async function bootstrapSignedInSession(options: {
   });
   void queryClient.prefetchQuery({
     queryKey: queryKeys.ads('home_carousel'),
-    queryFn: fetchHomeAds,
+    queryFn: () => fetchAds('home_carousel'),
+    staleTime: STALE.ads,
+  });
+  void queryClient.prefetchQuery({
+    queryKey: queryKeys.ads('services_carousel'),
+    queryFn: () => fetchAds('services_carousel'),
     staleTime: STALE.ads,
   });
 }

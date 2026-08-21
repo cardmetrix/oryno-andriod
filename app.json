@@ -19,7 +19,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F94F08",
+        "backgroundColor": "#F75605",
         "foregroundImage": "./assets/images/oryno-adaptive-icon.png",
         "monochromeImage": "./assets/images/oryno-monochrome-icon.png"
       },

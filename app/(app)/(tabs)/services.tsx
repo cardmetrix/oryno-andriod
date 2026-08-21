@@ -13,6 +13,7 @@ import {
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { Screen } from '@/components/ui/screen';
+import { AdCarousel } from '@/components/app/ad-carousel';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import {
@@ -151,6 +152,10 @@ export default function ServicesScreen() {
           </View>
         )}
       </View>
+
+      <Animated.View entering={FadeInDown.delay(120).duration(320)}>
+        <AdCarousel placement="services_carousel" reserveSpaceWhileLoading={false} />
+      </Animated.View>
     </Screen>
   );
 }

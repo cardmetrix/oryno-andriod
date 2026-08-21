@@ -8,7 +8,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
-import { useHomeAds } from '@/hooks/use-ads';
+import { useAds, type AdPlacement } from '@/hooks/use-ads';
 
 const INTERVAL_MS = 10_000;
 const DEFAULT_COLORS = [
@@ -37,10 +37,19 @@ function openAdHref(href: string) {
   router.push(toAppHref(value) as never);
 }
 
-/** Live ads from /api/ads — reserves height while loading to avoid layout jump. */
-export function AdCarousel() {
+type AdCarouselProps = {
+  placement?: AdPlacement;
+  /** When false, render nothing while loading (services screen). */
+  reserveSpaceWhileLoading?: boolean;
+};
+
+/** Live ads from /api/ads — hides completely when there are no ads. */
+export function AdCarousel({
+  placement = 'home_carousel',
+  reserveSpaceWhileLoading = true,
+}: AdCarouselProps) {
   const { colors } = useAppTheme();
-  const { ads, loaded } = useHomeAds();
+  const { ads, loaded } = useAds(placement);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -56,6 +65,7 @@ export function AdCarousel() {
   }, [ads.length]);
 
   if (!loaded) {
+    if (!reserveSpaceWhileLoading) return null;
     return (
       <View
         style={[

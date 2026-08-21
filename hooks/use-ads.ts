@@ -8,6 +8,8 @@ import { endpoints } from '@/lib/endpoints';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 
+export type AdPlacement = 'home_carousel' | 'services_carousel' | 'promo_banner';
+
 export type AdSlide = {
   id: string;
   title: string;
@@ -24,7 +26,7 @@ const DEFAULT_COLORS = [
   'transparent',
 ] as const;
 
-export async function fetchHomeAds() {
+export async function fetchAds(placement: AdPlacement = 'home_carousel') {
   const json = await api.get<{
     ads?: Array<{
       id: string;
@@ -35,7 +37,7 @@ export async function fetchHomeAds() {
       badge?: string | null;
       overlayColors?: string[];
     }>;
-  }>(`${endpoints.ads}?placement=home_carousel`);
+  }>(`${endpoints.ads}?placement=${placement}`);
 
   return (json.ads ?? []).map(
     (ad): AdSlide => ({
@@ -50,12 +52,17 @@ export async function fetchHomeAds() {
   );
 }
 
-export function useHomeAds() {
+/** @deprecated Prefer fetchAds('home_carousel') */
+export async function fetchHomeAds() {
+  return fetchAds('home_carousel');
+}
+
+export function useAds(placement: AdPlacement = 'home_carousel') {
   const { isLoaded, isSignedIn } = useAuth();
 
   const query = useQuery({
-    queryKey: queryKeys.ads('home_carousel'),
-    queryFn: fetchHomeAds,
+    queryKey: queryKeys.ads(placement),
+    queryFn: () => fetchAds(placement),
     enabled: isLoaded && Boolean(isSignedIn),
     staleTime: STALE.ads,
   });
@@ -75,4 +82,12 @@ export function useHomeAds() {
     isFetching: query.isFetching,
     refresh: () => query.refetch(),
   };
+}
+
+export function useHomeAds() {
+  return useAds('home_carousel');
+}
+
+export function useServicesAds() {
+  return useAds('services_carousel');
 }
