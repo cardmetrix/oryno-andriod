@@ -12,6 +12,7 @@ import Animated from 'react-native-reanimated';
 
 import { cardEntering } from '@/lib/motion';
 
+import { LucideGiftIcon } from '@/components/icons/lucide-gift-icon';
 import { PageHeader } from '@/components/app/page-header';
 import { PhoneNumberField } from '@/components/app/phone-number-field';
 import { ServiceSuccess } from '@/components/app/service-success';
@@ -365,7 +366,7 @@ export default function AirtimeScreen() {
           })}
         </View>
         <View style={styles.cashbackRow}>
-          <Ionicons name="gift-outline" size={14} color={Brand.orange} />
+          <LucideGiftIcon size={14} color={Brand.orange} strokeWidth={2} />
           <Text style={styles.cashbackHint}>Est. cashback {money(cashback)}</Text>
         </View>
       </Animated.View>

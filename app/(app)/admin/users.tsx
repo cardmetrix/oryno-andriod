@@ -32,6 +32,8 @@ type UserRow = {
   country: string;
   status: string;
   statusLabel: string;
+  role?: 'user' | 'admin';
+  roleLabel?: string;
   kyc: string;
   kycLabel: string;
   balance: string;
@@ -54,6 +56,8 @@ type UserDetail = {
     countryCode: string | null;
     status: string;
     statusLabel: string;
+    role?: 'user' | 'admin';
+    roleLabel?: string;
     kyc: string;
     kycLabel: string;
     lastLoginAt: string | null;
@@ -103,6 +107,12 @@ const KYC_FILTERS = [
   { key: 'rejected', label: 'Rejected' },
 ];
 
+const ROLE_FILTERS = [
+  { key: '', label: 'All roles' },
+  { key: 'user', label: 'User' },
+  { key: 'admin', label: 'Admin' },
+];
+
 export default function AdminUsersScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -110,6 +120,7 @@ export default function AdminUsersScreen() {
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [kycFilter, setKycFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [manageId, setManageId] = useState<string | null>(null);
 
   const path = useMemo(() => {
@@ -117,9 +128,10 @@ export default function AdminUsersScreen() {
     if (q.trim()) params.set('q', q.trim());
     if (statusFilter) params.set('status', statusFilter);
     if (kycFilter) params.set('kyc', kycFilter);
+    if (roleFilter) params.set('role', roleFilter);
     const qs = params.toString();
     return qs ? `${endpoints.admin.users}?${qs}` : endpoints.admin.users;
-  }, [q, statusFilter, kycFilter]);
+  }, [q, statusFilter, kycFilter, roleFilter]);
 
   const { data, loading, error, reload } = useAdminQuery<{ users: UserRow[] }>(path);
 
@@ -167,6 +179,16 @@ export default function AdminUsersScreen() {
           />
         ))}
       </View>
+      <View style={styles.filterRow}>
+        {ROLE_FILTERS.map((f) => (
+          <Chip
+            key={`r-${f.key || 'all'}`}
+            label={f.label}
+            active={roleFilter === f.key}
+            onPress={() => setRoleFilter(f.key)}
+          />
+        ))}
+      </View>
 
       {loading && !data ? <AdminLoading variant="table" rows={8} /> : null}
       {error ? <AdminError message={error} onRetry={reload} /> : null}
@@ -192,6 +214,7 @@ export default function AdminUsersScreen() {
                   <Text style={styles.balance}>{u.balance}</Text>
                   <View style={styles.badges}>
                     <StatusBadge status={u.statusLabel} />
+                    <StatusBadge status={u.roleLabel || (u.role === 'admin' ? 'Admin' : 'User')} />
                     <StatusBadge status={u.kycLabel} />
                   </View>
                 </View>
@@ -331,9 +354,34 @@ function UserManageSheet({
                 <Text style={styles.sub}>{detail.user.email}</Text>
                 <View style={[styles.badges, { marginTop: 8 }]}>
                   <StatusBadge status={detail.user.statusLabel} />
+                  <StatusBadge
+                    status={
+                      detail.user.roleLabel ||
+                      (detail.user.role === 'admin' ? 'Admin' : 'User')
+                    }
+                  />
                   <StatusBadge status={detail.user.kycLabel} />
                   <Text style={styles.meta}>{detail.user.country}</Text>
                 </View>
+
+                <Section title="App role">
+                  <View style={styles.actionGrid}>
+                    <ActionBtn
+                      label="Set as user"
+                      disabled={busy || detail.user.role === 'user'}
+                      onPress={() => void patch({ role: 'user' }, 'Role set to user')}
+                    />
+                    <ActionBtn
+                      label="Set as admin"
+                      primary
+                      disabled={busy || detail.user.role === 'admin'}
+                      onPress={() => void patch({ role: 'admin' }, 'Role set to admin')}
+                    />
+                  </View>
+                  <Text style={[styles.sub, { marginTop: 8 }]}>
+                    Admins can unlock the admin console with the shared passcode.
+                  </Text>
+                </Section>
 
                 <Section title="Balances">
                   {detail.wallets.length === 0 ? (

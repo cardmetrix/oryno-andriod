@@ -80,6 +80,7 @@ export default function ProfileScreen() {
       avatarUrl,
       countryCode: null,
       countryName: 'Loading…',
+      role: 'user',
       kycStatus: 'unverified',
       kycLevel: 0,
       kycLabel: 'Checking…',

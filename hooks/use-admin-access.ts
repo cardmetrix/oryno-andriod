@@ -6,7 +6,7 @@ import type { AdminMeResponse } from '@/lib/admin/types';
 
 /**
  * Lightweight check for home-banner / entry — does not require passcode session.
- * Shows access when user is an admin or can bootstrap.
+ * Shows access when user is an admin (users.role=admin or staff row) or can bootstrap.
  */
 export function useAdminAccess() {
   const { isSignedIn, isLoaded } = useAuth();

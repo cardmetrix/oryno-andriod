@@ -103,6 +103,8 @@ export type ProfileDto = {
   avatarUrl: string | null;
   countryCode: string | null;
   countryName: string;
+  /** App role: user (default) or admin */
+  role: 'user' | 'admin';
   kycStatus: string;
   kycLevel: number;
   kycLabel: string;
@@ -146,6 +148,7 @@ export type SyncResponse = {
     phone: string | null;
     countryCode: string;
     status: string;
+    role: 'user' | 'admin';
     kycStatus: string;
   };
   country: CountryInfo;

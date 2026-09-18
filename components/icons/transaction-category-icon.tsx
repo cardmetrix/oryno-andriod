@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
+import { LucideGiftIcon } from '@/components/icons/lucide-gift-icon';
 import { Brand } from '@/constants/theme';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -64,8 +65,7 @@ function normalizeKey(raw: string) {
 
 /**
  * Resolve transaction category → icon.
- * Matches website DB categories: fund, withdraw, airtime, data, bill,
- * gift_card, social, virtual_number, etc.
+ * Cashback/referral use Lucide Gift (same as website transaction-row).
  */
 export function TransactionCategoryIcon({
   category,
@@ -75,31 +75,52 @@ export function TransactionCategoryIcon({
   color,
 }: Props) {
   const tint = color ?? (credit ? Brand.success : Brand.orange);
-  const key = normalizeKey(category || title || '');
-  const haystack = `${normalizeKey(category || '')} ${normalizeKey(title)}`;
+  const cat = normalizeKey(category || '');
+  const titleKey = normalizeKey(title || '');
+  const key = cat || titleKey;
+  const haystack = `${cat} ${titleKey}`;
 
-  // Gift cards — custom ORYNO icon from website
-  if (key.includes('gift') || haystack.includes('gift')) {
+  // Cashback / referral — check before airtime so "Airtime Cashback" stays Gift
+  if (
+    cat === 'cashback' ||
+    cat === 'referral' ||
+    key === 'cashback' ||
+    key === 'referral' ||
+    key.includes('cashback') ||
+    haystack.includes('cashback') ||
+    haystack.includes('referral')
+  ) {
+    return <LucideGiftIcon size={size} color={tint} strokeWidth={1.85} />;
+  }
+
+  // Gift cards — custom ORYNO icon
+  if (
+    cat === 'gift_card' ||
+    cat === 'giftcard' ||
+    key.includes('gift_card') ||
+    key.includes('giftcard') ||
+    (haystack.includes('gift') && !haystack.includes('cashback'))
+  ) {
     return <GiftCardIcon size={size} color={tint} strokeWidth={1.85} />;
   }
 
   let ion: IoniconName | null = null;
 
   if (
+    cat === 'airtime' ||
     key === 'airtime' ||
-    key.includes('airtime') ||
-    haystack.includes('airtime') ||
+    (haystack.includes('airtime') && !haystack.includes('cashback')) ||
     haystack.includes('mtn') ||
     haystack.includes('glo') ||
     haystack.includes('airtel') ||
     haystack.includes('9mobile')
   ) {
     ion = 'phone-portrait-outline';
-  } else if (key === 'data' || key.includes('data') || haystack.includes('data bundle')) {
+  } else if (cat === 'data' || key === 'data' || haystack.includes('data bundle')) {
     ion = 'wifi-outline';
   } else if (
-    key === 'bill' ||
-    key === 'bills' ||
+    cat === 'bill' ||
+    cat === 'bills' ||
     key.includes('bill') ||
     haystack.includes('dstv') ||
     haystack.includes('gotv') ||
@@ -107,7 +128,7 @@ export function TransactionCategoryIcon({
   ) {
     ion = 'flash-outline';
   } else if (
-    key === 'social' ||
+    cat === 'social' ||
     key.includes('social') ||
     key.includes('boost') ||
     haystack.includes('instagram') ||
@@ -117,23 +138,21 @@ export function TransactionCategoryIcon({
     ion = 'trending-up-outline';
   } else if (
     key.includes('virtual_number') ||
-    key.includes('number') ||
+    (key.includes('number') && !haystack.includes('gift')) ||
     haystack.includes('sms') ||
     haystack.includes('otp')
   ) {
     ion = 'call-outline';
   } else if (key.includes('email') || key.includes('mail') || haystack.includes('inbox')) {
     ion = 'mail-outline';
-  } else if (key === 'cashback' || key.includes('cashback') || key.includes('referral')) {
-    ion = 'gift-outline';
   } else if (key === 'refund' || key.includes('refund') || key.includes('revers')) {
     ion = 'refresh-outline';
-  } else if (key === 'fee' || key.includes('fee')) {
+  } else if (cat === 'fee' || key.includes('fee')) {
     ion = 'receipt-outline';
-  } else if (key === 'transfer' || key.includes('transfer')) {
+  } else if (cat === 'transfer' || key.includes('transfer')) {
     ion = 'swap-horizontal-outline';
   } else if (
-    key === 'fund' ||
+    cat === 'fund' ||
     key.includes('fund') ||
     key.includes('deposit') ||
     haystack.includes('wallet fund') ||
@@ -141,7 +160,7 @@ export function TransactionCategoryIcon({
   ) {
     return <ArrowDownLeftIcon size={size} color={tint} />;
   } else if (
-    key === 'withdraw' ||
+    cat === 'withdraw' ||
     key.includes('withdraw') ||
     key.includes('payout')
   ) {
@@ -152,7 +171,6 @@ export function TransactionCategoryIcon({
     return <Ionicons name={ion} size={size} color={tint} />;
   }
 
-  // Fallback: inbound / outbound arrows (website style)
   return credit ? (
     <ArrowDownLeftIcon size={size} color={tint} />
   ) : (
