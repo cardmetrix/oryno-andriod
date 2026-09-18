@@ -60,7 +60,6 @@ export async function fetchAdminMe(): Promise<AdminMeResponse> {
         ok: false,
         signedIn: error.status !== 401,
         isAdmin: Boolean(body.isAdmin),
-        canBootstrap: Boolean(body.canBootstrap),
         session: false,
         email: body.email,
         reason: body.reason,

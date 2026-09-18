@@ -34,7 +34,6 @@ export default function AdminLoginScreen() {
   const [checking, setChecking] = useState(true);
   const [denied, setDenied] = useState(false);
   const [inactive, setInactive] = useState(false);
-  const [canBootstrap, setCanBootstrap] = useState(false);
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [email, setEmail] = useState(
     user?.primaryEmailAddress?.emailAddress ||
@@ -49,13 +48,12 @@ export default function AdminLoginScreen() {
         const me = await fetchAdminMe();
         if (cancelled) return;
         if (me.email) setEmail(me.email);
-        setCanBootstrap(Boolean(me.canBootstrap));
         setAdminRole(me.admin?.role ?? null);
         if (me.session && me.isAdmin) {
           router.replace('/(app)/admin' as never);
           return;
         }
-        if (!me.isAdmin && !me.canBootstrap) {
+        if (!me.isAdmin) {
           setDenied(me.reason !== 'inactive');
           setInactive(me.reason === 'inactive');
         }
@@ -139,7 +137,7 @@ export default function AdminLoginScreen() {
                 <Text style={styles.stateBody}>
                   {inactive
                     ? 'This admin account has been deactivated.'
-                    : 'Your account is not an admin. Ask a super admin to add your email to the admins list.'}
+                    : 'Your account is not an admin. Ask an admin to set your role to admin.'}
                 </Text>
                 {email ? (
                   <Text style={styles.signedAs}>Signed in as {email}</Text>
@@ -159,14 +157,12 @@ export default function AdminLoginScreen() {
                     <Text style={styles.calloutTitle}>Secure admin entry</Text>
                   </View>
                   <Text style={styles.calloutBody}>
-                    {canBootstrap
-                      ? 'Your email is on the admin allowlist. Enter the passcode to activate access.'
-                      : 'Enter the admin passcode to unlock the console.'}
+                    Enter the admin passcode to unlock the console.
                   </Text>
                   {email ? (
                     <Text style={styles.calloutEmail}>
                       {email}
-                      {adminRole ? ` · ${adminRole.replace(/_/g, ' ')}` : ''}
+                      {adminRole ? ' · Admin' : ''}
                     </Text>
                   ) : null}
                 </View>

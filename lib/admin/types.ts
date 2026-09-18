@@ -1,9 +1,4 @@
-export type AdminRole =
-  | 'super_admin'
-  | 'admin'
-  | 'support'
-  | 'finance'
-  | 'viewer';
+export type AdminRole = 'admin';
 
 export type AdminSummary = {
   id?: string;
@@ -16,7 +11,6 @@ export type AdminMeResponse = {
   ok?: boolean;
   signedIn?: boolean;
   isAdmin?: boolean;
-  canBootstrap?: boolean;
   session?: boolean;
   email?: string;
   reason?: string;

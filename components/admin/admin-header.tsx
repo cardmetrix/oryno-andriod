@@ -36,7 +36,7 @@ export function AdminHeader() {
             <Text style={styles.title}>ORYNO Admin</Text>
             <Text style={styles.sub} numberOfLines={1}>
               {admin
-                ? `${admin.name} · ${admin.role.replace(/_/g, ' ')}`
+                ? `${admin.name} · Admin`
                 : 'Country-configurable control center'}
             </Text>
           </View>

@@ -42,7 +42,7 @@ export default function AdminLayout() {
         const me = await fetchAdminMe();
         if (cancelled) return;
 
-        if (!me.isAdmin && !me.canBootstrap) {
+        if (!me.isAdmin) {
           setDenied(true);
           setReady(true);
           return;

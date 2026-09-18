@@ -7,8 +7,7 @@ import { useProfile } from '@/hooks/use-profile';
 
 /**
  * Home-banner / entry gate.
- * Only true admins (`users.role === "admin"` or active staff row via `/api/admin/auth/me`).
- * Bootstrap-only emails do not see the dashboard admin component until promoted.
+ * Only accounts with users.role === "admin" (via profile or /api/admin/auth/me).
  */
 export function useAdminAccess() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -39,7 +38,6 @@ export function useAdminAccess() {
 
   const profileIsAdmin = profile?.role === 'admin';
   const apiIsAdmin = Boolean(me?.isAdmin);
-  /** Dashboard admin entry — role admin only (not canBootstrap). */
   const canAccessAdmin = profileIsAdmin || apiIsAdmin;
 
   return {
@@ -48,7 +46,6 @@ export function useAdminAccess() {
     canAccessAdmin,
     isAdmin: canAccessAdmin,
     hasSession: Boolean(me?.session),
-    canBootstrap: Boolean(me?.canBootstrap),
     refresh,
   };
 }
