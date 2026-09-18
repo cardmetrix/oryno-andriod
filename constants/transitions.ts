@@ -4,39 +4,55 @@ import { Platform } from 'react-native';
 /**
  * Shared motion presets. Background comes from React Navigation theme
  * (`colors.background`) so light/dark mode applies — do not hardcode white.
+ *
+ * Prefer platform-native push on iOS (`default`) — it uses UINavigationController
+ * and feels smoother than JS-timed `slide_from_right`. Android keeps an explicit
+ * horizontal slide. `animationDuration` only applies to fade / simple_push /
+ * slide_from_bottom on iOS (not slide_from_right).
  */
 export const stackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
-  animation: 'slide_from_right',
-  animationDuration: 320,
+  animation: Platform.select({
+    ios: 'default',
+    android: 'slide_from_right',
+    default: 'slide_from_right',
+  }),
   gestureEnabled: true,
   fullScreenGestureEnabled: Platform.OS === 'ios',
+  /** Freeze inactive screens so stack pushes stay smooth under load. */
+  freezeOnBlur: true,
 };
 
 /** Soft cross-fade between auth steps / root groups. */
 export const fadeScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'fade',
-  animationDuration: 280,
+  animationDuration: 220,
   gestureEnabled: true,
+  freezeOnBlur: true,
 };
 
-/** Fast fade for admin tab-style navigation. */
+/** Fast fade for admin primary tabs (Overview / Users / KYC / Wallets / More). */
 export const adminStackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: 'fade',
-  animationDuration: 200,
+  animationDuration: 160,
   gestureEnabled: true,
   fullScreenGestureEnabled: Platform.OS === 'ios',
+  freezeOnBlur: true,
 };
 
-/** Slightly snappier push for admin secondary screens (from More). */
+/** Snappy push for admin secondary screens (from More). */
 export const adminPushScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
-  animation: 'slide_from_right',
-  animationDuration: 240,
+  animation: Platform.select({
+    ios: 'default',
+    android: 'slide_from_right',
+    default: 'slide_from_right',
+  }),
   gestureEnabled: true,
   fullScreenGestureEnabled: Platform.OS === 'ios',
+  freezeOnBlur: true,
 };
 
 /** Bottom sheet style for money / utility sheets. */
@@ -44,8 +60,9 @@ export const modalScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   presentation: 'modal',
   animation: 'slide_from_bottom',
-  animationDuration: 360,
+  animationDuration: 320,
   gestureEnabled: true,
+  freezeOnBlur: true,
 };
 
 /** Native form sheet (modern bottom sheet with detents + grabber). */
@@ -58,4 +75,5 @@ export const formSheetScreenOptions: NativeStackNavigationOptions = {
   sheetGrabberVisible: true,
   sheetCornerRadius: 28,
   sheetLargestUndimmedDetentIndex: 'none',
+  freezeOnBlur: true,
 };

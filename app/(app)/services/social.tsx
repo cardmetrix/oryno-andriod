@@ -8,22 +8,23 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
 import { ServiceSuccess } from '@/components/app/service-success';
-import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
-import { useProfile } from '@/hooks/use-profile';
 import { useSocialCatalog } from '@/hooks/use-service-catalogs';
+import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
-import { formatCountryMoney } from '@/lib/format';
+import { formatUsd } from '@/lib/format';
 
 type JapServiceRow = {
   service: number;
@@ -39,8 +40,10 @@ type JapServiceRow = {
   refill?: boolean;
   cancel?: boolean;
   currency: string;
+  priceUsdPerThousand?: number;
   priceLocalPerThousand: number;
   sampleQuantity: number;
+  samplePriceUsd?: number;
   samplePriceLocal: number;
 };
 
@@ -52,8 +55,12 @@ function clampQty(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
+function usdPerThousand(service: JapServiceRow) {
+  return service.priceUsdPerThousand || service.priceLocalPerThousand;
+}
+
 function priceFor(service: JapServiceRow, quantity: number) {
-  return (service.priceLocalPerThousand * quantity) / 1000;
+  return (usdPerThousand(service) * quantity) / 1000;
 }
 
 function parseQuantityInput(raw: string): number | null {
@@ -137,8 +144,8 @@ function applyEnterCommentNumber(
 export default function SocialScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { countryCode } = useProfile();
   const invalidateWallet = useInvalidateWallet();
+  const { canAffordUsd, frozen } = useWalletBalance();
   const catalogQuery = useSocialCatalog();
   const [platform, setPlatform] = useState('');
   const [metric, setMetric] = useState('');
@@ -155,6 +162,7 @@ export default function SocialScreen() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const [receipt, setReceipt] = useState('');
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
@@ -192,6 +200,29 @@ export default function SocialScreen() {
       );
       return;
     }
+    if (!catalogQuery.data) return;
+
+    if (catalogData?.demo) {
+      setError(
+        'Social boosting is not live yet. Set JAP_API_KEY and JAP_DEMO=false on the server.',
+      );
+    } else if (catalogData?.fallback) {
+      setError(
+        'Live boost catalog timed out — showing limited packages. Refresh before ordering.',
+      );
+    } else if (!services.length && !catalogQuery.isLoading) {
+      setError('No boost packages available right now. Try again shortly.');
+    } else if (!catalogData?.demo && !catalogData?.fallback) {
+      // Clear catalog-only errors once live data is healthy.
+      setError((prev) =>
+        prev?.includes('not live') ||
+        prev?.includes('timed out') ||
+        prev?.includes('No boost packages')
+          ? null
+          : prev,
+      );
+    }
+
     if (!services.length) return;
 
     const firstPlatform =
@@ -225,8 +256,16 @@ export default function SocialScreen() {
     setSelectedId(firstPkg?.service ?? null);
     setQuantityText('');
     setCommentsDraft(EMPTY_COMMENTS_DRAFT);
-    setError(null);
-  }, [catalogQuery.dataUpdatedAt, catalogQuery.error, services, platforms]);
+  }, [
+    catalogQuery.dataUpdatedAt,
+    catalogQuery.error,
+    catalogQuery.isLoading,
+    catalogQuery.data,
+    catalogData?.demo,
+    catalogData?.fallback,
+    services,
+    platforms,
+  ]);
 
   const metrics = useMemo(() => {
     const set = new Set(
@@ -299,7 +338,7 @@ export default function SocialScreen() {
   const amount =
     selected && quantityValid && quantity != null ? priceFor(selected, quantity) : 0;
 
-  const money = (n: number) => formatCountryMoney(n, countryCode);
+  const money = (n: number) => formatUsd(n);
 
   const quantityHint = useMemo(() => {
     if (!selected) return 'Choose a package first';
@@ -331,17 +370,24 @@ export default function SocialScreen() {
     quantity,
     minQuantity,
     maxQuantity,
-    countryCode,
   ]);
 
   const canSubmit = useMemo(() => {
-    if (!selected || submitting || !quantityValid || quantity == null) return false;
+    if (!liveMode) return false;
+    if (!selected || submitting || frozen || !quantityValid || quantity == null) {
+      return false;
+    }
+    if (amount > 0 && !canAffordUsd(amount)) return false;
     if (isCustomComments && filledComments.length !== quantity) return false;
     const link = profileUrl.trim();
     return link.length > 4 && /^(https?:\/\/|@|t\.me\/)/i.test(link);
   }, [
+    liveMode,
     selected,
     submitting,
+    frozen,
+    canAffordUsd,
+    amount,
     quantityValid,
     quantity,
     isCustomComments,
@@ -529,6 +575,7 @@ export default function SocialScreen() {
     try {
       const data = await api.post<{
         orderId?: string;
+        transactionId?: string;
         amountFormatted?: string;
         simulated?: boolean;
         message?: string;
@@ -544,6 +591,7 @@ export default function SocialScreen() {
         ...(isCustomComments ? { comments: filledComments } : {}),
       });
       setOrderId(data.orderId || '');
+      setTransactionId(data.transactionId || '');
       setReceipt(data.amountFormatted || money(amount));
       setStatusLabel(data.simulated ? 'Demo · In progress' : 'Pending');
       invalidateWallet();
@@ -557,57 +605,24 @@ export default function SocialScreen() {
 
   const submitLabel = submitting
     ? 'Processing…'
-    : selected && quantityValid && quantity != null
-      ? `Boost now · ${money(amount)}`
-      : isCustomComments
-        ? 'Add custom comments to continue'
-        : 'Enter quantity to continue';
+    : !liveMode
+      ? 'Boosting unavailable'
+      : frozen
+        ? 'Wallet unavailable'
+        : amount > 0 && !canAffordUsd(amount)
+          ? 'Insufficient USD balance'
+          : selected && quantityValid && quantity != null
+            ? `Boost now · ${money(amount)}`
+            : isCustomComments
+              ? 'Add custom comments to continue'
+              : 'Enter quantity to continue';
 
-  if (success && selected) {
-    return (
-      <Screen
-        scroll
-        header={
-          <PageHeader
-            title="Social Boosting"
-            subtitle={
-              liveMode
-                ? 'Live boosts · followers, likes, views'
-                : 'Grow followers, likes, views'
-            }
-            showBack
-          />
-        }>
-        <ServiceSuccess
-          variant={polling ? 'pending' : 'success'}
-          title="Boost ordered"
-          subtitle={`${(quantity ?? 0).toLocaleString()} ${selected.metric.toLowerCase()} for ${selected.platform}`}
-          amountLabel="Amount charged"
-          amount={receipt || null}
-          reference={orderId || null}
-          onDismiss={() => setSuccess(false)}
-          tertiaryAction={{
-            label: 'Boost again',
-            onPress: () => {
-              setSuccess(false);
-              setStatusLabel(null);
-              setQuantityText('');
-              setCommentsDraft(EMPTY_COMMENTS_DRAFT);
-            },
-            icon: 'plus',
-          }}>
-          {statusLabel ? (
-            <View style={styles.statusRow}>
-              <Text style={styles.statusText}>
-                Status: {statusLabel}
-                {polling ? '…' : ''}
-              </Text>
-            </View>
-          ) : null}
-        </ServiceSuccess>
-      </Screen>
-    );
-  }
+  const successVariant =
+    statusLabel && /completed|partial/i.test(statusLabel)
+      ? 'success'
+      : polling
+        ? 'pending'
+        : 'success';
 
   return (
     <Screen
@@ -621,9 +636,7 @@ export default function SocialScreen() {
             !canSubmit && styles.submitDisabled,
             pressed && canSubmit && { opacity: 0.92 },
           ]}>
-          <Text style={styles.submitText}>
-            {submitting ? 'Processing…' : submitLabel}
-          </Text>
+          <Text style={styles.submitText}>{submitLabel}</Text>
         </Pressable>
       }
       header={
@@ -631,12 +644,54 @@ export default function SocialScreen() {
           title="Social Boosting"
           subtitle={
             liveMode
-              ? 'Live boosts · followers, likes, views'
-              : 'Grow followers, likes, views'
+              ? 'Live boosts · billed in USD'
+              : 'Grow followers, likes, views · billed in USD'
           }
           showBack
         />
       }>
+      {success && selected ? (
+        <ServiceSuccess
+          variant={successVariant}
+          title="Boost ordered!"
+          subtitle={`${(quantity ?? 0).toLocaleString()} ${selected.metric.toLowerCase()} for ${selected.platform}`}
+          amountLabel="Amount charged"
+          amount={receipt || null}
+          reference={orderId || null}
+          onDismiss={() => setSuccess(false)}
+          primaryAction={
+            transactionId
+              ? {
+                  label: 'View in History',
+                  onPress: () =>
+                    router.push(`/(app)/history/${transactionId}` as never),
+                  icon: 'receipt',
+                }
+              : undefined
+          }
+          tertiaryAction={{
+            label: 'Boost again',
+            onPress: () => {
+              setSuccess(false);
+              setStatusLabel(null);
+              setOrderId('');
+              setTransactionId('');
+              setQuantityText('');
+              setCommentsDraft(EMPTY_COMMENTS_DRAFT);
+            },
+            icon: 'plus',
+          }}>
+          {statusLabel ? (
+            <View style={styles.statusRow}>
+              {polling ? (
+                <Ionicons name="refresh" size={14} color={Brand.orange} />
+              ) : null}
+              <Text style={styles.statusText}>Status: {statusLabel}</Text>
+            </View>
+          ) : null}
+        </ServiceSuccess>
+      ) : null}
+
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>
@@ -662,7 +717,7 @@ export default function SocialScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(0)} style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconBubble}>
             <Ionicons name="trending-up-outline" size={20} color={Brand.orange} />
@@ -683,6 +738,7 @@ export default function SocialScreen() {
             onChange={onPlatformChange}
             loading={loading}
             disabled={!platforms.length}
+            fullScreen={false}
             options={platforms.map((item) => ({ id: item, title: item }))}
             emptyText="No platforms available"
           />
@@ -696,6 +752,7 @@ export default function SocialScreen() {
             onChange={onMetricChange}
             loading={loading}
             disabled={!metrics.length}
+            fullScreen={false}
             options={metrics.map((item) => ({ id: item, title: item }))}
             emptyText="No types for this platform"
           />
@@ -709,6 +766,7 @@ export default function SocialScreen() {
             onChange={onQualityChange}
             loading={loading}
             disabled={!qualities.length}
+            fullScreen={false}
             options={qualities.map((item) => ({ id: item, title: item }))}
             emptyText="No quality options"
           />
@@ -723,10 +781,11 @@ export default function SocialScreen() {
             onChange={onPackageChange}
             loading={loading}
             disabled={!packagesForType.length}
+            fullScreen={false}
             options={packagesForType.map((item) => ({
               id: String(item.service),
               title: item.name,
-              trailing: `${money(item.samplePriceLocal)}/${item.sampleQuantity.toLocaleString()}`,
+              trailing: `${money(item.samplePriceUsd || item.samplePriceLocal)}/${item.sampleQuantity.toLocaleString()}`,
             }))}
             emptyText="No packages for this filter"
           />
@@ -829,7 +888,7 @@ export default function SocialScreen() {
         </View>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(40).duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(40)} style={styles.card}>
         <Text style={styles.fieldLabel}>Profile or post link</Text>
         <View style={styles.linkRow}>
           <Ionicons name="link-outline" size={20} color={colors.mutedForeground} />
@@ -845,7 +904,7 @@ export default function SocialScreen() {
         </View>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(80).duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(80)} style={styles.summaryCard}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
           <SummaryRow label="Platform" value={selected?.platform ?? '—'} />
@@ -870,15 +929,14 @@ export default function SocialScreen() {
           />
           <View style={styles.payRow}>
             <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
-            <Text style={styles.payText}>Pay from wallet</Text>
+            <Text style={styles.payText}>Pay from USD card</Text>
           </View>
         </View>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(120).duration(280)}>
+      <Animated.View entering={cardEntering(120)}>
         <ServiceInstructions service="social" />
       </Animated.View>
-
     </Screen>
   );
 }
@@ -1046,6 +1104,13 @@ function makeStyles(colors: ThemeColors) {
       color: colors.charcoal,
     },
     summary: { marginTop: 12, gap: 10 },
+    summaryCard: {
+      marginBottom: 8,
+      borderRadius: 16,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+    },
     summaryRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',

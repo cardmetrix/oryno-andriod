@@ -1,4 +1,6 @@
-/** Domains used for open logo APIs (Clearbit / DuckDuckGo / Google). */
+import { openLogoUrls } from '@/lib/brand-logos';
+
+/** Domains used for open logo APIs (Google / DuckDuckGo / Icon Horse). */
 const BRAND_LOGO_DOMAINS: Record<string, string> = {
   amazon: 'amazon.com',
   apple: 'apple.com',
@@ -40,14 +42,9 @@ function brandDomain(slug: string) {
   return `${key.replace(/[^a-z0-9-]/g, '')}.com`;
 }
 
-/** Remote logo chain for a brand slug (Clearbit → DuckDuckGo → Google favicon). */
+/** Remote logo chain for a brand slug (Google / DuckDuckGo / Icon Horse). */
 export function giftCardImageFallbacks(slug: string) {
-  const domain = brandDomain(slug);
-  return [
-    `https://logo.clearbit.com/${domain}?size=128`,
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-    `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`,
-  ];
+  return openLogoUrls(brandDomain(slug));
 }
 
 /**

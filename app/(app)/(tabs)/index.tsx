@@ -1,5 +1,6 @@
 import { AdminAccessBanner } from '@/components/admin/admin-banner';
 import { AdCarousel } from '@/components/app/ad-carousel';
+import { ServiceActionCard } from '@/components/app/service-action-card';
 import { TransactionRow } from '@/components/app/transaction-row';
 import { WalletCard } from '@/components/app/wallet-card';
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
@@ -11,6 +12,7 @@ import { useAdminAccess } from '@/hooks/use-admin-access';
 import { useNotificationsQuery } from '@/hooks/use-notifications-query';
 import { useProfile } from '@/hooks/use-profile';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useSettlePendingTransactions } from '@/hooks/use-settle-pending-transactions';
 import { useWallet } from '@/hooks/use-wallet';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,14 +29,14 @@ type QuickAction = {
   label: string;
   href: string;
   icon?: IoniconName;
-  renderIcon?: (color: string) => ReactNode;
+  renderIcon?: () => ReactNode;
 };
 
 const quickActions: QuickAction[] = [
   {
     label: 'Gift Cards',
     href: '/(app)/services/gift-cards',
-    renderIcon: (color) => <GiftCardIcon size={20} color={color} strokeWidth={1.75} />,
+                renderIcon: () => <GiftCardIcon size={20} color={Brand.white} strokeWidth={1.75} />,
   },
   { label: 'Boosting', icon: 'trending-up-outline', href: '/(app)/services/social' },
   { label: 'Numbers', icon: 'call-outline', href: '/(app)/services/virtual-numbers' },
@@ -62,6 +64,7 @@ export default function HomeScreen() {
     refreshIfStale: refreshNotificationsIfStale,
   } = useNotificationsQuery();
   const { canAccessAdmin, hasSession } = useAdminAccess();
+  useSettlePendingTransactions(true);
   const firstName =
     data?.user.fullName?.split(' ')[0] ||
     user?.username ||
@@ -142,7 +145,7 @@ export default function HomeScreen() {
 
           <View style={styles.headerActions}>
             <Pressable
-              style={[styles.bell, { backgroundColor: colors.muted }]}
+              style={[styles.bell]}
               onPress={() => router.push('/(app)/notifications')}
               accessibilityLabel={
                 unreadCount > 0
@@ -180,44 +183,35 @@ export default function HomeScreen() {
       <View
         style={[
           styles.panel,
-          styles.qaPanel,
-          { backgroundColor: colors.card },
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+          },
         ]}>
-        <View style={[styles.panelHead, styles.qaHead]}>
+        <View style={styles.panelHead}>
           <Text style={[styles.panelTitle, { color: colors.foreground }]}>Quick Actions</Text>
           <Pressable
             style={styles.linkRow}
             onPress={() => router.push('/(app)/(tabs)/services')}>
             <Text style={styles.link}>View all</Text>
-            <Ionicons name="arrow-forward" size={13} color={Brand.orange} />
+            <Ionicons name="arrow-forward" size={14} color={Brand.orange} />
           </Pressable>
         </View>
         <View style={styles.qaGrid}>
           {chunkActions(quickActions, 3).map((row, rowIndex) => (
             <View key={`qa-row-${rowIndex}`} style={styles.qaGridRow}>
-              {row.map((action) => (
-                <Pressable
+              {row.map((action, i) => (
+                <ServiceActionCard
                   key={action.label}
-                  style={({ pressed }) => [
-                    styles.action,
-                    styles.qaAction,
-                    { backgroundColor: colors.muted },
-                    pressed && styles.actionPressed,
-                  ]}
-                  onPress={() => router.push(action.href as never)}>
-                  <View style={[styles.actionIcon, styles.qaActionIcon, { backgroundColor: colors.card }]}>
-                    {action.renderIcon ? (
-                      action.renderIcon(Brand.orange)
-                    ) : (
-                      <Ionicons name={action.icon!} size={20} color={Brand.orange} />
-                    )}
-                  </View>
-                  <Text
-                    style={[styles.actionLabel, { color: colors.foreground }]}
-                    numberOfLines={1}>
-                    {action.label}
-                  </Text>
-                </Pressable>
+                  label={action.label}
+                  href={action.href}
+                  index={rowIndex * 3 + i}>
+                  {action.renderIcon ? (
+                    action.renderIcon()
+                  ) : (
+                    <Ionicons name={action.icon!} size={20} color={Brand.white} />
+                  )}
+                </ServiceActionCard>
               ))}
               {row.length < 3
                 ? Array.from({ length: 3 - row.length }).map((_, i) => (
@@ -233,24 +227,27 @@ export default function HomeScreen() {
         style={[
           styles.panel,
           styles.txPanel,
-          { backgroundColor: colors.card },
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+          },
         ]}>
-        <View style={[styles.panelHead, styles.txPanelHead]}>
+        <View style={styles.panelHead}>
           <Text style={[styles.panelTitle, { color: colors.foreground }]}>
             Recent Transactions
           </Text>
           <Pressable
             style={styles.linkRow}
             onPress={() => router.push('/(app)/(tabs)/history')}>
-            <Text style={styles.link}>See All</Text>
-            <Ionicons name="arrow-forward" size={14} color={Brand.orange} />
+            <Text style={[styles.link, styles.linkSeeAll]}>See All</Text>
+            <Ionicons name="arrow-forward" size={16} color={Brand.orange} />
           </Pressable>
         </View>
 
         {recent.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}>
-              <Ionicons name="receipt-outline" size={20} color={Brand.orange} />
+              <Ionicons name="receipt-outline" size={28} color={Brand.orange} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               No transactions yet
@@ -264,19 +261,21 @@ export default function HomeScreen() {
                 <Text style={styles.emptyPrimaryText}>Fund wallet</Text>
               </Pressable>
               <Pressable
-                style={[styles.emptySecondary, { backgroundColor: colors.muted }]}
+                style={styles.emptySecondary}
                 onPress={() => router.push('/(app)/(tabs)/services')}>
                 <Text style={styles.emptySecondaryText}>Explore services</Text>
               </Pressable>
             </View>
           </View>
         ) : (
-          <View style={styles.txList}>
-            {recent.map((tx) => (
+          <View>
+            {recent.map((tx, i) => (
               <TransactionRow
                 key={tx.id}
                 item={tx}
                 compact
+                timeStyle="absolute"
+                showDivider={i < recent.length - 1}
                 onPress={() => router.push(`/(app)/history/${tx.id}`)}
               />
             ))}
@@ -369,50 +368,28 @@ const styles = StyleSheet.create({
   },
   errorText: { color: Brand.error, fontSize: 13 },
   panel: {
-    marginTop: 8,
-    borderRadius: 16,
-    padding: 10,
+    marginTop: 16,
+    borderRadius: 28,
+    padding: 16,
     overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#0F0F12',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  qaPanel: {
-    marginTop: 6,
-    padding: 8,
-  },
-  qaHead: {
-    marginBottom: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   qaGrid: {
-    gap: 4,
+    gap: 6,
     width: '100%',
   },
   qaGridRow: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 6,
     width: '100%',
   },
-  qaAction: {
-    gap: 2,
-    paddingVertical: 5,
-    paddingHorizontal: 2,
-    borderRadius: 12,
-  },
-  qaActionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-  },
   txPanel: {
-    marginTop: 6,
-    padding: 8,
     marginBottom: 28,
-  },
-  txPanelHead: {
-    marginBottom: 2,
   },
   logoWell: {
     width: 34,
@@ -435,90 +412,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  panelTitle: { fontSize: 14, fontWeight: '700' },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  link: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
-  action: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    overflow: 'hidden',
-  },
+  panelTitle: { fontSize: 15, fontWeight: '600' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  link: { color: Brand.orange, fontWeight: '600', fontSize: 12 },
+  linkSeeAll: { fontSize: 14 },
   actionSpacer: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 0,
     minWidth: 0,
   },
-  actionPressed: {
-    backgroundColor: Brand.orangeMuted,
-    opacity: 0.92,
-  },
-  actionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+  emptyWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#0F0F12',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    paddingVertical: 28,
+    paddingHorizontal: 12,
   },
-  actionLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    textAlign: 'center',
-    width: '100%',
-  },
-  txList: { marginHorizontal: -2, gap: 0 },
-  emptyWrap: { alignItems: 'center', paddingVertical: 4, paddingHorizontal: 6 },
   emptyIcon: {
-    width: 40,
-    height: 36,
-    borderRadius: 12,
+    width: 64,
+    height: 64,
+    borderRadius: 22,
     backgroundColor: Brand.orangeMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 16,
   },
-  emptyTitle: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
   emptySub: {
-    marginTop: 2,
-    fontSize: 11,
-    lineHeight: 15,
+    marginTop: 8,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
+    maxWidth: 320,
   },
   emptyActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
+    gap: 10,
+    marginTop: 24,
     justifyContent: 'center',
   },
   emptyPrimary: {
     backgroundColor: Brand.orange,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  emptyPrimaryText: { color: Brand.white, fontWeight: '700', fontSize: 12 },
+  emptyPrimaryText: { color: Brand.white, fontWeight: '700', fontSize: 14 },
   emptySecondary: {
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  emptySecondaryText: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
+  emptySecondaryText: { color: Brand.orange, fontWeight: '600', fontSize: 14 },
 });

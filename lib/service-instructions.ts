@@ -6,6 +6,7 @@ export type ServiceInstructionId =
   | 'virtual-numbers'
   | 'emails'
   | 'gift-cards'
+  | 'betting'
   | 'catalog';
 
 export type ServiceInstructionsContent = {
@@ -39,13 +40,13 @@ export const SERVICE_INSTRUCTIONS: Record<
     ],
   },
   bills: {
-    subtitle: 'Follow these steps to pay TV or electricity bills',
+    subtitle: 'Follow these steps to pay TV, electricity, or water bills',
     steps: [
-      'Bill payments are available for Nigeria accounts.',
-      'Choose TV or electricity, then pick your provider (e.g. DStv, IKEDC).',
-      'Enter your smartcard / meter number and verify the customer name.',
-      'Select a package or amount, then pay from your wallet.',
-      'Keep the receipt from History in case you need a reference.',
+      'Nigeria: DStv, GOtv, and discos. Ghana: DStv, ECG, and Ghana Water.',
+      'Choose a category, then pick your provider.',
+      'Enter your smartcard, meter, or account number and verify the name.',
+      'Select a plan or amount, then pay from your wallet.',
+      'Keep the receipt from History — prepaid ECG includes a token.',
     ],
   },
   social: {
@@ -82,9 +83,19 @@ export const SERVICE_INSTRUCTIONS: Record<
     subtitle: 'How to buy or sell gift cards on ORYNO',
     steps: [
       'Use the Sell or Buy tab at the top — Sell is the default.',
-      'Sell: pick a brand, enter the code or upload photos, and get Naira credit.',
+      'Sell: pick a brand, enter the code or upload photos, and get wallet credit in your currency.',
       'Buy: pick a product and amount, pay from your wallet, and receive the code.',
       'Every trade appears in History with a receipt you can revisit anytime.',
+    ],
+  },
+  betting: {
+    subtitle: 'Follow these steps to fund a betting wallet',
+    steps: [
+      'Bookmakers match your account country (Nigeria, Ghana, Kenya, or South Africa).',
+      'Fund your ORYNO wallet first if your balance is low.',
+      'Pick a bookmaker, then enter the betting account ID.',
+      'Enter the betting account ID and verify the customer name.',
+      'Choose an amount, pay from your wallet, and keep the History receipt.',
     ],
   },
   catalog: {

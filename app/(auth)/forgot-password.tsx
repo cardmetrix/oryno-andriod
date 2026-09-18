@@ -1,5 +1,4 @@
 import { useSignIn } from '@clerk/clerk-expo';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -10,6 +9,9 @@ import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
+import { continueAfterSignedIn, syncSessionToDatabase } from '@/lib/auth-sync';
+import { getBiometricMeta } from '@/lib/biometric';
+import { saveBiometricLogin } from '@/lib/biometric-login';
 
 export default function ForgotPasswordScreen() {
   const { signIn, isLoaded, setActive } = useSignIn();
@@ -56,9 +58,20 @@ export default function ForgotPasswordScreen() {
       });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        alert.success('Password updated', 'You are now signed in.', () =>
-          router.replace('/(app)/(tabs)'),
-        );
+        const hardware = await getBiometricMeta();
+        if (hardware.available) {
+          await saveBiometricLogin(email.trim(), password);
+        }
+        alert.success('Password updated', 'You are now signed in.', () => {
+          void (async () => {
+            try {
+              const sync = await syncSessionToDatabase({ announceLogin: true });
+              await continueAfterSignedIn(sync);
+            } catch {
+              await continueAfterSignedIn(null);
+            }
+          })();
+        });
       } else {
         alert.warning('Incomplete', `Status: ${result.status}`);
       }

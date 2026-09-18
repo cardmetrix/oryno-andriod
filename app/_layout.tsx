@@ -2,10 +2,15 @@ import { ClerkProvider } from '@clerk/clerk-expo';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Text, View } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { enableFreeze, enableScreens } from 'react-native-screens';
 
+import { AppLockOverlay } from '@/components/app/app-lock-overlay';
+import { TwoFactorOverlay } from '@/components/app/two-factor-overlay';
 import { ReferralDeepLinkCapture } from '@/components/auth/referral-deep-link-capture';
+import { BootGate } from '@/components/boot-gate';
 import { PushNotificationShell } from '@/components/notifications/push-notification-shell';
 import { ThemeSync } from '@/components/theme-sync';
 import { AlertSheetHost } from '@/components/ui/alert-sheet';
@@ -13,12 +18,17 @@ import { Toaster } from '@/components/ui/toaster';
 import { Brand } from '@/constants/theme';
 import { fadeScreenOptions } from '@/constants/transitions';
 import { ApiAuthBridge } from '@/context/api-provider';
+import { AppLockProvider } from '@/context/app-lock-context';
 import { PushNotificationProvider } from '@/context/push-notification-context';
 import { AppQueryProvider } from '@/context/query-provider';
 import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
+import { TwoFactorProvider } from '@/context/two-factor-context';
 import { tokenCache } from '@/lib/clerk-token-cache';
 import { CLERK_PUBLISHABLE_KEY } from '@/lib/config';
 import { configurePushNotificationHandler } from '@/lib/push-notifications';
+
+enableScreens(true);
+enableFreeze(true);
 
 configurePushNotificationHandler();
 
@@ -71,16 +81,30 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <AppQueryProvider>
-        <AppThemeProvider>
-          <ApiAuthBridge>
-            <PushNotificationProvider>
-              <NavigationRoot />
-            </PushNotificationProvider>
-          </ApiAuthBridge>
-        </AppThemeProvider>
-      </AppQueryProvider>
-    </ClerkProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+        <AppQueryProvider>
+          <AppThemeProvider>
+            <ApiAuthBridge>
+              <AppLockProvider>
+                <TwoFactorProvider>
+                  <PushNotificationProvider>
+                    <BootGate>
+                      <NavigationRoot />
+                      <AppLockOverlay />
+                      <TwoFactorOverlay />
+                    </BootGate>
+                  </PushNotificationProvider>
+                </TwoFactorProvider>
+              </AppLockProvider>
+            </ApiAuthBridge>
+          </AppThemeProvider>
+        </AppQueryProvider>
+      </ClerkProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+});

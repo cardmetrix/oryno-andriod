@@ -23,6 +23,7 @@ export const queryKeys = {
     numbersServices: ['catalog', 'numbers-services'] as const,
     numbersPrices: (params: string) => ['catalog', 'numbers-prices', params] as const,
     emailDomains: ['catalog', 'email-domains'] as const,
+    betting: ['catalog', 'betting'] as const,
   },
 } as const;
 

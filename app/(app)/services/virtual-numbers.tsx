@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -10,7 +10,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet } from '@/components/app/picker-sheet';
@@ -20,25 +22,30 @@ import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
-import { useProfile } from '@/hooks/use-profile';
+import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { useNumbersServices } from '@/hooks/use-service-catalogs';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
-import { formatCountryMoney } from '@/lib/format';
+import { formatUsd } from '@/lib/format';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
+import { toast } from '@/lib/toast';
 import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 
 type HeroService = { code: string; name: string };
 
 type HeroOffer = {
   countryId: number;
+  countrySlug?: string;
   countryName: string;
   iso: string | null;
   flagUrl: string | null;
   flagEmoji: string;
   service: string;
   serviceName: string;
+  operator?: string;
+  costUsd?: number;
   priceUsd: number;
   priceLocal: number;
   currency: string;
@@ -48,8 +55,8 @@ type HeroOffer = {
 export default function VirtualNumbersScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { countryCode } = useProfile();
   const invalidateWallet = useInvalidateWallet();
+  const { canAffordUsd, frozen } = useWalletBalance();
   const servicesQuery = useNumbersServices();
   const [service, setService] = useState('wa');
   const [countryOpen, setCountryOpen] = useState(false);
@@ -63,16 +70,19 @@ export default function VirtualNumbersScreen() {
   const [success, setSuccess] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [activationId, setActivationId] = useState('');
+  const [transactionId, setTransactionId] = useState('');
   const [smsCode, setSmsCode] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
   const [receipt, setReceipt] = useState('');
+  const [orderPending, setOrderPending] = useState(true);
+  const [reversed, setReversed] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
   const servicesData = servicesQuery.data as
     | { services?: HeroService[]; demo?: boolean }
     | undefined;
   const services = servicesData?.services ?? [];
   const loadingServices = servicesQuery.isLoading && !servicesQuery.data;
-  const liveModeFromServices = servicesData?.demo === false;
 
   const offersQuery = useQuery({
     queryKey: queryKeys.catalogs.numbersPrices(service),
@@ -87,12 +97,8 @@ export default function VirtualNumbersScreen() {
   });
   const offers = offersQuery.data?.offers ?? [];
   const loadingOffers = offersQuery.isLoading && !offersQuery.data;
-  const liveMode =
-    typeof offersQuery.data?.demo === 'boolean'
-      ? offersQuery.data.demo === false
-      : liveModeFromServices;
 
-  const money = (n: number) => formatCountryMoney(n, countryCode);
+  const money = (n: number) => formatUsd(n);
 
   const filteredServices = useMemo(() => {
     const q = serviceQuery.trim().toLowerCase();
@@ -143,29 +149,53 @@ export default function VirtualNumbersScreen() {
   }, [servicesQuery.error, offersQuery.error]);
 
   useEffect(() => {
-    if (!success || !activationId || smsCode) return;
+    if (!success || !activationId || smsCode || reversed) return;
     let cancelled = false;
-    let tries = 0;
+    const started = Date.now();
+    const maxMs = 60 * 60 * 1000;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function tick() {
-      if (cancelled || tries > 40) return;
-      tries += 1;
+      if (cancelled) return;
+      if (Date.now() - started > maxMs) {
+        setPolling(false);
+        return;
+      }
       setPolling(true);
       try {
-        const data = await api.get<{ code?: string | null }>(
-          endpoints.services.numbersStatus(activationId),
-        );
+        const data = await api.get<{
+          code?: string | null;
+          refunded?: boolean;
+          status?: string;
+          error?: string;
+          expiresAt?: string;
+        }>(endpoints.services.numbersStatus(activationId));
+        if (cancelled) return;
         if (data.code) {
           setSmsCode(data.code);
+          setOrderPending(false);
           setPolling(false);
           return;
+        }
+        if (data.refunded || data.status === 'STATUS_CANCEL') {
+          setReversed(true);
+          setOrderPending(false);
+          setPolling(false);
+          toast.error(
+            data.error ||
+              'No SMS arrived in time. This purchase was reversed to your USD wallet.',
+          );
+          invalidateWallet();
+          return;
+        }
+        if (typeof data.expiresAt === 'string') {
+          setExpiresAt(data.expiresAt);
         }
       } catch {
         // keep polling
       }
       setPolling(false);
-      if (!cancelled) timer = setTimeout(tick, 5000);
+      if (!cancelled) timer = setTimeout(tick, 8000);
     }
 
     void tick();
@@ -173,30 +203,52 @@ export default function VirtualNumbersScreen() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [success, activationId, smsCode]);
+  }, [success, activationId, smsCode, reversed, invalidateWallet]);
+
+  const canBuyNumber = Boolean(
+    selected && !submitting && !frozen && canAffordUsd(selected.priceUsd),
+  );
+  const buyLabel = submitting
+    ? 'Getting number…'
+    : frozen
+      ? 'Wallet unavailable'
+      : selected && !canAffordUsd(selected.priceUsd)
+        ? 'Insufficient USD balance'
+        : selected
+          ? `Get number · ${money(selected.priceUsd)}`
+          : 'Select a country';
 
   async function onSubmit() {
-    if (!selected || submitting) return;
+    if (!selected || submitting || !canBuyNumber) return;
     setSubmitting(true);
     setError(null);
     try {
       const data = await api.post<{
         phoneNumber?: string;
         activationId?: string;
+        transactionId?: string;
         amountFormatted?: string;
+        expiresAt?: string;
       }>(endpoints.services.numbersPurchase, {
         heroCountryId: selected.countryId,
+        countrySlug: selected.countrySlug,
         countryName: selected.countryName,
         iso: selected.iso,
         service: selected.service,
         serviceName: selected.serviceName,
+        operator: selected.operator,
+        costUsd: selected.costUsd ?? selected.priceUsd,
         priceUsd: selected.priceUsd,
         priceLocal: selected.priceLocal,
       });
       setPhoneNumber(data.phoneNumber || '');
       setActivationId(data.activationId || '');
-      setReceipt(data.amountFormatted || money(selected.priceLocal));
+      setTransactionId(data.transactionId || '');
+      setReceipt(data.amountFormatted || money(selected.priceUsd));
       setSmsCode(null);
+      setOrderPending(true);
+      setReversed(false);
+      setExpiresAt(data.expiresAt || null);
       invalidateWallet();
       setSuccess(true);
     } catch (err) {
@@ -211,56 +263,103 @@ export default function VirtualNumbersScreen() {
     await Clipboard.setStringAsync(value);
   }
 
+  let successModal: ReactNode = null;
   if (success) {
-    const codeLabel = smsCode || (polling ? 'Waiting for SMS…' : '—');
-    return (
-      <Screen
-        scroll
-        header={
-          <PageHeader
-            title="Virtual Numbers"
-            subtitle={
-              liveMode ? 'Live SMS verification numbers' : 'SMS verification numbers'
-            }
-            showBack
-          />
-        }>
-        <ServiceSuccess
-          title="Number ready"
-          subtitle="Use this number for verification"
-          amountLabel="Amount charged"
-          amount={receipt || null}
-          onDismiss={() => setSuccess(false)}
-          tertiaryAction={{
-            label: 'Get another number',
-            onPress: () => {
-              setSuccess(false);
-              setPhoneNumber('');
-              setActivationId('');
-              setSmsCode(null);
-            },
-            icon: 'plus',
-          }}>
-          <View style={styles.copyStack}>
-            <CopyRow
-              label="Phone number"
-              value={phoneNumber}
-              onCopy={() => void copyValue(phoneNumber)}
-            />
-            <CopyRow
-              label="SMS code"
-              value={codeLabel}
-              muted={!smsCode}
-              onCopy={() => void copyValue(codeLabel)}
-            />
-            {polling && !smsCode ? (
-              <View style={styles.pollingRow}>
-                <Text style={styles.pollingText}>Waiting for the OTP…</Text>
-              </View>
-            ) : null}
+    const codeLabel = smsCode
+      ? smsCode
+      : reversed
+        ? '—'
+        : polling || orderPending
+          ? 'Waiting for SMS…'
+          : '—';
+    const expiresHint = expiresAt
+      ? ` · refunds after ${new Date(expiresAt).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`
+      : ' · auto-refund in 1 hour if no code';
+
+    successModal = (
+      <ServiceSuccess
+        variant={reversed ? 'pending' : smsCode ? 'success' : 'pending'}
+        title={
+          reversed
+            ? 'Purchase reversed'
+            : smsCode
+              ? 'Code received!'
+              : 'Number ready — pending SMS'
+        }
+        subtitle={
+          reversed
+            ? 'No SMS arrived in time. Your USD wallet was refunded.'
+            : smsCode
+              ? 'Use this number and code for verification.'
+              : 'Waiting for the OTP. If it doesn’t arrive within 1 hour, you’ll be refunded automatically.'
+        }
+        amountLabel="Amount charged"
+        amount={receipt || null}
+        onDismiss={() => setSuccess(false)}
+        primaryAction={
+          transactionId
+            ? {
+                label: 'View in History',
+                onPress: () =>
+                  router.push(`/(app)/history/${transactionId}` as never),
+                icon: 'receipt',
+              }
+            : undefined
+        }
+        tertiaryAction={{
+          label: 'Get another number',
+          onPress: () => {
+            setSuccess(false);
+            setPhoneNumber('');
+            setActivationId('');
+            setTransactionId('');
+            setSmsCode(null);
+            setOrderPending(true);
+            setReversed(false);
+            setExpiresAt(null);
+            setError(null);
+          },
+          icon: 'plus',
+        }}>
+        <View style={styles.copyStack}>
+          <View style={styles.statusRow}>
+            <Text style={styles.statusLabel}>Status</Text>
+            <Text
+              style={[
+                styles.statusValue,
+                reversed
+                  ? { color: Brand.error }
+                  : smsCode
+                    ? { color: Brand.success }
+                    : { color: Brand.orange },
+              ]}>
+              {reversed ? 'Reversed' : smsCode ? 'Completed' : 'Pending SMS'}
+            </Text>
           </View>
-        </ServiceSuccess>
-      </Screen>
+          <CopyRow
+            label="Phone number"
+            value={phoneNumber}
+            onCopy={() => void copyValue(phoneNumber)}
+          />
+          <CopyRow
+            label="SMS code"
+            value={codeLabel}
+            muted={!smsCode}
+            onCopy={() => void copyValue(codeLabel)}
+          />
+          {!smsCode && !reversed ? (
+            <View style={styles.pollingRow}>
+              <Ionicons name="refresh" size={14} color={colors.mutedForeground} />
+              <Text style={styles.pollingText}>
+                Waiting for the OTP{expiresHint}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </ServiceSuccess>
     );
   }
 
@@ -269,14 +368,8 @@ export default function VirtualNumbersScreen() {
       scroll
       footer={
         <Button
-          title={
-            submitting
-              ? 'Getting number…'
-              : selected
-                ? `Get number · ${money(selected.priceLocal)}`
-                : 'Select a country'
-          }
-          disabled={!selected || submitting}
+          title={buyLabel}
+          disabled={!canBuyNumber}
           loading={submitting}
           onPress={() => void onSubmit()}
         />
@@ -284,12 +377,12 @@ export default function VirtualNumbersScreen() {
       header={
         <PageHeader
           title="Virtual Numbers"
-          subtitle={
-            liveMode ? 'Live SMS verification numbers' : 'SMS verification numbers'
-          }
+          subtitle="Get verification numbers worldwide · billed in USD"
           showBack
         />
       }>
+      {successModal}
+
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>
@@ -302,7 +395,7 @@ export default function VirtualNumbersScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(0)} style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconBubble}>
             <Ionicons name="call-outline" size={20} color={Brand.orange} />
@@ -363,7 +456,7 @@ export default function VirtualNumbersScreen() {
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.delay(40).duration(280)}
+        entering={cardEntering(40)}
         style={styles.card}>
         <Text style={styles.cardTitle}>Select country</Text>
         <Text style={styles.cardSub}>
@@ -411,7 +504,7 @@ export default function VirtualNumbersScreen() {
                   : 'No countries in stock'}
             </Text>
             {selected ? (
-              <Text style={styles.countryPrice}>{money(selected.priceLocal)}</Text>
+              <Text style={styles.countryPrice}>{money(selected.priceUsd)}</Text>
             ) : null}
             <Ionicons name="chevron-down" size={18} color={colors.mutedForeground} />
           </Pressable>
@@ -425,7 +518,7 @@ export default function VirtualNumbersScreen() {
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.delay(70).duration(280)}
+        entering={cardEntering(70)}
         style={styles.card}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
@@ -440,12 +533,12 @@ export default function VirtualNumbersScreen() {
           />
           <SummaryRow
             label="Amount"
-            value={selected ? money(selected.priceLocal) : money(0)}
+            value={selected ? money(selected.priceUsd) : money(0)}
             accent
           />
           <View style={styles.walletRow}>
             <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
-            <Text style={styles.walletText}>Pay from wallet</Text>
+            <Text style={styles.walletText}>Pay from USD card</Text>
           </View>
         </View>
       </Animated.View>
@@ -454,7 +547,7 @@ export default function VirtualNumbersScreen() {
         visible={countryOpen}
         title="Select country"
         subtitle="Search and choose a country for your number"
-        fullScreen
+        fullScreen={false}
         onClose={() => {
           setCountryOpen(false);
           setCountryQuery('');
@@ -511,7 +604,7 @@ export default function VirtualNumbersScreen() {
                       {(offer.count ?? 0).toLocaleString()} available · SMS
                     </Text>
                   </View>
-                  <Text style={styles.countryPrice}>{money(offer.priceLocal)}</Text>
+                  <Text style={styles.countryPrice}>{money(offer.priceUsd)}</Text>
                   {active ? (
                     <View style={styles.check}>
                       <Ionicons name="checkmark" size={14} color={Brand.white} />
@@ -786,6 +879,24 @@ function makeStyles(colors: ThemeColors) {
     checkSpacer: { width: 24, height: 24 },
     emptySheet: { paddingVertical: 28, alignItems: 'center' },
     copyStack: { width: '100%', gap: 10 },
+    statusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderRadius: 14,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    statusLabel: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+    },
+    statusValue: {
+      fontSize: 12,
+      fontWeight: '700',
+    },
     copyRow: {
       flexDirection: 'row',
       alignItems: 'center',

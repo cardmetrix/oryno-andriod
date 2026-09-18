@@ -89,7 +89,7 @@ export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTa
             <View style={[styles.glass, { backgroundColor: glassFill }]} />
           ) : (
             <BlurView
-              intensity={isDark ? 48 : 72}
+              intensity={isDark ? 36 : 56}
               tint={isDark ? 'dark' : 'light'}
               experimentalBlurMethod="dimezisBlurView"
               style={StyleSheet.absoluteFill}

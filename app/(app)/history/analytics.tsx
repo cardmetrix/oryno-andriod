@@ -1,17 +1,21 @@
-import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams } from 'expo-router';
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
 import { PickerOptionList, PickerSheet } from '@/components/app/picker-sheet';
 import { Screen } from '@/components/ui/screen';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
+import { useProfile } from '@/hooks/use-profile';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { useTransactions } from '@/hooks/use-transactions';
-import { useWallet } from '@/hooks/use-wallet';
+import { getCountryInfo } from '@/lib/country';
 import {
   buildCategoryBreakdown,
   buildDailySeries,
@@ -21,28 +25,46 @@ import {
   summarizeCashflow,
 } from '@/lib/history';
 
+type StatTone = 'credit' | 'debit';
+
+type StatCard = {
+  label: string;
+  value: string;
+  tone: StatTone;
+  renderIcon: (color: string) => ReactNode;
+};
+
 export default function HistoryAnalyticsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const params = useLocalSearchParams<{ month?: string }>();
   const { items, loading, refresh } = useTransactions();
-  const { data: wallet } = useWallet();
+  const { countryCode } = useProfile();
   const { pulling, onRefresh } = usePullRefresh(refresh);
 
   const months = useMemo(() => buildHistoryMonths(items), [items]);
-  const [monthKey, setMonthKey] = useState(params.month ?? '');
+  const [monthKey, setMonthKey] = useState(
+    typeof params.month === 'string' ? params.month : '',
+  );
   const [monthSheet, setMonthSheet] = useState(false);
 
   useEffect(() => {
     if (!months.length) return;
     if (!monthKey || !months.some((m) => m.key === monthKey)) {
-      setMonthKey(params.month && months.some((m) => m.key === params.month) ? params.month : months[0].key);
+      const fromParam =
+        typeof params.month === 'string' &&
+        months.some((m) => m.key === params.month)
+          ? params.month
+          : months[0].key;
+      setMonthKey(fromParam);
     }
   }, [months, monthKey, params.month]);
 
   const activeMonth = months.find((m) => m.key === monthKey) ?? months[0];
-  const currency =
-    wallet?.totals.currency ?? wallet?.primary.currency ?? items[0]?.currency ?? 'NGN';
+  const currency = useMemo(() => {
+    const fromItems = items.find((item) => item.currency)?.currency;
+    return (fromItems || getCountryInfo(countryCode).currency || 'NGN').toUpperCase();
+  }, [items, countryCode]);
 
   const monthItems = useMemo(
     () => filterHistoryItems(items, { monthKey: activeMonth?.key }),
@@ -55,15 +77,41 @@ export default function HistoryAnalyticsScreen() {
     [monthItems, activeMonth],
   );
 
-  const maxBar = Math.max(
-    1,
-    ...series.map((p) => Math.max(p.inflow, p.outflow)),
-  );
+  const maxBar = Math.max(1, ...series.map((p) => Math.max(p.inflow, p.outflow)));
   const maxCategory = Math.max(1, ...categories.map((c) => c.total));
   const spendShare =
     totals.inflow + totals.outflow > 0
       ? totals.outflow / (totals.inflow + totals.outflow)
       : 0;
+
+  const stats: StatCard[] = [
+    {
+      label: 'In',
+      value: formatMoneyAmount(totals.inflow, currency),
+      tone: 'credit',
+      // Matches website Lucide ArrowDownLeft
+      renderIcon: (color) => <Feather name="arrow-down-left" size={14} color={color} />,
+    },
+    {
+      label: 'Out',
+      value: formatMoneyAmount(totals.outflow, currency),
+      tone: 'debit',
+      // Matches website Lucide ArrowUpRight
+      renderIcon: (color) => <Feather name="arrow-up-right" size={14} color={color} />,
+    },
+    {
+      label: 'Net',
+      value: formatMoneyAmount(totals.net, currency, {
+        signed: true,
+        type: totals.net >= 0 ? 'credit' : 'debit',
+      }),
+      tone: totals.net >= 0 ? 'credit' : 'debit',
+      // Matches website Lucide Scale (balance)
+      renderIcon: (color) => (
+        <MaterialCommunityIcons name="scale-balance" size={14} color={color} />
+      ),
+    },
+  ];
 
   return (
     <Screen
@@ -78,172 +126,148 @@ export default function HistoryAnalyticsScreen() {
           right={
             <Pressable style={styles.monthChip} onPress={() => setMonthSheet(true)}>
               <Text style={styles.monthChipText}>{activeMonth?.label ?? '—'}</Text>
-              <Ionicons name="chevron-down" size={14} color={Brand.orange} />
+              <Ionicons name="chevron-down" size={14} color={colors.mutedForeground} />
             </Pressable>
           }
         />
       }>
       {loading && !items.length ? (
-        <View style={styles.panel}>
-          <Text style={styles.muted}>Loading insights…</Text>
-        </View>
+        <AnalyticsSkeleton />
       ) : (
         <>
-          <Animated.View entering={FadeInDown.duration(280)} style={styles.hero}>
-            <Text style={styles.heroLabel}>Net cash flow</Text>
-            <Text
-              style={[
-                styles.heroValue,
-                { color: totals.net >= 0 ? Brand.success : colors.foreground },
-              ]}>
-              {formatMoneyAmount(Math.abs(totals.net), currency, {
-                signed: true,
-                type: totals.net >= 0 ? 'credit' : 'debit',
-              })}
-            </Text>
-            <Text style={styles.heroSub}>
-              {totals.count} transaction{totals.count === 1 ? '' : 's'} this month
-            </Text>
-
-            <View style={styles.heroStats}>
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatLabel}>In</Text>
-                <Text style={[styles.heroStatValue, { color: Brand.success }]}>
-                  {formatMoneyAmount(totals.inflow, currency)}
-                </Text>
-              </View>
-              <View style={styles.heroDivider} />
-              <View style={styles.heroStat}>
-                <Text style={styles.heroStatLabel}>Out</Text>
-                <Text style={styles.heroStatValue}>
-                  {formatMoneyAmount(totals.outflow, currency)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.track}>
-              <View
+          <View style={styles.statsRow}>
+            {stats.map((stat, i) => (
+              <Animated.View
+                key={stat.label}
+                entering={FadeInDown.delay(40 + i * 50).duration(320)}
                 style={[
-                  styles.trackFill,
-                  { width: `${Math.round((1 - spendShare) * 100)}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.trackHint}>
-              {Math.round((1 - spendShare) * 100)}% inflow · {Math.round(spendShare * 100)}% outflow
-            </Text>
-          </Animated.View>
+                  styles.statCard,
+                  stat.label === 'In' ? styles.statCardIn : styles.statCardDefault,
+                ]}>
+                <View style={styles.statLabelRow}>
+                  {stat.renderIcon(
+                    stat.tone === 'credit' ? Brand.success : colors.mutedForeground,
+                  )}
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.statValue,
+                    stat.tone === 'credit' && { color: Brand.success },
+                  ]}
+                  numberOfLines={1}>
+                  {stat.value}
+                </Text>
+              </Animated.View>
+            ))}
+          </View>
 
           <Animated.View
-            entering={FadeInDown.delay(60).duration(280)}
+            entering={FadeInDown.delay(80).duration(320)}
             style={styles.panel}>
             <View style={styles.panelHead}>
-              <Text style={styles.panelTitle}>Daily activity</Text>
-              <Text style={styles.muted}>In vs out</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.panelTitle}>Daily cashflow</Text>
+                <Text style={styles.panelSub}>In vs out for {activeMonth?.label}</Text>
+              </View>
+              <View style={styles.spendBadge}>
+                <Text style={styles.spendBadgeText}>
+                  {Math.round(spendShare * 100)}% spent
+                </Text>
+              </View>
             </View>
-            <View style={styles.chart}>
-              {series.map((point) => {
-                const inH = Math.max(2, (point.inflow / maxBar) * 72);
-                const outH = Math.max(2, (point.outflow / maxBar) * 72);
-                const showLabel = Number(point.label) % 5 === 1 || point.label === '1';
-                return (
-                  <View key={point.key} style={styles.barCol}>
-                    <View style={styles.barPair}>
-                      <View style={[styles.barIn, { height: point.inflow ? inH : 2 }]} />
-                      <View style={[styles.barOut, { height: point.outflow ? outH : 2 }]} />
-                    </View>
-                    {showLabel ? <Text style={styles.barLabel}>{point.label}</Text> : null}
-                  </View>
-                );
-              })}
-            </View>
+
             <View style={styles.legend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: Brand.success }]} />
-                <Text style={styles.muted}>In</Text>
+                <Text style={styles.legendText}>In</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: Brand.orange }]} />
-                <Text style={styles.muted}>Out</Text>
+                <Text style={styles.legendText}>Out</Text>
               </View>
             </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chartScroll}>
+              {series.length === 0 ? (
+                <Text style={[styles.muted, { alignSelf: 'center' }]}>
+                  No daily activity yet.
+                </Text>
+              ) : (
+                series.map((point, index) => {
+                  const inH = Math.max(4, (point.inflow / maxBar) * 140);
+                  const outH = Math.max(4, (point.outflow / maxBar) * 140);
+                  return (
+                    <Animated.View
+                      key={point.key}
+                      entering={FadeIn.delay(Math.min(index * 12, 350)).duration(400)}
+                      style={styles.barCol}>
+                      <View style={styles.barPair}>
+                        <View
+                          style={[
+                            styles.barIn,
+                            { height: point.inflow > 0 ? inH : 4 },
+                          ]}
+                        />
+                        <View
+                          style={[
+                            styles.barOut,
+                            { height: point.outflow > 0 ? outH : 4 },
+                          ]}
+                        />
+                      </View>
+                    </Animated.View>
+                  );
+                })
+              )}
+            </ScrollView>
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(100).duration(280)}
+            entering={FadeInDown.delay(120).duration(320)}
             style={styles.panel}>
-            <View style={styles.panelHead}>
-              <Text style={styles.panelTitle}>By category</Text>
-              <Pressable onPress={() => router.back()}>
-                <Text style={styles.link}>View list</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.panelTitle}>By category</Text>
+            <Text style={styles.panelSub}>Where money moved this month</Text>
 
-            {categories.length === 0 ? (
-              <Text style={styles.muted}>No activity in this month yet.</Text>
-            ) : (
-              <View style={{ gap: 10 }}>
-                {categories.map((cat, index) => (
-                  <View key={cat.id}>
+            <View style={styles.catList}>
+              {categories.length === 0 ? (
+                <Text style={styles.muted}>No activity in this period.</Text>
+              ) : (
+                categories.map((cat, index) => (
+                  <Animated.View
+                    key={cat.id}
+                    entering={FadeInDown.delay(50 + index * 40).duration(280)}
+                    style={styles.catBlock}>
                     <View style={styles.catRow}>
                       <Text style={styles.catLabel} numberOfLines={1}>
                         {cat.label}
                       </Text>
                       <Text style={styles.catValue}>
-                        {formatMoneyAmount(cat.total, currency)}
+                        {formatMoneyAmount(cat.total, currency)} · {cat.count}
                       </Text>
                     </View>
                     <View style={styles.catTrack}>
-                      <View
+                      <LinearGradient
+                        colors={[Brand.orange, '#FF8A33']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
                         style={[
                           styles.catFill,
                           {
-                            width: `${Math.max(6, Math.round((cat.total / maxCategory) * 100))}%`,
-                            backgroundColor: index % 2 === 0 ? Brand.orange : Brand.success,
+                            width: `${Math.max(
+                              6,
+                              Math.round((cat.total / maxCategory) * 100),
+                            )}%`,
                           },
                         ]}
                       />
                     </View>
-                    <Text style={styles.catMeta}>
-                      {cat.count} txn · In {formatMoneyAmount(cat.inflow, currency)} · Out{' '}
-                      {formatMoneyAmount(cat.outflow, currency)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </Animated.View>
-
-          <Animated.View
-            entering={FadeInDown.delay(140).duration(280)}
-            style={styles.panel}>
-            <Text style={styles.panelTitle}>Top activity</Text>
-            <View style={{ marginTop: 12, gap: 10 }}>
-              {monthItems.slice(0, 5).map((tx) => (
-                <Pressable
-                  key={tx.id}
-                  style={styles.topRow}
-                  onPress={() => router.push(`/(app)/history/${tx.id}`)}>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.topTitle} numberOfLines={1}>
-                      {tx.title}
-                    </Text>
-                    <Text style={styles.muted} numberOfLines={1}>
-                      {tx.subtitle || tx.category || 'Transaction'}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.topAmount,
-                      tx.type === 'credit' && { color: Brand.success },
-                    ]}>
-                    {tx.amount}
-                  </Text>
-                </Pressable>
-              ))}
-              {monthItems.length === 0 ? (
-                <Text style={styles.muted}>Fund your wallet or pay a bill to see insights.</Text>
-              ) : null}
+                  </Animated.View>
+                ))
+              )}
             </View>
           </Animated.View>
         </>
@@ -252,7 +276,7 @@ export default function HistoryAnalyticsScreen() {
       <PickerSheet
         visible={monthSheet}
         title="Month"
-        subtitle="Analysis period"
+        subtitle="Choose a statement period"
         onClose={() => setMonthSheet(false)}>
         <PickerOptionList
           value={activeMonth?.key ?? ''}
@@ -271,164 +295,197 @@ export default function HistoryAnalyticsScreen() {
   );
 }
 
+function AnalyticsSkeleton() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  return (
+    <View style={{ gap: 16 }}>
+      <View style={styles.statsRow}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={[styles.statCard, styles.statCardDefault, { flex: 1 }]}>
+            <Skeleton width={40} height={10} radius={6} />
+            <Skeleton width="80%" height={16} radius={8} style={{ marginTop: 10 }} />
+          </View>
+        ))}
+      </View>
+      <View style={styles.panel}>
+        <Skeleton width={120} height={16} radius={8} />
+        <Skeleton width={160} height={12} radius={6} style={{ marginTop: 8 }} />
+        <Skeleton width="100%" height={140} radius={16} style={{ marginTop: 16 }} />
+      </View>
+      <View style={styles.panel}>
+        <Skeleton width={100} height={16} radius={8} />
+        <Skeleton width={180} height={12} radius={6} style={{ marginTop: 8 }} />
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={{ marginTop: 16 }}>
+            <Skeleton width="60%" height={12} radius={6} />
+            <Skeleton width="100%" height={10} radius={999} style={{ marginTop: 8 }} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     monthChip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      borderRadius: 999,
+      borderRadius: 14,
       borderWidth: 1,
-      borderColor: 'rgba(255,106,0,0.35)',
-      backgroundColor: colors.orangeMuted,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
       paddingHorizontal: 12,
       paddingVertical: 8,
+      shadowColor: '#0F0F12',
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
     },
     monthChipText: {
       fontSize: 13,
-      fontWeight: '800',
-      color: Brand.orange,
-    },
-    hero: {
-      borderRadius: Radius.card,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 12,
-      marginBottom: 10,
-    },
-    heroLabel: {
-      fontSize: 12,
       fontWeight: '700',
-      color: colors.mutedForeground,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
+      color: colors.foreground,
     },
-    heroValue: {
-      marginTop: 6,
-      fontSize: 30,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-      fontVariant: ['tabular-nums'],
+    statsRow: {
+      flexDirection: 'row',
+      gap: 10,
     },
-    heroSub: {
-      marginTop: 4,
-      fontSize: 13,
-      color: colors.mutedForeground,
-      fontWeight: '500',
+    statCard: {
+      flex: 1,
+      borderRadius: 22,
+      borderWidth: 1,
+      padding: 12,
+      shadowColor: '#0F0F12',
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+      minWidth: 0,
     },
-    heroStats: {
-      marginTop: 12,
+    statCardIn: {
+      borderColor: 'rgba(52,199,89,0.4)',
+      backgroundColor: colors.background,
+    },
+    statCardDefault: {
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    statLabelRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 4,
     },
-    heroStat: { flex: 1 },
-    heroStatLabel: {
-      fontSize: 12,
+    statLabel: {
+      fontSize: 10,
       fontWeight: '600',
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
       color: colors.mutedForeground,
     },
-    heroStatValue: {
-      marginTop: 2,
-      fontSize: 16,
-      fontWeight: '800',
+    statValue: {
+      marginTop: 6,
+      fontSize: 13,
+      fontWeight: '700',
       color: colors.foreground,
       fontVariant: ['tabular-nums'],
     },
-    heroDivider: {
-      width: StyleSheet.hairlineWidth,
-      height: 36,
-      backgroundColor: colors.border,
-      marginHorizontal: 12,
-    },
-    track: {
-      marginTop: 12,
-      height: 8,
-      borderRadius: 999,
-      backgroundColor: Brand.orange,
-      overflow: 'hidden',
-    },
-    trackFill: {
-      height: '100%',
-      backgroundColor: Brand.success,
-      borderRadius: 999,
-    },
-    trackHint: {
-      marginTop: 8,
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.mutedForeground,
-    },
     panel: {
+      marginTop: 16,
       borderRadius: Radius.card,
-      backgroundColor: colors.card,
-      padding: 12,
-      marginBottom: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+      padding: 18,
+      shadowColor: '#0F0F12',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 1,
     },
     panelHead: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      gap: 10,
+      marginBottom: 14,
     },
     panelTitle: {
       fontSize: 16,
-      fontWeight: '800',
+      fontWeight: '700',
       color: colors.foreground,
     },
-    muted: {
-      fontSize: 12,
+    panelSub: {
+      marginTop: 2,
+      fontSize: 13,
       fontWeight: '500',
       color: colors.mutedForeground,
     },
-    link: {
-      fontSize: 13,
+    spendBadge: {
+      borderRadius: 999,
+      backgroundColor: Brand.orangeMuted,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    spendBadgeText: {
+      fontSize: 12,
       fontWeight: '700',
       color: Brand.orange,
     },
-    chart: {
+    legend: {
       flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      marginBottom: 10,
+    },
+    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    legendDot: { width: 8, height: 8, borderRadius: 4 },
+    legendText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+    },
+    chartScroll: {
+      minHeight: 160,
       alignItems: 'flex-end',
-      gap: 2,
-      height: 96,
+      gap: 4,
+      paddingBottom: 4,
+      flexGrow: 1,
     },
     barCol: {
-      flex: 1,
+      flexGrow: 1,
+      flexBasis: 10,
+      minWidth: 10,
       alignItems: 'center',
       justifyContent: 'flex-end',
-      minWidth: 0,
     },
     barPair: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: 1,
-      height: 80,
+      justifyContent: 'center',
+      gap: 2,
+      height: 140,
     },
     barIn: {
-      width: 3,
-      borderRadius: 2,
-      backgroundColor: Brand.success,
-      minHeight: 2,
+      width: 6,
+      borderRadius: 999,
+      backgroundColor: 'rgba(52,199,89,0.85)',
     },
     barOut: {
-      width: 3,
-      borderRadius: 2,
-      backgroundColor: Brand.orange,
-      minHeight: 2,
+      width: 6,
+      borderRadius: 999,
+      backgroundColor: 'rgba(255,106,0,0.85)',
     },
-    barLabel: {
-      marginTop: 4,
-      fontSize: 8,
+    muted: {
+      fontSize: 13,
+      fontWeight: '500',
       color: colors.mutedForeground,
-      fontWeight: '600',
     },
-    legend: {
-      marginTop: 12,
-      flexDirection: 'row',
-      gap: 10,
-    },
-    legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    legendDot: { width: 8, height: 8, borderRadius: 4 },
+    catList: { marginTop: 14, gap: 14 },
+    catBlock: { gap: 6 },
     catRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -438,18 +495,17 @@ function makeStyles(colors: ThemeColors) {
     catLabel: {
       flex: 1,
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: '600',
       color: colors.foreground,
     },
     catValue: {
-      fontSize: 13,
-      fontWeight: '800',
-      color: colors.foreground,
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.mutedForeground,
       fontVariant: ['tabular-nums'],
     },
     catTrack: {
-      marginTop: 6,
-      height: 6,
+      height: 10,
       borderRadius: 999,
       backgroundColor: colors.muted,
       overflow: 'hidden',
@@ -457,31 +513,6 @@ function makeStyles(colors: ThemeColors) {
     catFill: {
       height: '100%',
       borderRadius: 999,
-    },
-    catMeta: {
-      marginTop: 4,
-      fontSize: 11,
-      color: colors.mutedForeground,
-      fontWeight: '500',
-    },
-    topRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    topTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.foreground,
-    },
-    topAmount: {
-      fontSize: 13,
-      fontWeight: '800',
-      color: colors.foreground,
-      fontVariant: ['tabular-nums'],
     },
   });
 }

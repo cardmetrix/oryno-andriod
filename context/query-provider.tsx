@@ -1,15 +1,30 @@
+import { useAuth } from '@clerk/clerk-expo';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 
-import { SplashLoading } from '@/components/ui/splash-loading';
 import {
   createAppQueryClient,
   restoreQueryCache,
   subscribeQueryCachePersist,
 } from '@/lib/query-client';
 
-/** QueryClient with AsyncStorage persistence. Blocks until disk cache is restored. */
-export function AppQueryProvider({ children }: { children: React.ReactNode }) {
+const QueryHydratedContext = createContext(false);
+
+export function useQueryHydrated() {
+  return useContext(QueryHydratedContext);
+}
+
+/**
+ * Restores React Query cache from disk. Does not own the splash —
+ * BootGate keeps SplashLoading up until dashboard data is ready.
+ */
+export function AppQueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => createAppQueryClient());
   const [hydrated, setHydrated] = useState(false);
 
@@ -29,9 +44,11 @@ export function AppQueryProvider({ children }: { children: React.ReactNode }) {
     };
   }, [queryClient]);
 
-  if (!hydrated) {
-    return <SplashLoading />;
-  }
-
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <QueryHydratedContext.Provider value={hydrated}>
+        {children}
+      </QueryHydratedContext.Provider>
+    </QueryClientProvider>
+  );
 }

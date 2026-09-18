@@ -8,7 +8,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet } from '@/components/app/picker-sheet';
@@ -287,7 +289,7 @@ export default function EmailsScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(0)} style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconBubble}>
             <Ionicons name="mail-outline" size={20} color={Brand.orange} />
@@ -328,7 +330,7 @@ export default function EmailsScreen() {
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.delay(40).duration(280)}
+        entering={cardEntering(40)}
         style={styles.card}>
         <Text style={styles.cardTitle}>Email domain</Text>
         <Text style={styles.sectionSub}>
@@ -379,7 +381,7 @@ export default function EmailsScreen() {
       </Animated.View>
 
       <Animated.View
-        entering={FadeInDown.delay(70).duration(280)}
+        entering={cardEntering(70)}
         style={styles.card}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>

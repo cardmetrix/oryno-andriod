@@ -5,20 +5,20 @@ import { useAppTheme } from '@/context/theme-context';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 
-/** Pull account theme preference after sign-in so dark mode applies app-wide. */
+/** Apply account theme only when this device has no local preference yet. */
 export function ThemeSync() {
   const { isLoaded, isSignedIn } = useAuth();
-  const { setPreference } = useAppTheme();
+  const { ready, hasLocalPreference, setPreference } = useAppTheme();
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !ready || hasLocalPreference) return;
     let cancelled = false;
     (async () => {
       try {
         const json = await api.get<{
           preferences?: { theme?: string };
         }>(endpoints.settings.root);
-        if (cancelled) return;
+        if (cancelled || hasLocalPreference) return;
         await setPreference(json.preferences?.theme === 'dark' ? 'dark' : 'light');
       } catch {
         // keep local preference
@@ -27,7 +27,7 @@ export function ThemeSync() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn, setPreference]);
+  }, [isLoaded, isSignedIn, ready, hasLocalPreference, setPreference]);
 
   return null;
 }

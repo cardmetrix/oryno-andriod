@@ -35,6 +35,7 @@ import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useSettlePendingTransactions } from '@/hooks/use-settle-pending-transactions';
 import { useWallet } from '@/hooks/use-wallet';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
@@ -55,6 +56,7 @@ export default function WalletScreen() {
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { data, loading, error, refresh } = useWallet();
   const invalidateWallet = useInvalidateWallet();
+  useSettlePendingTransactions(true);
   const [hidden, setHidden] = useState(false);
   const [walletView, setWalletView] = useState<PagerItem>('local');
   const [usdPanel, setUsdPanel] = useState<UsdPanel>('fund');
@@ -357,7 +359,7 @@ export default function WalletScreen() {
                 <View style={styles.emptyBanks}>
                   <Text style={styles.emptyBanksTitle}>No bank accounts yet</Text>
                   <Text style={styles.emptyBanksSub}>
-                    Add a Paystack-verified bank to withdraw from your wallet.
+                    Add a verified bank to withdraw from your wallet.
                   </Text>
                   <Pressable
                     style={styles.emptyBanksBtn}
@@ -412,18 +414,16 @@ function makeStyles(colors: ThemeColors) {
     sub: { marginTop: 4, fontSize: 13, color: colors.grayMedium, fontWeight: '500' },
     historyBtn: {
       borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
+      backgroundColor: Brand.orange,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 10,
+      paddingHorizontal: 14,
       paddingVertical: 10,
     },
     historyBtnText: {
       fontSize: 13,
       fontWeight: '700',
-      color: colors.charcoal,
+      color: Brand.white,
     },
     errorCard: {
       borderRadius: Radius.card,

@@ -27,7 +27,6 @@ export function WalletCard({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.glow} />
       <View style={styles.shadowWrap}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}
@@ -104,13 +103,6 @@ export function WalletCard({
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  glow: {
-    ...StyleSheet.absoluteFillObject,
-    top: -6,
-    bottom: 48,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,106,0,0.14)',
-  },
   shadowWrap: {
     borderRadius: 20,
     shadowColor: Brand.orange,

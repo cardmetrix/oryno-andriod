@@ -1,22 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { Brand } from '@/constants/theme';
+import { serviceLogoSources } from '@/lib/brand-logos';
 
 type Props = {
   src?: string | null;
   alt: string;
+  domain?: string | null;
+  fallbacks?: string[] | null;
   fallback?: string;
   size?: number;
 };
 
-/** Provider logo from VTpass CDN with letter fallback. */
-export function ServiceLogo({ src, alt, fallback, size = 40 }: Props) {
-  const [failed, setFailed] = useState(false);
-  const letter = (fallback || alt).trim().slice(0, 1).toUpperCase() || '?';
+/** Provider logo with open favicon/logo API fallbacks, then a letter. */
+export function ServiceLogo({
+  src,
+  alt,
+  domain,
+  fallbacks,
+  fallback,
+  size = 40,
+}: Props) {
+  const chain = useMemo(
+    () => serviceLogoSources({ src, domain, name: alt, fallbacks }),
+    [src, domain, alt, fallbacks],
+  );
+  const [idx, setIdx] = useState(0);
 
-  if (!src || failed) {
+  useEffect(() => {
+    setIdx(0);
+  }, [chain.join('|')]);
+
+  const letter = (fallback || alt).trim().slice(0, 1).toUpperCase() || '?';
+  const current = chain[idx];
+
+  if (!current) {
     return (
       <View style={[styles.fallback, { width: size, height: size, borderRadius: size * 0.4 }]}>
         <Text style={styles.letter}>{letter}</Text>
@@ -27,12 +47,12 @@ export function ServiceLogo({ src, alt, fallback, size = 40 }: Props) {
   return (
     <View style={[styles.wrap, { width: size, height: size, borderRadius: size * 0.4 }]}>
       <Image
-        source={{ uri: src }}
+        source={{ uri: current }}
         style={styles.img}
-        contentFit="cover"
+        contentFit="contain"
         cachePolicy="memory-disk"
-        recyclingKey={src}
-        onError={() => setFailed(true)}
+        recyclingKey={current}
+        onError={() => setIdx((i) => (i + 1 < chain.length ? i + 1 : chain.length))}
       />
     </View>
   );

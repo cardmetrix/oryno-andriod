@@ -98,20 +98,39 @@ function formatSubmittedAt(iso?: string | null) {
   });
 }
 
-async function pickKycImage(): Promise<KycImage | null> {
-  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    toast.error('Allow photo library access to upload KYC documents.');
-    return null;
-  }
+async function pickKycImage(target: 'front' | 'back' | 'selfie'): Promise<KycImage | null> {
+  const result =
+    target === 'selfie'
+      ? await (async () => {
+          const permission = await ImagePicker.requestCameraPermissionsAsync();
+          if (!permission.granted) {
+            toast.error('Allow camera access to take your KYC selfie.');
+            return null;
+          }
+          return ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+            base64: true,
+            cameraType: ImagePicker.CameraType.front,
+          });
+        })()
+      : await (async () => {
+          const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!permission.granted) {
+            toast.error('Allow photo library access to upload KYC documents.');
+            return null;
+          }
+          return ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsMultipleSelection: false,
+            quality: 0.85,
+            base64: true,
+          });
+        })();
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    allowsMultipleSelection: false,
-    quality: 0.85,
-    base64: true,
-  });
-  if (result.canceled || !result.assets[0]) return null;
+  if (!result || result.canceled || !result.assets[0]) return null;
 
   const asset = result.assets[0];
   const base64 = asset.base64;
@@ -221,7 +240,7 @@ export default function KycScreen() {
   async function onPick(target: 'front' | 'back' | 'selfie') {
     setPicking(target);
     try {
-      const image = await pickKycImage();
+      const image = await pickKycImage(target);
       if (!image) return;
       if (target === 'front') setIdFrontImage(image);
       if (target === 'back') setIdBackImage(image);
@@ -705,7 +724,9 @@ function UploadTile({
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.uploadLabel}>{label}</Text>
-        <Text style={styles.uploadHint}>{preview ? 'Tap to replace' : 'Tap to upload'}</Text>
+        <Text style={styles.uploadHint}>
+          {preview ? 'Tap to replace' : selfie ? 'Tap to take a selfie' : 'Tap to upload'}
+        </Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
     </Pressable>

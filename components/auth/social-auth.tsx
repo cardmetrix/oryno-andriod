@@ -1,4 +1,4 @@
-import { useSSO } from '@clerk/clerk-expo';
+import { useAuth, useClerk, useSSO } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -8,7 +8,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { GoogleIcon } from '@/components/auth/google-icon';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
-import { syncSessionToDatabase } from '@/lib/auth-sync';
+import { syncSessionToDatabase, continueAfterSignedIn } from '@/lib/auth-sync';
+import {
+  clerkErrorMessage,
+  existingSessionIdFromClerkError,
+  isSessionAlreadyExistsError,
+  needsContinueFlow,
+} from '@/lib/clerk-errors';
 import { getOAuthRedirectUrl } from '@/lib/oauth';
 import { toast } from '@/lib/toast';
 
@@ -20,20 +26,12 @@ type Props = {
 
 type OAuthStrategy = 'oauth_google' | 'oauth_apple';
 
-function clerkErrorMessage(err: unknown, fallback: string) {
-  if (typeof err === 'object' && err && 'errors' in err) {
-    const first = (err as { errors?: { longMessage?: string; message?: string }[] })
-      .errors?.[0];
-    return first?.longMessage || first?.message || fallback;
-  }
-  if (err instanceof Error && err.message) return err.message;
-  return fallback;
-}
-
 export function SocialAuth({ mode = 'signIn' }: Props) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { startSSOFlow } = useSSO();
+  const { isSignedIn, sessionId } = useAuth();
+  const clerk = useClerk();
   const [pending, setPending] = useState<OAuthStrategy | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,25 +43,42 @@ export function SocialAuth({ mode = 'signIn' }: Props) {
   }, []);
 
   const finishSession = useCallback(
-    async (sessionId: string, setActive: (params: { session: string }) => Promise<void>) => {
-      await setActive({ session: sessionId });
-      void (async () => {
-        try {
-          const { readStoredReferralCode } = await import('@/lib/referrals');
-          const referralCode =
-            mode === 'signUp' ? await readStoredReferralCode() : null;
-          await syncSessionToDatabase({
-            announceLogin: mode === 'signIn',
-            referralCode: referralCode || undefined,
-          });
-        } catch {
-          // Session is active even if DB sync fails once
-        }
-      })();
-      toast.success(mode === 'signUp' ? 'Welcome to ORYNO' : 'Signed in');
-      router.replace('/(app)/(tabs)');
+    async (nextSessionId: string, setActive: (params: { session: string }) => Promise<void>) => {
+      await setActive({ session: nextSessionId });
+      try {
+        const { readStoredReferralCode } = await import('@/lib/referrals');
+        const referralCode =
+          mode === 'signUp' ? await readStoredReferralCode() : null;
+        const sync = await syncSessionToDatabase({
+          announceLogin: mode === 'signIn',
+          referralCode: referralCode || undefined,
+        });
+        toast.success(mode === 'signUp' ? 'Welcome to ORYNO' : 'Signed in');
+        await continueAfterSignedIn(sync);
+      } catch {
+        toast.success(mode === 'signUp' ? 'Welcome to ORYNO' : 'Signed in');
+        await continueAfterSignedIn(null);
+      }
     },
     [mode],
+  );
+
+  const resumeExistingSession = useCallback(
+    async (err?: unknown) => {
+      const fromError = err ? existingSessionIdFromClerkError(err) : null;
+      const lastActive =
+        typeof clerk.client?.lastActiveSessionId === 'string'
+          ? clerk.client.lastActiveSessionId
+          : null;
+      const existing = fromError || sessionId || lastActive;
+      if (existing && clerk.setActive) {
+        await finishSession(existing, clerk.setActive);
+        return;
+      }
+      toast.success(mode === 'signUp' ? 'Welcome to ORYNO' : 'Signed in');
+      await continueAfterSignedIn(null);
+    },
+    [clerk.client?.lastActiveSessionId, clerk.setActive, finishSession, mode, sessionId],
   );
 
   const startOAuth = useCallback(
@@ -78,6 +93,11 @@ export function SocialAuth({ mode = 'signIn' }: Props) {
           : `${provider} sign-in failed. Try email instead.`;
 
       try {
+        if (isSignedIn) {
+          await resumeExistingSession();
+          return;
+        }
+
         const redirectUrl = getOAuthRedirectUrl();
         console.log('[ORYNO OAuth] starting', { strategy, redirectUrl });
 
@@ -92,21 +112,38 @@ export function SocialAuth({ mode = 'signIn' }: Props) {
           return;
         }
 
-        if (createdSessionId && setActive) {
-          await finishSession(createdSessionId, setActive);
-          return;
-        }
-
-        if (signUp?.status === 'missing_requirements') {
-          router.push({
+        // Website continueSignUpUrl="/continue" — finish profile before dashboard.
+        if (
+          signUp?.status === 'missing_requirements' ||
+          (signUp?.missingFields && signUp.missingFields.length > 0)
+        ) {
+          router.replace({
             pathname: '/(auth)/sso-continue',
             params: { mode },
           });
           return;
         }
 
+        if (createdSessionId && setActive) {
+          await finishSession(createdSessionId, setActive);
+          return;
+        }
+
         if (signIn?.status === 'needs_second_factor') {
-          setError('Additional verification required. Sign in with email to continue.');
+          const hasTotp = signIn.supportedSecondFactors?.some((f) => f.strategy === 'totp');
+          router.push({
+            pathname: '/(auth)/otp',
+            params: { mode: hasTotp ? 'totp' : 'login' },
+          });
+          return;
+        }
+
+        // Incomplete OAuth without a session — same as website /continue.
+        if (signUp?.id) {
+          router.replace({
+            pathname: '/(auth)/sso-continue',
+            params: { mode },
+          });
           return;
         }
 
@@ -117,6 +154,17 @@ export function SocialAuth({ mode = 'signIn' }: Props) {
         setError(message);
         toast.error(message);
       } catch (err: unknown) {
+        if (isSessionAlreadyExistsError(err)) {
+          await resumeExistingSession(err);
+          return;
+        }
+        if (needsContinueFlow(err)) {
+          router.replace({
+            pathname: '/(auth)/sso-continue',
+            params: { mode },
+          });
+          return;
+        }
         const message = clerkErrorMessage(err, fallback);
         if (/cancel|dismiss|abort|user.?closed/i.test(message)) {
           return;
@@ -128,7 +176,7 @@ export function SocialAuth({ mode = 'signIn' }: Props) {
         setPending(null);
       }
     },
-    [finishSession, mode, startSSOFlow],
+    [finishSession, isSignedIn, mode, resumeExistingSession, startSSOFlow],
   );
 
   return (

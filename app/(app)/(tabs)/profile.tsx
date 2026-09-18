@@ -1,10 +1,10 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,7 +23,6 @@ import { useAppTheme } from '@/context/theme-context';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
-import { APP_VERSION_LABEL } from '@/lib/app-version';
 import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { unregisterPushToken } from '@/lib/push-notifications';
@@ -496,8 +495,6 @@ export default function ProfileScreen() {
           }}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </Pressable>
-
-        <Text style={styles.versionText}>ORYNO {APP_VERSION_LABEL}</Text>
       </Animated.View>
     </Screen>
   );

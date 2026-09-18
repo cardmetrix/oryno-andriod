@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 
 import { api } from '@/lib/api';
 import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { detectUserCountry } from '@/lib/geo';
 import type { SyncResponse } from '@/lib/types';
+import { markTwoFactorPending } from '@/lib/two-factor';
 
 const COUNTRY_STORAGE_KEY = 'oryno_country';
 const LOGIN_ANNOUNCED_KEY = 'oryno_login_announced';
@@ -133,4 +135,20 @@ export async function syncSessionToDatabase(options?: {
   })();
 
   return inflight;
+}
+
+/** After Clerk session is active: challenge TOTP if enabled, otherwise enter the app. */
+export async function continueAfterSignedIn(sync?: SyncResponse | null) {
+  let result = sync ?? null;
+  if (!result) {
+    try {
+      result = await syncSessionToDatabase();
+    } catch {
+      result = null;
+    }
+  }
+  if (result?.twoFactorRequired) {
+    markTwoFactorPending();
+  }
+  router.replace('/(app)/(tabs)');
 }

@@ -8,7 +8,14 @@ import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 import type { ProfileDto } from '@/lib/types';
 
-export type ProfileResponse = { profile: ProfileDto };
+export type DisplayFx = {
+  from: 'NGN';
+  to: string;
+  ngnToLocal: number;
+  localToNgn: number;
+};
+
+export type ProfileResponse = { profile: ProfileDto; displayFx?: DisplayFx };
 
 export async function fetchProfile() {
   return api.get<ProfileResponse>(endpoints.profile);
@@ -48,6 +55,7 @@ export function useProfile() {
           : null,
     countryCode: profile?.countryCode || 'NG',
     countryName: profile?.countryName || 'Nigeria',
+    displayFx: query.data?.displayFx ?? null,
     refresh: () => query.refetch(),
   };
 }

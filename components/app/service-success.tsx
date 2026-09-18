@@ -2,10 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PickerSheet } from '@/components/app/picker-sheet';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { toast } from '@/lib/toast';
@@ -96,6 +104,7 @@ function ActionRow({
   );
 }
 
+/** Centered success dialog matching website `ServiceSuccess` (Dialog). */
 export function ServiceSuccess({
   variant = 'success',
   title,
@@ -112,9 +121,12 @@ export function ServiceSuccess({
 }: ServiceSuccessProps) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const isSuccess = variant === 'success';
   const [visible, setVisible] = useState(true);
   const [copied, setCopied] = useState(false);
+  const maxCardHeight = Math.min(windowHeight * 0.88, 720);
 
   useEffect(() => {
     setVisible(true);
@@ -143,178 +155,254 @@ export function ServiceSuccess({
   };
 
   return (
-    <PickerSheet
+    <Modal
       visible={visible}
-      title={title}
-      subtitle={subtitle}
-      onClose={dismiss}
-      fullScreen>
-      <View style={styles.body}>
-        <View style={styles.iconWrap}>
+      transparent
+      animationType="fade"
+      presentationStyle="overFullScreen"
+      onRequestClose={dismiss}
+      statusBarTranslucent>
+      <View style={[styles.root, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12 }]}>
+        <Pressable style={styles.backdrop} onPress={dismiss} accessibilityLabel="Dismiss" />
+        <Animated.View entering={FadeIn.duration(180)} style={styles.cardWrap}>
           <View
             style={[
-              styles.iconHalo,
-              {
-                backgroundColor: isSuccess
-                  ? 'rgba(52,199,89,0.18)'
-                  : 'rgba(245,158,11,0.16)',
-              },
-            ]}
-          />
-          <Animated.View
-            entering={ZoomIn.springify().damping(14)}
-            style={[
-              styles.iconCircle,
-              {
-                backgroundColor: isSuccess ? Brand.success : '#F59E0B',
-                shadowColor: isSuccess ? Brand.success : '#F59E0B',
-              },
+              styles.card,
+              { backgroundColor: colors.card, maxHeight: maxCardHeight },
             ]}>
-            <Ionicons
-              name={isSuccess ? 'checkmark' : 'time'}
-              size={32}
-              color={Brand.white}
-            />
-          </Animated.View>
-        </View>
+            <Pressable
+              onPress={dismiss}
+              style={({ pressed }) => [
+                styles.closeBtn,
+                { backgroundColor: colors.muted },
+                pressed && { opacity: 0.75 },
+              ]}
+              accessibilityLabel="Close"
+              hitSlop={8}>
+              <Ionicons name="close" size={18} color={colors.foreground} />
+            </Pressable>
 
-        {amount || reference ? (
-          <View style={styles.detailCard}>
-            {amount ? (
-              <View style={styles.amountRow}>
+            <ScrollView
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.body}
+              keyboardShouldPersistTaps="handled">
+              <View style={styles.iconWrap}>
                 <View
                   style={[
-                    styles.walletBubble,
+                    styles.iconHalo,
                     {
                       backgroundColor: isSuccess
-                        ? 'rgba(52,199,89,0.15)'
-                        : 'rgba(245,158,11,0.15)',
+                        ? 'rgba(52,199,89,0.18)'
+                        : 'rgba(245,158,11,0.16)',
+                    },
+                  ]}
+                />
+                <Animated.View
+                  entering={ZoomIn.springify().damping(14)}
+                  style={[
+                    styles.iconCircle,
+                    {
+                      backgroundColor: isSuccess ? Brand.success : '#F59E0B',
+                      shadowColor: isSuccess ? Brand.success : '#F59E0B',
                     },
                   ]}>
                   <Ionicons
-                    name="wallet"
-                    size={20}
-                    color={isSuccess ? Brand.success : '#D97706'}
+                    name={isSuccess ? 'checkmark' : 'time'}
+                    size={32}
+                    color={Brand.white}
                   />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.amountLabel}>
-                    {(
-                      amountLabel ||
-                      (isSuccess ? 'Amount credited' : 'Expected amount')
-                    ).toUpperCase()}
-                  </Text>
-                  <Text style={styles.amountValue} numberOfLines={1}>
-                    {amount}
-                  </Text>
-                </View>
+                </Animated.View>
               </View>
-            ) : null}
 
-            {amount && reference ? <View style={styles.divider} /> : null}
+              <Text style={styles.title}>{title}</Text>
+              <Text style={styles.subtitle}>{subtitle}</Text>
 
-            {reference ? (
-              <View style={styles.refRow}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.refLabel}>Reference ID</Text>
-                  <Text style={styles.refValue} numberOfLines={1} selectable>
-                    {reference}
-                  </Text>
+              {amount || reference ? (
+                <View style={styles.detailCard}>
+                  {amount ? (
+                    <View style={styles.amountRow}>
+                      <View
+                        style={[
+                          styles.walletBubble,
+                          {
+                            backgroundColor: isSuccess
+                              ? 'rgba(52,199,89,0.15)'
+                              : 'rgba(245,158,11,0.15)',
+                          },
+                        ]}>
+                        <Ionicons
+                          name="wallet"
+                          size={20}
+                          color={isSuccess ? Brand.success : '#D97706'}
+                        />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.amountLabel}>
+                          {(
+                            amountLabel ||
+                            (isSuccess ? 'Amount credited' : 'Expected amount')
+                          ).toUpperCase()}
+                        </Text>
+                        <Text style={styles.amountValue} numberOfLines={1}>
+                          {amount}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {amount && reference ? <View style={styles.divider} /> : null}
+
+                  {reference ? (
+                    <View style={styles.refRow}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.refLabel}>Reference ID</Text>
+                        <Text style={styles.refValue} numberOfLines={1} selectable>
+                          {reference}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => void copyReference()}
+                        style={styles.copyBtn}>
+                        <Ionicons name="copy-outline" size={14} color={Brand.success} />
+                        <Text style={styles.copyText}>
+                          {copied ? 'Copied' : 'Copy'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
                 </View>
-                <Pressable onPress={() => void copyReference()} style={styles.copyBtn}>
-                  <Ionicons name="copy-outline" size={14} color={Brand.success} />
-                  <Text style={styles.copyText}>{copied ? 'Copied' : 'Copy'}</Text>
-                </Pressable>
+              ) : null}
+
+              {children ? <View style={styles.children}>{children}</View> : null}
+
+              <View style={styles.actions}>
+                {primaryAction ? (
+                  <ActionRow
+                    action={primaryAction}
+                    variant="primary"
+                    colors={colors}
+                    styles={styles}
+                  />
+                ) : null}
+                {secondaryAction ? (
+                  <ActionRow
+                    action={secondaryAction}
+                    variant="secondary"
+                    colors={colors}
+                    styles={styles}
+                  />
+                ) : null}
+                {tertiaryAction ? (
+                  <ActionRow
+                    action={tertiaryAction}
+                    variant="secondary"
+                    colors={colors}
+                    styles={styles}
+                  />
+                ) : null}
               </View>
-            ) : null}
+
+              {showFooter ? (
+                <View style={styles.footer}>
+                  <View style={styles.footerCol}>
+                    <Ionicons name="shield-checkmark" size={16} color={Brand.success} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.footerTitle}>100% Secure</Text>
+                      <Text style={styles.footerSub}>
+                        Your transactions are protected
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.footerDivider} />
+                  <Pressable
+                    style={styles.footerCol}
+                    onPress={() => router.push('/(app)/support' as never)}>
+                    <Ionicons name="headset" size={16} color={Brand.success} />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[styles.footerTitle, { color: colors.foreground }]}>
+                        Need help?
+                      </Text>
+                      <Text
+                        style={[
+                          styles.footerSub,
+                          { color: Brand.success, fontWeight: '700' },
+                        ]}>
+                        Contact support
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              ) : null}
+            </ScrollView>
           </View>
-        ) : null}
-
-        {children ? <View style={styles.children}>{children}</View> : null}
-
-        <View style={styles.actions}>
-          {primaryAction ? (
-            <ActionRow
-              action={primaryAction}
-              variant="primary"
-              colors={colors}
-              styles={styles}
-            />
-          ) : null}
-          {secondaryAction ? (
-            <ActionRow
-              action={secondaryAction}
-              variant="secondary"
-              colors={colors}
-              styles={styles}
-            />
-          ) : null}
-          {tertiaryAction ? (
-            <ActionRow
-              action={tertiaryAction}
-              variant="secondary"
-              colors={colors}
-              styles={styles}
-            />
-          ) : null}
-        </View>
-
-        {showFooter ? (
-          <View style={styles.footer}>
-            <View style={styles.footerCol}>
-              <Ionicons name="shield-checkmark" size={16} color={Brand.success} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.footerTitle}>100% Secure</Text>
-                <Text style={styles.footerSub}>Your transactions are protected</Text>
-              </View>
-            </View>
-            <View style={styles.footerDivider} />
-            <Pressable
-              style={styles.footerCol}
-              onPress={() => router.push('/(app)/support' as never)}>
-              <Ionicons name="headset" size={16} color={Brand.success} />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.footerTitle, { color: colors.foreground }]}>
-                  Need help?
-                </Text>
-                <Text
-                  style={[styles.footerSub, { color: Brand.success, fontWeight: '700' }]}>
-                  Contact support
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-        ) : null}
+        </Animated.View>
       </View>
-    </PickerSheet>
+    </Modal>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    body: {
-      flexGrow: 1,
+    root: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+    },
+    cardWrap: {
+      width: '100%',
+      maxWidth: 420,
+      zIndex: 1,
+    },
+    card: {
+      borderRadius: 28,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOpacity: 0.22,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 12,
+    },
+    closeBtn: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      zIndex: 2,
+      width: 32,
+      height: 32,
+      borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingBottom: 8,
-      paddingTop: 12,
+    },
+    body: {
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 28,
+      paddingBottom: 22,
     },
     iconWrap: {
-      width: 88,
-      height: 88,
+      width: 80,
+      height: 80,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 4,
-      marginTop: 4,
     },
     iconHalo: {
       ...StyleSheet.absoluteFillObject,
-      borderRadius: 44,
+      borderRadius: 40,
     },
     iconCircle: {
-      width: 68,
-      height: 68,
-      borderRadius: 34,
+      width: 64,
+      height: 64,
+      borderRadius: 32,
       alignItems: 'center',
       justifyContent: 'center',
       shadowOpacity: 0.35,
@@ -322,9 +410,26 @@ function makeStyles(colors: ThemeColors) {
       shadowOffset: { width: 0, height: 8 },
       elevation: 6,
     },
+    title: {
+      marginTop: 12,
+      fontSize: 24,
+      fontWeight: '800',
+      letterSpacing: -0.3,
+      color: colors.foreground,
+      textAlign: 'center',
+    },
+    subtitle: {
+      marginTop: 8,
+      maxWidth: 320,
+      fontSize: 14,
+      fontWeight: '500',
+      lineHeight: 20,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+    },
     detailCard: {
       width: '100%',
-      marginTop: 16,
+      marginTop: 20,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.border,

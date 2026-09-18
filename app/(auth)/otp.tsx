@@ -1,4 +1,4 @@
-import { useSignIn, useSignUp } from '@clerk/clerk-expo';
+import { useAuth, useSignIn, useSignUp } from '@clerk/clerk-expo';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -8,19 +8,25 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { OtpInput } from '@/components/auth/otp-input';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
-import { Brand, Radius } from '@/constants/theme';
+import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
-import { syncSessionToDatabase } from '@/lib/auth-sync';
+import { api } from '@/lib/api';
+import { continueAfterSignedIn, syncSessionToDatabase } from '@/lib/auth-sync';
+import { needsContinueFlow } from '@/lib/clerk-errors';
+import { endpoints } from '@/lib/endpoints';
+import { setTwoFactorToken } from '@/lib/two-factor';
 
-type OtpMode = 'register' | 'login';
+type OtpMode = 'register' | 'login' | 'totp';
 
 export default function OtpScreen() {
   const params = useLocalSearchParams<{ mode?: string; email?: string }>();
-  const mode: OtpMode = params.mode === 'login' ? 'login' : 'register';
+  const mode: OtpMode =
+    params.mode === 'login' ? 'login' : params.mode === 'totp' ? 'totp' : 'register';
   const email = typeof params.email === 'string' ? params.email : '';
   const { colors } = useAppTheme();
 
+  const { isSignedIn } = useAuth();
   const { signUp, setActive: setSignUpActive, isLoaded: signUpLoaded } = useSignUp();
   const { signIn, setActive: setSignInActive, isLoaded: signInLoaded } = useSignIn();
 
@@ -36,23 +42,21 @@ export default function OtpScreen() {
   }, [seconds]);
 
   const finish = async (sessionId: string | null | undefined, announceLogin: boolean) => {
-    const setActive = mode === 'login' ? setSignInActive : setSignUpActive;
+    const setActive = mode === 'register' ? setSignUpActive : setSignInActive;
     if (!sessionId || !setActive) return;
     await setActive({ session: sessionId });
-    void (async () => {
-      try {
-        const { readStoredReferralCode } = await import('@/lib/referrals');
-        const referralCode =
-          mode === 'register' ? await readStoredReferralCode() : null;
-        await syncSessionToDatabase({
-          ...(announceLogin ? { announceLogin: true } : {}),
-          referralCode: referralCode || undefined,
-        });
-      } catch {
-        // session is active even if sync fails once
-      }
-    })();
-    router.replace('/(app)/(tabs)');
+    try {
+      const { readStoredReferralCode } = await import('@/lib/referrals');
+      const referralCode =
+        mode === 'register' ? await readStoredReferralCode() : null;
+      const sync = await syncSessionToDatabase({
+        ...(announceLogin ? { announceLogin: true } : {}),
+        referralCode: referralCode || undefined,
+      });
+      await continueAfterSignedIn(sync);
+    } catch {
+      await continueAfterSignedIn(null);
+    }
   };
 
   const onVerify = useCallback(
@@ -66,15 +70,34 @@ export default function OtpScreen() {
           const result = await signUp.attemptEmailAddressVerification({ code: otp.trim() });
           if (result.status === 'complete') {
             await finish(result.createdSessionId, false);
-          } else {
-            alert.warning('Verification incomplete', `Status: ${result.status}`);
+            return;
           }
+          if (
+            result.status === 'missing_requirements' ||
+            needsContinueFlow(result.status)
+          ) {
+            router.replace({
+              pathname: '/(auth)/sso-continue',
+              params: { mode: 'signUp' },
+            });
+            return;
+          }
+          alert.warning('Verification incomplete', `Status: ${result.status}`);
+          return;
+        }
+
+        if (mode === 'totp' && isSignedIn) {
+          const json = await api.post<{ token?: string }>(endpoints.auth.twoFactorVerify, {
+            code: otp.trim(),
+          });
+          if (json.token) await setTwoFactorToken(json.token);
+          router.replace('/(app)/(tabs)');
           return;
         }
 
         if (!signInLoaded || !signIn) return;
         const result = await signIn.attemptSecondFactor({
-          strategy: 'email_code',
+          strategy: mode === 'totp' ? 'totp' : 'email_code',
           code: otp.trim(),
         });
         if (result.status === 'complete') {
@@ -94,10 +117,11 @@ export default function OtpScreen() {
         setLoading(false);
       }
     },
-    [code, mode, signIn, signInLoaded, signUp, signUpLoaded],
+    [code, isSignedIn, mode, signIn, signInLoaded, signUp, signUpLoaded],
   );
 
   const resend = async () => {
+    if (mode === 'totp') return;
     try {
       if (mode === 'register') {
         if (!signUpLoaded || !signUp) return;
@@ -125,7 +149,7 @@ export default function OtpScreen() {
     }
   };
 
-  const backHref = mode === 'login' ? '/(auth)/login' : '/(auth)/register';
+  const backHref = mode === 'register' ? '/(auth)/register' : '/(auth)/login';
 
   return (
     <Screen scroll>
@@ -143,12 +167,20 @@ export default function OtpScreen() {
             contentFit="cover"
           />
         </View>
-        <Text style={[styles.title, { color: colors.foreground }]}>Verify it&apos;s you</Text>
+        <Text style={[styles.title, { color: colors.foreground }]}>
+          {mode === 'totp' ? 'Authenticator code' : "Verify it's you"}
+        </Text>
         <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-          We&apos;ve sent a 6-digit code to{'\n'}
-          <Text style={[styles.email, { color: colors.foreground }]}>
-            {email || 'your email'}
-          </Text>
+          {mode === 'totp' ? (
+            'Enter the 6-digit code from Google Authenticator'
+          ) : (
+            <>
+              We&apos;ve sent a 6-digit code to{'\n'}
+              <Text style={[styles.email, { color: colors.foreground }]}>
+                {email || 'your email'}
+              </Text>
+            </>
+          )}
         </Text>
       </Animated.View>
 
@@ -163,21 +195,27 @@ export default function OtpScreen() {
           onComplete={(otp) => void onVerify(otp)}
         />
 
-        <Text style={[styles.resendLine, { color: colors.mutedForeground }]}>
-          Didn&apos;t get a code?{' '}
-          {seconds > 0 ? (
-            <Text style={[styles.resendWait, { color: colors.foreground }]}>
-              Resend in {seconds}s
-            </Text>
-          ) : (
-            <Text style={styles.resendLink} onPress={() => void resend()}>
-              Resend
-            </Text>
-          )}
-        </Text>
+        {mode === 'totp' ? (
+          <Text style={[styles.resendLine, { color: colors.mutedForeground }]}>
+            Open Google Authenticator and use the current code.
+          </Text>
+        ) : (
+          <Text style={[styles.resendLine, { color: colors.mutedForeground }]}>
+            Didn&apos;t get a code?{' '}
+            {seconds > 0 ? (
+              <Text style={[styles.resendWait, { color: colors.foreground }]}>
+                Resend in {seconds}s
+              </Text>
+            ) : (
+              <Text style={styles.resendLink} onPress={() => void resend()}>
+                Resend
+              </Text>
+            )}
+          </Text>
+        )}
 
         <Button
-          title={loading ? 'Verifying…' : mode === 'login' ? 'Verify & Sign In' : 'Verify & Continue'}
+          title={loading ? 'Verifying…' : mode === 'register' ? 'Verify & Continue' : 'Verify & Sign In'}
           onPress={() => void onVerify()}
           loading={loading}
           disabled={code.length < 6 || loading}

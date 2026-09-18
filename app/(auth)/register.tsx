@@ -12,6 +12,7 @@ import { TextField } from '@/components/ui/text-field';
 import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
+import { clerkErrorMessage, needsContinueFlow } from '@/lib/clerk-errors';
 import {
   normalizeReferralCode,
   persistReferralCode,
@@ -91,11 +92,14 @@ export default function RegisterScreen() {
         params: { mode: 'register', email: email.trim() },
       });
     } catch (e: unknown) {
-      const msg =
-        typeof e === 'object' && e && 'errors' in e
-          ? String((e as { errors?: { message?: string }[] }).errors?.[0]?.message ?? 'Sign up failed')
-          : 'Sign up failed';
-      alert.error('Sign up failed', msg);
+      if (needsContinueFlow(e) && signUp?.id) {
+        router.replace({
+          pathname: '/(auth)/sso-continue',
+          params: { mode: 'signUp' },
+        });
+        return;
+      }
+      alert.error('Sign up failed', clerkErrorMessage(e, 'Sign up failed'));
     } finally {
       setLoading(false);
     }
@@ -118,7 +122,7 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.form}>
-        <TextField label="Full Name" value={fullName} onChangeText={setFullName} placeholder="John Doe" />
+        <TextField label="Full Name" value={fullName} onChangeText={setFullName}  />
         <TextField
           label="Username"
           value={username}
@@ -126,7 +130,6 @@ export default function RegisterScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="username"
-          placeholder="john_doe"
         />
         <TextField
           label="Email Address"

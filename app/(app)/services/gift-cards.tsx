@@ -12,7 +12,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { GiftCardBrandLogo } from '@/components/app/gift-card-brand-logo';
 import { PageHeader } from '@/components/app/page-header';
@@ -20,6 +22,7 @@ import { PickerSheet, SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
+import { GiftCardFormSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -28,11 +31,15 @@ import {
   useGiftCardProducts,
   useGiftCardSellCatalog,
 } from '@/hooks/use-service-catalogs';
+import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
+import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
-import { formatNaira } from '@/lib/format';
+import { useProfile } from '@/hooks/use-profile';
+import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
+import { toast } from '@/lib/toast';
 import { useQuery } from '@tanstack/react-query';
 
 const MAX_CARD_IMAGE_BYTES = 2_500_000;
@@ -95,6 +102,19 @@ const CARD_COUNTRIES = [
   { code: 'AU', label: 'Australia', currency: 'AUD' },
 ];
 
+const EU_COUNTRIES = [
+  'Germany',
+  'France',
+  'Italy',
+  'Spain',
+  'Netherlands',
+  'Ireland',
+  'Belgium',
+  'Austria',
+  'Portugal',
+  'Sweden',
+];
+
 const FALLBACK_BUY_COUNTRIES = [
   { code: 'US', label: 'United States' },
   { code: 'GB', label: 'United Kingdom' },
@@ -122,6 +142,10 @@ function currencyForCardCountry(
   return brandCurrencies[0] || mapped;
 }
 
+function newIdempotencyKey() {
+  return `gc-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function GiftCardsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -138,6 +162,15 @@ export default function GiftCardsScreen() {
   const countryParam = firstParam(params.country);
 
   const invalidateWallet = useInvalidateWallet();
+  const { canAfford, canAffordUsd, frozen } = useWalletBalance();
+  const { countryCode, displayFx, profile } = useProfile();
+  const walletCurrency = getCountryInfo(countryCode).currency;
+  const moneySell = (n: number) =>
+    formatServiceMoney(n, countryCode || 'NG', displayFx?.ngnToLocal ?? 1);
+  const moneyBuy = (quote: BuyQuote) =>
+    quote.currency === 'NGN'
+      ? moneySell(quote.local)
+      : formatCountryMoney(quote.local, countryCode || 'NG');
   const [mode, setMode] = useState<Mode>(
     modeParam === 'buy' ? 'buy' : 'sell',
   );
@@ -150,6 +183,8 @@ export default function GiftCardsScreen() {
       return api.get<{
         simplified?: Array<{ slug?: string; ratePerUnit?: number }>;
         demo?: boolean;
+        unavailable?: boolean;
+        partnerError?: string | null;
       }>(`${endpoints.services.giftCardSellRates}?currency=USD&cardType=ecode`);
     },
     staleTime: STALE.catalog,
@@ -172,9 +207,13 @@ export default function GiftCardsScreen() {
     (sellCatalogQuery.isLoading && !sellCatalogQuery.data) ||
     (sellRatesQuery.isLoading && !sellRatesQuery.data);
   const sellDemo = Boolean(sellCatalogQuery.data?.demo || sellRatesQuery.data?.demo);
+  // Seeded from the catalog/rates responses, then refreshed by each live quote.
+  const [sellUnavailable, setSellUnavailable] = useState(false);
+  const [sellPartnerError, setSellPartnerError] = useState<string | null>(null);
   const [selectedSell, setSelectedSell] = useState<SellBrand | null>(null);
   const [cardType, setCardType] = useState<'ecode' | 'physical'>('physical');
   const [cardCountry, setCardCountry] = useState('US');
+  const [specificCountry, setSpecificCountry] = useState('Germany');
   const [cardCurrency, setCardCurrency] = useState('USD');
   const [sellAmount, setSellAmount] = useState('100');
   const [code, setCode] = useState('');
@@ -211,6 +250,9 @@ export default function GiftCardsScreen() {
   const buyLoading = buyProductsQuery.isLoading && !buyProductsQuery.data;
   const buyDemo = Boolean(
     buyCountriesQuery.data?.demo || buyProductsQuery.data?.demo,
+  );
+  const buySandbox = Boolean(
+    buyCountriesQuery.data?.sandbox || buyProductsQuery.data?.sandbox,
   );
   const [selectedBuy, setSelectedBuy] = useState<BuyProduct | null>(null);
   const [buyAmount, setBuyAmount] = useState('25');
@@ -254,6 +296,12 @@ export default function GiftCardsScreen() {
   }, [modeParam, countryParam]);
 
   useEffect(() => {
+    const email = profile?.email?.trim();
+    if (!email) return;
+    setBuyEmail((prev) => (prev.trim() ? prev : email));
+  }, [profile?.email]);
+
+  useEffect(() => {
     if (sellCatalogQuery.error) {
       setError(
         sellCatalogQuery.error instanceof Error
@@ -262,6 +310,18 @@ export default function GiftCardsScreen() {
       );
     }
   }, [sellCatalogQuery.error]);
+
+  useEffect(() => {
+    const catalog = sellCatalogQuery.data;
+    const rates = sellRatesQuery.data;
+    if (!catalog && !rates) return;
+    setSellUnavailable(Boolean(catalog?.unavailable || rates?.unavailable));
+    setSellPartnerError(
+      (typeof rates?.partnerError === 'string' && rates.partnerError) ||
+        (typeof catalog?.partnerError === 'string' && catalog.partnerError) ||
+        null,
+    );
+  }, [sellCatalogQuery.data, sellRatesQuery.data]);
 
   useEffect(() => {
     if (!buyCountries.length) return;
@@ -351,10 +411,22 @@ export default function GiftCardsScreen() {
           amount: String(value),
         });
         if (cardType === 'physical') qs.set('subType', PHYSICAL_SUB_TYPE);
-        const data = await api.get<{ quote?: SellQuote }>(
-          `${endpoints.services.giftCardSellRates}?${qs}`,
-        );
-        if (!cancelled) setSellQuote(data.quote ?? null);
+        const data = await api.get<{
+          quote?: SellQuote;
+          unavailable?: boolean;
+          partnerError?: string | null;
+        }>(`${endpoints.services.giftCardSellRates}?${qs}`);
+        if (!cancelled) {
+          setSellQuote(data.quote ?? null);
+          if (typeof data.unavailable === 'boolean') {
+            setSellUnavailable(data.unavailable);
+          }
+          if (typeof data.partnerError === 'string' && data.partnerError) {
+            setSellPartnerError(data.partnerError);
+          } else if (data.unavailable === false) {
+            setSellPartnerError(null);
+          }
+        }
       } catch (e) {
         if (!cancelled) {
           setSellQuote(null);
@@ -411,11 +483,12 @@ export default function GiftCardsScreen() {
       setError('Allow photo library access to upload card images.');
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: MAX_CARD_IMAGES - images.length,
-      quality: 0.85,
+      quality: 0.45,
       base64: true,
     });
     if (result.canceled) return;
@@ -427,16 +500,21 @@ export default function GiftCardsScreen() {
         break;
       }
       const base64 = asset.base64;
-      if (!base64) continue;
+      if (!base64) {
+        setError('Failed to read one of the card photos. Try another image.');
+        continue;
+      }
       const approxBytes = Math.ceil((base64.length * 3) / 4);
       if (approxBytes > MAX_CARD_IMAGE_BYTES) {
         setError('Each image must be under 2.5MB');
         continue;
       }
-      const mime = asset.mimeType || 'image/jpeg';
       next.push({
-        filename: asset.fileName || `card-${Date.now()}-${next.length}.jpg`,
-        mime,
+        filename: (asset.fileName || `card-${Date.now()}-${next.length}.jpg`).replace(
+          /\.[^.]+$/,
+          '.jpg',
+        ),
+        mime: 'image/jpeg',
         base64,
         preview: asset.uri,
       });
@@ -446,6 +524,19 @@ export default function GiftCardsScreen() {
 
   async function onSellSubmit() {
     if (!selectedSell || !sellQuote || sellSubmitting) return;
+    if (sellDemo || sellUnavailable) {
+      setError(
+        sellDemo
+          ? 'Gift card selling is not live yet. Please try again later.'
+          : sellPartnerError ||
+            'Live sell rates are unavailable right now. Please try again shortly.',
+      );
+      return;
+    }
+    if (cardCountry === 'EU' && !specificCountry.trim()) {
+      setError('Select the European country for this card.');
+      return;
+    }
     if (cardType === 'ecode' && !code.trim()) {
       setError('Paste the gift card e-code to continue.');
       return;
@@ -466,6 +557,7 @@ export default function GiftCardsScreen() {
         slug: selectedSell.slug,
         brandName: selectedSell.name,
         cardCountry,
+        specificCountry: cardCountry === 'EU' ? specificCountry : null,
         cardType,
         subType: cardType === 'physical' ? PHYSICAL_SUB_TYPE : null,
         cardCurrency,
@@ -479,6 +571,7 @@ export default function GiftCardsScreen() {
                 base64,
               }))
             : [],
+        idempotencyKey: newIdempotencyKey(),
       });
       setSellSuccess(true);
       setSellSuccessStatus(data.status === 'completed' ? 'completed' : 'pending');
@@ -497,10 +590,34 @@ export default function GiftCardsScreen() {
 
   async function onBuySubmit() {
     if (!selectedBuy || buySubmitting) return;
+    if (buyDemo) {
+      setError('Gift card buying is not live yet. Please try again later.');
+      return;
+    }
     if (!buyEmail.trim()) {
       setError('Enter a delivery email for the gift card.');
       return;
     }
+    const amount = Number(buyAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a valid gift card amount.');
+      return;
+    }
+    if (
+      selectedBuy.minAmount != null &&
+      amount < selectedBuy.minAmount
+    ) {
+      setError(`Minimum amount is ${selectedBuy.minAmount}.`);
+      return;
+    }
+    if (
+      selectedBuy.maxAmount != null &&
+      amount > selectedBuy.maxAmount
+    ) {
+      setError(`Maximum amount is ${selectedBuy.maxAmount}.`);
+      return;
+    }
+    if (frozen || !buyAffordable) return;
     setBuySubmitting(true);
     setError(null);
     try {
@@ -510,7 +627,8 @@ export default function GiftCardsScreen() {
         cards?: { cardNumber: string | null; pinCode: string | null }[];
       }>(endpoints.services.giftCardBuy, {
         productId: selectedBuy.productId,
-        unitPrice: Number(buyAmount),
+        countryCode: selectedBuy.countryCode || buyCountry,
+        unitPrice: amount,
         email: buyEmail.trim(),
       });
       setBuySuccess(true);
@@ -535,7 +653,16 @@ export default function GiftCardsScreen() {
 
   async function copyText(value: string) {
     await Clipboard.setStringAsync(value);
+    toast.success('Copied');
   }
+
+  // Reloadly quotes bill the USD card when priced in USD, otherwise the local wallet.
+  const buyAffordable = buyQuote
+    ? buyQuote.currency === 'USD'
+      ? canAffordUsd(buyQuote.local)
+      : canAfford(buyQuote.local)
+    : true;
+  const sellBlocked = sellDemo || sellUnavailable;
 
   const stickyFooter =
     sellSuccess || buySuccess
@@ -545,8 +672,14 @@ export default function GiftCardsScreen() {
           ? null
           : (
               <Button
-                title={sellSubmitting ? 'Submitting…' : 'Sell gift card'}
-                disabled={!sellQuote || sellSubmitting}
+                title={
+                  sellSubmitting
+                    ? 'Submitting…'
+                    : sellBlocked
+                      ? 'Selling unavailable'
+                      : 'Sell gift card'
+                }
+                disabled={!sellQuote || sellSubmitting || sellBlocked}
                 loading={sellSubmitting}
                 onPress={() => void onSellSubmit()}
               />
@@ -558,11 +691,24 @@ export default function GiftCardsScreen() {
                 title={
                   buySubmitting
                     ? 'Buying…'
-                    : buyQuote
-                      ? `Buy · ${formatNaira(buyQuote.local)}`
-                      : 'Buy gift card'
+                    : buyDemo
+                      ? 'Buying unavailable'
+                      : frozen
+                        ? 'Wallet unavailable'
+                        : buyQuote && !buyAffordable
+                          ? 'Insufficient balance'
+                          : buyQuote
+                            ? `Buy · ${moneyBuy(buyQuote)}`
+                            : 'Buy gift card'
                 }
-                disabled={!buyQuote || buySubmitting}
+                disabled={
+                  !buyQuote ||
+                  buySubmitting ||
+                  !buyEmail.trim() ||
+                  frozen ||
+                  buyDemo ||
+                  !buyAffordable
+                }
                 loading={buySubmitting}
                 onPress={() => void onBuySubmit()}
               />
@@ -577,7 +723,7 @@ export default function GiftCardsScreen() {
           title="Gift Cards"
           subtitle={
             mode === 'sell'
-              ? 'Sell gift cards for Naira wallet credit'
+              ? `Sell gift cards for ${walletCurrency} wallet credit`
               : 'Buy digital gift cards with your wallet'
           }
           showBack
@@ -608,6 +754,37 @@ export default function GiftCardsScreen() {
           <Pressable onPress={() => setError(null)} hitSlop={8}>
             <Ionicons name="close" size={18} color={colors.mutedForeground} />
           </Pressable>
+        </View>
+      ) : null}
+
+      {mode === 'sell' && sellBlocked ? (
+        <View style={styles.warnBanner}>
+          <Ionicons name="alert-circle-outline" size={18} color={Brand.orange} />
+          <Text style={styles.warnText}>
+            {sellDemo
+              ? 'Selling is not live yet — gift card trades are paused until the partner is connected.'
+              : sellPartnerError ||
+                'Sogo live rates are temporarily unavailable. You can browse, but selling is paused until the partner responds.'}
+          </Text>
+        </View>
+      ) : null}
+
+      {mode === 'buy' && buyDemo ? (
+        <View style={styles.warnBanner}>
+          <Ionicons name="alert-circle-outline" size={18} color={Brand.orange} />
+          <Text style={styles.warnText}>
+            Buying is not live yet — gift card purchases are paused until the partner is
+            connected.
+          </Text>
+        </View>
+      ) : null}
+
+      {mode === 'buy' && !buyDemo && buySandbox ? (
+        <View style={styles.sandboxBanner}>
+          <Ionicons name="flask-outline" size={18} color="#0369a1" />
+          <Text style={styles.sandboxText}>
+            Reloadly sandbox mode — purchases use test catalog until production is enabled.
+          </Text>
         </View>
       ) : null}
 
@@ -654,7 +831,7 @@ export default function GiftCardsScreen() {
           />
         ) : null}
         {sellLoading || !selectedSell ? (
-          <FormSkeleton />
+          <GiftCardFormSkeleton />
         ) : (
           <View style={styles.stack}>
             <Pressable
@@ -664,7 +841,7 @@ export default function GiftCardsScreen() {
               <Text style={styles.backLinkText}>All gift cards</Text>
             </Pressable>
 
-            <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+            <Animated.View entering={cardEntering(0)} style={styles.card}>
               <View style={styles.brandRow}>
                 <GiftCardBrandLogo
                   brand={{
@@ -680,12 +857,16 @@ export default function GiftCardsScreen() {
                   </Text>
                   <Text style={styles.brandSub}>
                     {selectedSell.category}
-                    {sellDemo ? ' · demo rates' : ' · live rates'}
+                    {sellDemo
+                      ? ' · demo rates'
+                      : sellUnavailable
+                        ? ' · indicative rates'
+                        : ' · live rates'}
                   </Text>
                 </View>
                 <View style={styles.rateCol}>
                   <Text style={styles.rateValue}>
-                    {formatNaira(
+                    {moneySell(
                       rateMap[selectedSell.slug] ??
                         sellQuote?.ratePerUnit ??
                         0,
@@ -706,7 +887,7 @@ export default function GiftCardsScreen() {
             </Animated.View>
 
             <Animated.View
-              entering={FadeInDown.delay(40).duration(280)}
+              entering={cardEntering(40)}
               style={styles.card}>
               <View style={styles.typeRow}>
                 {(['physical', 'ecode'] as const)
@@ -740,6 +921,7 @@ export default function GiftCardsScreen() {
                     currencyForCardCountry(next, selectedSell.currencies),
                   );
                 }}
+                fullScreen={false}
                 options={CARD_COUNTRIES.map((c) => ({
                   id: c.code,
                   title: c.label,
@@ -747,6 +929,22 @@ export default function GiftCardsScreen() {
                 }))}
               />
               <Text style={styles.hint}>Currency set to {cardCurrency}</Text>
+
+              {cardCountry === 'EU' ? (
+                <View style={{ marginTop: 10 }}>
+                  <SelectSheet
+                    label="European country"
+                    title="European country"
+                    value={specificCountry}
+                    onChange={setSpecificCountry}
+                    fullScreen={false}
+                    options={EU_COUNTRIES.map((name) => ({
+                      id: name,
+                      title: name,
+                    }))}
+                  />
+                </View>
+              ) : null}
 
               <Text style={styles.fieldLabel}>Face value</Text>
               <ScrollView
@@ -839,7 +1037,7 @@ export default function GiftCardsScreen() {
             </Animated.View>
 
             <Animated.View
-              entering={FadeInDown.delay(70).duration(280)}
+              entering={cardEntering(70)}
               style={styles.card}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>You receive</Text>
@@ -849,14 +1047,14 @@ export default function GiftCardsScreen() {
                     {sellQuoting
                       ? '…'
                       : sellQuote
-                        ? formatNaira(sellQuote.userPayout)
+                        ? moneySell(sellQuote.userPayout)
                         : '—'}
                   </Text>
                 </View>
               </View>
               {sellQuote ? (
                 <Text style={styles.hint}>
-                  Provider rate {formatNaira(sellQuote.ratePerUnit)} per{' '}
+                  Provider rate {moneySell(sellQuote.ratePerUnit)} per{' '}
                   {cardCurrency} 1
                 </Text>
               ) : null}
@@ -921,7 +1119,7 @@ export default function GiftCardsScreen() {
           </ServiceSuccess>
         ) : null}
         {buyLoading || !selectedBuy ? (
-          <FormSkeleton />
+          <GiftCardFormSkeleton />
         ) : (
         <View style={styles.stack}>
           <Pressable
@@ -931,7 +1129,7 @@ export default function GiftCardsScreen() {
             <Text style={styles.backLinkText}>All products</Text>
           </Pressable>
 
-          <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+          <Animated.View entering={cardEntering(0)} style={styles.card}>
             <View style={styles.brandRow}>
               <GiftCardBrandLogo
                 brand={{
@@ -947,7 +1145,7 @@ export default function GiftCardsScreen() {
                 </Text>
                 <Text style={styles.brandSub} numberOfLines={2}>
                   {selectedBuy.name}
-                  {buyDemo ? ' · demo' : ''}
+                  {buyDemo ? ' · demo' : buySandbox ? ' · sandbox' : ''}
                 </Text>
               </View>
               <Pressable
@@ -968,7 +1166,7 @@ export default function GiftCardsScreen() {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(40).duration(280)}
+            entering={cardEntering(40)}
             style={styles.card}>
             <SelectSheet
               label="Card country"
@@ -979,6 +1177,7 @@ export default function GiftCardsScreen() {
                 setSelectedBuy(null);
                 setBuyQuote(null);
               }}
+              fullScreen={false}
               options={buyCountries.map((c) => ({
                 id: c.code,
                 title: c.label,
@@ -1041,7 +1240,7 @@ export default function GiftCardsScreen() {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(70).duration(280)}
+            entering={cardEntering(70)}
             style={styles.card}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>You pay</Text>
@@ -1050,7 +1249,7 @@ export default function GiftCardsScreen() {
                   {buyQuoting
                     ? '…'
                     : buyQuote
-                      ? formatNaira(buyQuote.local)
+                      ? moneyBuy(buyQuote)
                       : '—'}
                 </Text>
               </View>
@@ -1105,7 +1304,7 @@ export default function GiftCardsScreen() {
                   <Text style={styles.pickerSub}>{brand.category}</Text>
                 </View>
                 <Text style={styles.pickerTrailing}>
-                  {rate != null ? formatNaira(rate) : '—'}
+                  {rate != null ? moneySell(rate) : '—'}
                 </Text>
               </Pressable>
             );
@@ -1202,17 +1401,6 @@ function SearchField({
   );
 }
 
-function FormSkeleton() {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  return (
-    <View style={styles.stack}>
-      <View style={[styles.card, { height: 72 }]} />
-      <View style={[styles.card, { height: 220 }]} />
-    </View>
-  );
-}
-
 function CopyRow({
   label,
   value,
@@ -1282,6 +1470,42 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 12,
       fontWeight: '500',
       color: colors.charcoal,
+    },
+    warnBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      marginBottom: 8,
+      padding: 10,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255,106,0,0.25)',
+      backgroundColor: 'rgba(255,106,0,0.08)',
+    },
+    warnText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.charcoal,
+      lineHeight: 17,
+    },
+    sandboxBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      marginBottom: 8,
+      padding: 10,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(14,165,233,0.3)',
+      backgroundColor: 'rgba(14,165,233,0.1)',
+    },
+    sandboxText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#0c4a6e',
+      lineHeight: 17,
     },
     stack: { gap: 10 },
     backLink: {

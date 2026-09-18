@@ -224,18 +224,93 @@ export function FormSkeleton() {
   );
 }
 
+/** Gift card trade form — brand header + fields + summary. */
+export function GiftCardFormSkeleton() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={styles.giftCard}>
+        <View style={styles.giftBrandRow}>
+          <Skeleton width={56} height={56} radius={999} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Skeleton width="58%" height={14} />
+            <Skeleton width="36%" height={11} />
+          </View>
+          <Skeleton width={72} height={32} radius={10} />
+        </View>
+      </View>
+      <View style={[styles.giftCard, { gap: 12 }]}>
+        <View style={styles.giftTypeRow}>
+          <Skeleton width="48%" height={44} radius={14} />
+          <Skeleton width="48%" height={44} radius={14} />
+        </View>
+        <Skeleton width={88} height={11} />
+        <Skeleton width="100%" height={48} radius={14} />
+        <Skeleton width={72} height={11} />
+        <View style={styles.chipRow}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} width={64} height={32} radius={99} />
+          ))}
+        </View>
+        <Skeleton width="100%" height={48} radius={14} />
+        <Skeleton width="100%" height={48} radius={14} />
+      </View>
+      <View style={styles.giftCard}>
+        <Skeleton width={90} height={12} />
+        <Skeleton width="48%" height={22} style={{ marginTop: 10 }} />
+      </View>
+    </View>
+  );
+}
+
+/** Live rates / buy catalog list rows. */
+export function GiftCardLiveListSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <View>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            minHeight: 72,
+            paddingHorizontal: 14,
+            paddingVertical: 14,
+          }}>
+          <Skeleton width={44} height={44} radius={999} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Skeleton width="62%" height={13} />
+            <Skeleton width="38%" height={10} />
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 6 }}>
+            <Skeleton width={56} height={13} />
+            <Skeleton width={40} height={10} />
+          </View>
+          <Skeleton width={68} height={24} radius={99} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function NotificationListSkeleton({ count = 5 }: { count?: number }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 10, marginTop: 12 }}>
+    <View style={{ marginTop: 4 }}>
       {Array.from({ length: count }).map((_, i) => (
-        <View key={i} style={styles.notif}>
-          <Skeleton width={10} height={10} radius={5} />
+        <View
+          key={i}
+          style={[
+            styles.notif,
+            i === count - 1 && { borderBottomWidth: 0 },
+          ]}>
+          <Skeleton width={8} height={8} radius={4} />
           <View style={{ flex: 1, gap: 8 }}>
-            <Skeleton width="60%" height={14} />
-            <Skeleton width="90%" height={12} />
-            <Skeleton width={64} height={10} />
+            <Skeleton width="58%" height={14} />
+            <Skeleton width="88%" height={12} />
           </View>
         </View>
       ))}
@@ -397,12 +472,29 @@ function makeStyles(colors: ThemeColors) {
     backgroundColor: colors.grayLight,
   },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  giftCard: {
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.grayDivider,
+    backgroundColor: colors.card,
+    padding: 14,
+  },
+  giftBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  giftTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   notif: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 12,
-    borderRadius: Radius.xl,
-    backgroundColor: colors.grayLight,
+    gap: 10,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.grayDivider,
     alignItems: 'flex-start',
   },
   settingsSectionCard: {

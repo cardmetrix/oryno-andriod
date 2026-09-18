@@ -15,9 +15,11 @@ export default function TabLayout() {
         animation: 'fade',
         transitionSpec: {
           animation: 'timing',
-          config: { duration: 220 },
+          config: { duration: 160 },
         },
         sceneStyle: { backgroundColor: colors.background },
+        lazy: true,
+        freezeOnBlur: true,
         tabBarActiveTintColor: colors.tint,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {

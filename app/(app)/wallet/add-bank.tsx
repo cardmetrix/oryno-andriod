@@ -21,7 +21,7 @@ import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import type { BankOption } from '@/lib/types';
 
-/** Paystack sometimes returns duplicate bank codes — keep first unique code. */
+/** Bank providers sometimes return duplicate bank codes — keep first unique code. */
 function dedupeBanks(options: BankOption[]) {
   const seen = new Set<string>();
   const unique: BankOption[] = [];
@@ -52,17 +52,28 @@ export default function AddBankSheet() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bankQuery, setBankQuery] = useState('');
+  const [accountMin, setAccountMin] = useState(10);
+  const [accountMax, setAccountMax] = useState(10);
+  const [accountLabel, setAccountLabel] = useState('Account number');
 
   const loadBanks = useCallback(async () => {
     setLoadingBanks(true);
     try {
-      const json = await api.get<{ options?: BankOption[] }>(endpoints.wallet.banks);
+      const json = await api.get<{
+        options?: BankOption[];
+        accountRules?: { min: number; max: number; label: string; hint: string };
+      }>(endpoints.wallet.banks);
       const options = dedupeBanks(json.options ?? []);
       setBankOptions(options);
       setBankCode((prev) => {
         if (prev && options.some((b) => b.code === prev)) return prev;
         return options[0]?.code || '';
       });
+      if (json.accountRules) {
+        setAccountMin(json.accountRules.min);
+        setAccountMax(json.accountRules.max);
+        setAccountLabel(json.accountRules.label);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load banks');
     } finally {
@@ -75,25 +86,29 @@ export default function AddBankSheet() {
   }, [loadBanks]);
 
   useEffect(() => {
-    if (step !== 'form' || accountNumber.length < 10 || !bankCode) return;
+    if (step !== 'form' || accountNumber.length < accountMin || !bankCode) return;
     const timer = setTimeout(async () => {
       setResolving(true);
       setError(null);
       try {
-        const json = await api.post<{ accountName?: string }>(endpoints.wallet.banksResolve, {
-          bankCode,
-          accountNumber,
-        });
+        const json = await api.post<{ accountName?: string; unresolved?: boolean; message?: string }>(
+          endpoints.wallet.banksResolve,
+          {
+            bankCode,
+            accountNumber,
+          },
+        );
         setAccountName(json.accountName ?? '');
+        if (json.unresolved && json.message) setError(json.message);
       } catch (e) {
         setAccountName('');
-        setError(e instanceof Error ? e.message : 'Could not verify account');
+        setError(e instanceof Error ? e.message : 'Could not verify account — enter name manually');
       } finally {
         setResolving(false);
       }
     }, 450);
     return () => clearTimeout(timer);
-  }, [step, accountNumber, bankCode]);
+  }, [step, accountNumber, bankCode, accountMin]);
 
   const selectedBank = bankOptions.find((b) => b.code === bankCode);
 
@@ -111,7 +126,11 @@ export default function AddBankSheet() {
   }, [bankOptions, bankQuery]);
 
   const canSave =
-    !saving && !resolving && accountNumber.length >= 10 && Boolean(accountName) && Boolean(bankCode);
+    !saving &&
+    !resolving &&
+    accountNumber.length >= accountMin &&
+    Boolean(accountName) &&
+    Boolean(bankCode);
 
   async function onSave() {
     if (!canSave) return;
@@ -157,7 +176,7 @@ export default function AddBankSheet() {
           <Text style={styles.title}>{step === 'banks' ? 'Select bank' : 'Add bank'}</Text>
           <Text style={styles.subtitle}>
             {step === 'banks'
-              ? 'Choose a Paystack-supported bank'
+              ? 'Choose a supported bank'
               : 'Verify a payout account for withdrawals'}
           </Text>
         </View>
@@ -240,19 +259,19 @@ export default function AddBankSheet() {
             <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
           </Pressable>
 
-          <Text style={styles.fieldLabel}>Account number</Text>
+          <Text style={styles.fieldLabel}>{accountLabel}</Text>
           <TextInput
             value={accountNumber}
             onChangeText={(v) => {
-              setAccountNumber(v.replace(/[^\d]/g, '').slice(0, 10));
+              setAccountNumber(v.replace(/[^\d]/g, '').slice(0, accountMax));
               setAccountName('');
               setError(null);
             }}
             keyboardType="number-pad"
-            placeholder="10-digit account number"
+            placeholder={accountLabel}
             placeholderTextColor={colors.mutedForeground}
             style={styles.input}
-            maxLength={10}
+            maxLength={accountMax}
           />
 
           <Text style={styles.fieldLabel}>Account name</Text>
@@ -264,7 +283,7 @@ export default function AddBankSheet() {
                 setError(null);
               }}
               placeholder={
-                resolving ? 'Verifying with Paystack…' : 'Auto-filled, or type manually'
+                resolving ? 'Verifying account…' : 'Auto-filled, or type manually'
               }
               placeholderTextColor={colors.mutedForeground}
               style={[styles.input, { paddingRight: 28 }]}
@@ -296,7 +315,7 @@ export default function AddBankSheet() {
           <View style={styles.hintCard}>
             <Ionicons name="shield-checkmark-outline" size={18} color={Brand.orange} />
             <Text style={styles.hintText}>
-              We look up the account name with Paystack after you enter the number. You can edit
+              We look up the account name after you enter the number. You can edit
               the name manually if needed before saving.
             </Text>
           </View>

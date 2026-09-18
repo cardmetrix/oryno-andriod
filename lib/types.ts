@@ -33,6 +33,7 @@ export type BankAccountSummary = {
 export type BankOption = {
   name: string;
   code: string;
+  type?: string;
 };
 
 export type AppTransaction = {
@@ -40,6 +41,8 @@ export type AppTransaction = {
   title: string;
   subtitle: string;
   amount: string;
+  /** Numeric amount when API provides it (preferred for analytics). */
+  amountValue?: number;
   type: 'credit' | 'debit';
   status: string;
   category?: string;
@@ -53,6 +56,20 @@ export type WalletPayload = {
   wallets: WalletSummary[];
   banks: BankAccountSummary[];
   recent: AppTransaction[];
+  withdrawMinimum?: {
+    minNgn: number;
+    minLocal: number;
+    currency: string;
+    formatted: string;
+    message: string;
+  } | null;
+  withdrawFee?: {
+    ngn: number;
+    local: number;
+    currency: string;
+    formatted: string;
+    formattedNgn: string;
+  } | null;
   fx: {
     base: string;
     quote: string;
@@ -133,4 +150,5 @@ export type SyncResponse = {
   };
   country: CountryInfo;
   wallet: { id: string; currency: string; balance: string };
+  twoFactorRequired?: boolean;
 };

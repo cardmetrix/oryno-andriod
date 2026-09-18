@@ -1,25 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
+import { cardEntering } from '@/lib/motion';
+
+import { DataPlanGrid } from '@/components/app/data-plan-grid';
 import { PageHeader } from '@/components/app/page-header';
-import { SelectSheet } from '@/components/app/picker-sheet';
+import { PhoneNumberField } from '@/components/app/phone-number-field';
 import { ServiceSuccess } from '@/components/app/service-success';
-import {
-  VtpassServicePicker,
-  type VtpassServiceOption,
-} from '@/components/app/vtpass-service-picker';
-import { Button } from '@/components/ui/button';
+import { TelecomNetworkGrid } from '@/components/app/telecom-network-grid';
+import type { VtpassServiceOption } from '@/components/app/vtpass-service-picker';
 import { Screen } from '@/components/ui/screen';
-import { Brand, Radius, type ThemeColors } from '@/constants/theme';
+import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { useProfile } from '@/hooks/use-profile';
@@ -28,9 +28,22 @@ import {
   useInternationalProductTypes,
   useVtpassServices,
 } from '@/hooks/use-service-catalogs';
+import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
+import {
+  buildDataPlanFilters,
+  planMatchesFilter,
+} from '@/lib/data-plans';
 import { endpoints } from '@/lib/endpoints';
-import { formatCountryMoney } from '@/lib/format';
+import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
+import {
+  defaultIntlDataAmount,
+  intlDataCurrencySymbol,
+  intlDataMinLocal,
+  intlDataPresets,
+  intlDataVariationLabel,
+  usesFlexibleIntlData,
+} from '@/lib/intl-data';
 
 type Variation = {
   variationCode: string;
@@ -38,8 +51,6 @@ type Variation = {
   amount: number;
   fixedPrice?: boolean;
 };
-
-const FILTERS = ['All', 'Daily', 'Weekly', 'Monthly'] as const;
 
 function cleanNetworkName(name: string) {
   return name
@@ -54,40 +65,30 @@ function cleanNetworkName(name: string) {
     .trim();
 }
 
-function inferDataPlanCategory(name: string): 'daily' | 'weekly' | 'monthly' {
-  const lower = name.toLowerCase();
-  if (
-    lower.includes('day') ||
-    lower.includes('daily') ||
-    lower.includes('24 hour') ||
-    /\b1\s*day\b/.test(lower)
-  ) {
-    return 'daily';
-  }
-  if (lower.includes('week') || lower.includes('7 day') || lower.includes('7-day')) {
-    return 'weekly';
-  }
-  return 'monthly';
-}
-
 export default function DataScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { countryCode, countryName, loading: countryLoading } = useProfile();
+  const { countryCode, loading: countryLoading, displayFx } = useProfile();
+  const { canAfford, canAffordNgn, frozen } = useWalletBalance();
   const invalidateWallet = useInvalidateWallet();
   const isNigeria = countryCode === 'NG';
+  const isFlexibleIntl = usesFlexibleIntlData(countryCode);
 
   const [networkId, setNetworkId] = useState('');
   const [phone, setPhone] = useState('');
+  const [saveBeneficiary, setSaveBeneficiary] = useState(true);
+  const [amount, setAmount] = useState(() => defaultIntlDataAmount(countryCode));
   const [variations, setVariations] = useState<Variation[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [variationCode, setVariationCode] = useState('');
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
+  const [filter, setFilter] = useState('Weekly');
   const [productTypeId, setProductTypeId] = useState(4);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState('');
+  const [receiptLabel, setReceiptLabel] = useState('');
+  const plansCacheRef = useRef<Map<string, Variation[]>>(new Map());
 
   const localNetworksQuery = useVtpassServices('data', !countryLoading && isNigeria);
   const productTypesQuery = useInternationalProductTypes(
@@ -112,6 +113,7 @@ export default function DataScreen() {
       serviceID: String(op.operator_id),
       name: cleanNetworkName(op.name),
       image: op.operator_image ?? null,
+      domain: op.domain,
     }));
   }, [isNigeria, localNetworksQuery.data, operatorsQuery.data]);
 
@@ -124,17 +126,86 @@ export default function DataScreen() {
 
   const selected = variations.find((v) => v.variationCode === variationCode);
   const selectedNetwork = networks.find((n) => n.serviceID === networkId);
-  const money = (n: number) => formatCountryMoney(n, countryCode);
+  const money = (n: number) =>
+    formatServiceMoney(n, countryCode, displayFx?.ngnToLocal ?? 1);
 
-  const filtered = useMemo(() => {
-    if (filter === 'All') return variations;
-    return variations.filter((v) => inferDataPlanCategory(v.name) === filter.toLowerCase());
-  }, [variations, filter]);
+  const availableFilters = useMemo(
+    () => buildDataPlanFilters(variations.map((v) => v.name)),
+    [variations],
+  );
+
+  const activeFilter =
+    filter && availableFilters.includes(filter)
+      ? filter
+      : availableFilters[0] || 'Weekly';
+
+  const filtered = useMemo(
+    () => variations.filter((v) => planMatchesFilter(v.name, activeFilter)),
+    [variations, activeFilter],
+  );
+
+  useEffect(() => {
+    if (!availableFilters.length) return;
+    if (!availableFilters.includes(filter)) {
+      setFilter(availableFilters[0]);
+    }
+  }, [availableFilters, filter]);
+
+  useEffect(() => {
+    if (!filtered.length) {
+      if (variationCode) setVariationCode('');
+      return;
+    }
+    if (!filtered.some((v) => v.variationCode === variationCode)) {
+      setVariationCode(filtered[0].variationCode);
+    }
+  }, [filtered, variationCode]);
+
+  const localAmount = Number(amount) || 0;
+  const minLocal = isFlexibleIntl ? intlDataMinLocal(countryCode) : 0;
+  const chargeAmount = isNigeria
+    ? selected?.amount || 0
+    : isFlexibleIntl
+      ? localAmount * (displayFx?.localToNgn ?? 1)
+      : selected?.amount || 0;
+
+  const affordable = isNigeria ? canAfford(chargeAmount) : canAffordNgn(chargeAmount);
 
   const canSubmit = useMemo(() => {
-    if (phone.replace(/\D/g, '').length < 10 || !selected || submitting) return false;
-    return Boolean(networkId);
-  }, [phone, selected, submitting, networkId]);
+    if (phone.replace(/\D/g, '').length < 10 || submitting || !networkId) {
+      return false;
+    }
+    if (frozen || !affordable) return false;
+    if (isNigeria || !isFlexibleIntl) {
+      return Boolean(selected && chargeAmount > 0);
+    }
+    return localAmount >= minLocal;
+  }, [
+    phone,
+    submitting,
+    networkId,
+    frozen,
+    affordable,
+    isNigeria,
+    isFlexibleIntl,
+    selected,
+    chargeAmount,
+    localAmount,
+    minLocal,
+  ]);
+
+  const amountLabel = isFlexibleIntl
+    ? formatCountryMoney(localAmount, countryCode)
+    : selected
+      ? money(selected.amount)
+      : money(0);
+  const currencyPrefix = intlDataCurrencySymbol(countryCode);
+  const amountPresets = isFlexibleIntl ? intlDataPresets(countryCode) : [];
+
+  useEffect(() => {
+    if (countryLoading) return;
+    setAmount(defaultIntlDataAmount(countryCode));
+  }, [countryLoading, countryCode]);
 
   useEffect(() => {
     if (dataProductTypeId != null) setProductTypeId(dataProductTypeId);
@@ -161,26 +232,47 @@ export default function DataScreen() {
   }, [localNetworksQuery.error, productTypesQuery.error, operatorsQuery.error]);
 
   useEffect(() => {
-    if (!networkId) return;
+    if (isFlexibleIntl || !networkId) return;
     let cancelled = false;
 
     (async () => {
-      setLoadingPlans(true);
-      setVariationCode('');
+      const cacheKey = isNigeria
+        ? `ng:${networkId}`
+        : `intl:${networkId}:${productTypeId}`;
+      const cached = plansCacheRef.current.get(cacheKey);
+      if (cached?.length) {
+        setVariations(cached);
+        setVariationCode((prev) =>
+          cached.some((v) => v.variationCode === prev)
+            ? prev
+            : cached[0]?.variationCode || '',
+        );
+        setLoadingPlans(false);
+      } else {
+        setLoadingPlans(true);
+        setVariationCode('');
+        setVariations([]);
+      }
+
       try {
         const url = isNigeria
-          ? `${endpoints.services.variations}?serviceID=${encodeURIComponent(networkId)}`
+          ? `${endpoints.services.variations}?serviceID=${encodeURIComponent(networkId)}&identifier=data`
           : `${endpoints.services.variations}?serviceID=foreign-airtime&operator_id=${encodeURIComponent(networkId)}&product_type_id=${productTypeId}`;
         const data = await api.get<{ variations?: Variation[] }>(url);
         if (cancelled) return;
-        const list = (data.variations ?? []).map((v) => ({
+        const next = (data.variations ?? []).map((v) => ({
           ...v,
           amount: Number(v.amount) || 0,
         }));
-        setVariations(list);
-        if (list[0]?.variationCode) setVariationCode(list[0].variationCode);
+        plansCacheRef.current.set(cacheKey, next);
+        setVariations(next);
+        if (next[0]?.variationCode) {
+          setVariationCode((prev) =>
+            next.some((v) => v.variationCode === prev) ? prev : next[0].variationCode,
+          );
+        }
       } catch (e) {
-        if (!cancelled) {
+        if (!cancelled && !cached?.length) {
           setVariations([]);
           setError(e instanceof Error ? e.message : 'Failed to load plans');
         }
@@ -192,13 +284,17 @@ export default function DataScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isNigeria, networkId, productTypeId]);
+  }, [isFlexibleIntl, isNigeria, networkId, productTypeId]);
 
   async function onSubmit() {
-    if (!canSubmit || !selected) return;
+    if (!canSubmit) return;
     setSubmitting(true);
     setError(null);
     try {
+      const planLabel = isFlexibleIntl
+        ? intlDataVariationLabel(countryCode, localAmount)
+        : selected!.name;
+
       const data = await api.post<{ amountFormatted?: string; message?: string }>(
         endpoints.services.dataPurchase,
         isNigeria
@@ -206,22 +302,36 @@ export default function DataScreen() {
               mode: 'local',
               serviceID: networkId,
               phone,
-              variationCode: selected.variationCode,
-              variationName: selected.name,
-              amount: selected.amount,
+              variationCode: selected!.variationCode,
+              variationName: selected!.name,
+              amount: selected!.amount,
+              saveBeneficiary,
             }
-          : {
-              mode: 'international',
-              phone,
-              variationCode: selected.variationCode,
-              variationName: selected.name,
-              amount: selected.amount,
-              operatorId: networkId,
-              countryIso: countryCode,
-              productTypeId,
-            },
+          : isFlexibleIntl
+            ? {
+                mode: 'international',
+                phone,
+                amount: localAmount,
+                operatorId: networkId,
+                countryIso: countryCode,
+                productTypeId,
+                flexibleLocalAmount: true,
+                saveBeneficiary,
+              }
+            : {
+                mode: 'international',
+                phone,
+                variationCode: selected!.variationCode,
+                variationName: selected!.name,
+                amount: selected!.amount,
+                operatorId: networkId,
+                countryIso: countryCode,
+                productTypeId,
+                saveBeneficiary,
+              },
       );
-      setReceipt(data.amountFormatted || money(selected.amount));
+      setReceipt(data.amountFormatted || amountLabel);
+      setReceiptLabel(planLabel);
       invalidateWallet();
       setSuccess(true);
     } catch (err) {
@@ -229,27 +339,6 @@ export default function DataScreen() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (success && selected) {
-    return (
-      <Screen
-        scroll
-        header={<PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />}>
-        <ServiceSuccess
-          title="Data sent"
-          subtitle={`${selected.name} to ${phone}`}
-          amountLabel="Amount charged"
-          amount={receipt || money(selected.amount)}
-          onDismiss={() => setSuccess(false)}
-          tertiaryAction={{
-            label: 'Buy again',
-            onPress: () => setSuccess(false),
-            icon: 'plus',
-          }}
-        />
-      </Screen>
-    );
   }
 
   return (
@@ -266,14 +355,33 @@ export default function DataScreen() {
           ]}>
           <Text style={styles.submitText}>
             {submitting
-              ? 'Buying data…'
-              : selected
-                ? `Buy data · ${money(selected.amount)}`
-                : 'Select a plan'}
+              ? 'Processing…'
+              : frozen
+                ? 'Wallet unavailable'
+                : !affordable && chargeAmount > 0
+                  ? 'Insufficient balance'
+                  : isFlexibleIntl || selected
+                    ? `Buy data · ${amountLabel}`
+                    : 'Select a plan'}
           </Text>
         </Pressable>
       }
-      header={<PageHeader title="Buy Data" subtitle="Daily, weekly & monthly plans" showBack />}>
+      header={<PageHeader title="Buy Data" showBack />}>
+      {success ? (
+        <ServiceSuccess
+          title="Data sent!"
+          subtitle={`${receiptLabel || selected?.name || 'Data'} delivered to ${phone}`}
+          amountLabel="Amount charged"
+          amount={receipt || amountLabel}
+          onDismiss={() => setSuccess(false)}
+          tertiaryAction={{
+            label: 'Buy again',
+            onPress: () => setSuccess(false),
+            icon: 'plus',
+          }}
+        />
+      ) : null}
+
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>
@@ -286,22 +394,13 @@ export default function DataScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.iconBubble}>
-            <Ionicons name="wifi-outline" size={20} color={Brand.orange} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Select network</Text>
-            <Text style={styles.cardSub}>Networks for {countryName}</Text>
-          </View>
-        </View>
-        <VtpassServicePicker
+      <Animated.View entering={cardEntering(0)} style={styles.section}>
+        <Text style={styles.sectionTitle}>Select Network</Text>
+        <TelecomNetworkGrid
           services={networks}
           value={networkId}
           onChange={setNetworkId}
           loading={loadingNetworks || countryLoading}
-          subtitle={`Networks for ${countryName}`}
         />
         {error && !networks.length ? (
           <Pressable
@@ -316,69 +415,82 @@ export default function DataScreen() {
         ) : null}
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(40).duration(280)} style={styles.card}>
-        <Text style={styles.fieldLabel}>Phone number</Text>
-        <TextInput
+      <Animated.View entering={cardEntering(40)} style={styles.section}>
+        <PhoneNumberField
           value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          placeholder="0803 000 0000"
-          placeholderTextColor={colors.mutedForeground}
-          style={styles.input}
+          onChange={setPhone}
+          placeholder={isNigeria ? '0803 000 0000' : 'Recipient number'}
         />
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(80).duration(280)} style={styles.card}>
-        <Text style={[styles.cardTitle, { marginBottom: 12 }]}>Data plan</Text>
-        <SelectSheet
-          label="Plan"
-          title="Select data plan"
-          subtitle="Daily, weekly & monthly bundles"
-          hint="Tap to choose a plan"
-          value={variationCode}
-          valueLabel={selected?.name}
-          onChange={setVariationCode}
-          loading={loadingPlans}
-          emptyText="No plans match this filter"
-          options={filtered.map((v) => ({
-            id: v.variationCode,
-            title: v.name,
-            subtitle: inferDataPlanCategory(v.name),
-            trailing: money(v.amount),
-          }))}
-          headerExtra={
-            <View style={styles.filters}>
-              {FILTERS.map((f) => {
-                const active = filter === f;
-                return (
-                  <Pressable
-                    key={f}
-                    onPress={() => setFilter(f)}
-                    style={[styles.filterChip, active && styles.filterChipActive]}>
-                    <Text style={[styles.filterText, active && styles.filterTextActive]}>{f}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          }
-        />
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(120).duration(280)} style={styles.card}>
-        <Text style={styles.cardTitle}>Order summary</Text>
-        <View style={styles.summary}>
-          <SummaryRow label="Network" value={selectedNetwork?.name ?? '—'} />
-          <SummaryRow label="Plan" value={selected?.name ?? '—'} />
-          <SummaryRow label="Phone" value={phone || '—'} />
-          <SummaryRow
-            label="Amount"
-            value={selected ? money(selected.amount) : money(0)}
-            accent
+        <View style={styles.beneficiaryRow}>
+          <Text style={styles.beneficiaryLabel}>Save as beneficiary</Text>
+          <Switch
+            value={saveBeneficiary}
+            onValueChange={setSaveBeneficiary}
+            trackColor={{ false: colors.border, true: Brand.orangeSoft }}
+            thumbColor={saveBeneficiary ? Brand.orange : Brand.white}
           />
-          <View style={styles.payRow}>
-            <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
-            <Text style={styles.payText}>Pay from wallet</Text>
+        </View>
+      </Animated.View>
+
+      {isFlexibleIntl ? (
+        <Animated.View entering={cardEntering(80)} style={styles.section}>
+          <Text style={styles.sectionTitle}>Amount</Text>
+          <View style={styles.amountWrap}>
+            <Text style={styles.currencyPrefix}>{currencyPrefix}</Text>
+            <TextInput
+              value={amount}
+              onChangeText={(t) => setAmount(t.replace(/[^\d.]/g, ''))}
+              keyboardType="decimal-pad"
+              placeholder={String(minLocal)}
+              placeholderTextColor={colors.mutedForeground}
+              style={styles.amountInput}
+            />
           </View>
+          <View style={styles.presets}>
+            {amountPresets.map((preset) => {
+              const active = amount === preset;
+              return (
+                <Pressable
+                  key={preset}
+                  onPress={() => setAmount(preset)}
+                  style={[styles.presetChip, active && styles.presetChipActive]}>
+                  <Text style={[styles.presetText, active && styles.presetTextActive]}>
+                    {currencyPrefix}
+                    {Number(preset).toLocaleString()}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+      ) : (
+        <Animated.View entering={cardEntering(80)} style={styles.section}>
+          <DataPlanGrid
+            plans={variations.map((v) => ({
+              id: v.variationCode,
+              name: v.name,
+              amount: v.amount,
+            }))}
+            value={variationCode}
+            onChange={setVariationCode}
+            filter={activeFilter}
+            onFilterChange={setFilter}
+            formatMoney={money}
+            loading={loadingPlans}
+          />
+        </Animated.View>
+      )}
+
+      <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
+        <SummaryRow label="Network" value={selectedNetwork?.name ?? '—'} />
+        {!isFlexibleIntl ? (
+          <SummaryRow label="Plan" value={selected?.name ?? '—'} />
+        ) : null}
+        <SummaryRow label="Phone" value={phone || '—'} />
+        <SummaryRow label="Amount" value={amountLabel} accent />
+        <View style={styles.payRow}>
+          <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
+          <Text style={styles.payText}>Pay from wallet</Text>
         </View>
       </Animated.View>
     </Screen>
@@ -408,108 +520,108 @@ function SummaryRow({
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    card: {
-      marginBottom: 8,
-      borderRadius: Radius.card,
-      backgroundColor: colors.card,
-      padding: 10,
-    },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-    iconBubble: {
-      width: 40,
-      height: 40,
-      borderRadius: 16,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: colors.charcoal },
-    cardSub: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.grayMedium },
-    fieldLabel: {
-      marginBottom: 8,
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.charcoal,
-    },
-    input: {
-      height: 48,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      paddingHorizontal: 12,
-      fontSize: 14,
-      color: colors.charcoal,
-    },
-    plansHeader: { gap: 10, marginBottom: 8 },
-    filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    filterChip: {
-      borderRadius: 999,
-      backgroundColor: colors.grayLight,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-    },
-    filterChipActive: { backgroundColor: Brand.orange },
-    filterText: { fontSize: 12, fontWeight: '700', color: colors.charcoal },
-    filterTextActive: { color: Brand.white },
-    planList: { gap: 8 },
-    planSkel: {
-      height: 64,
-      borderRadius: 16,
-      backgroundColor: colors.grayLight,
-    },
-    planRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
+    section: {
+      marginBottom: 20,
       gap: 12,
+    },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    beneficiaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 4,
+    },
+    beneficiaryLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
+    amountWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 56,
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 16,
     },
-    planRowActive: {
-      borderColor: Brand.orange,
-      backgroundColor: Brand.orangeMuted,
+    currencyPrefix: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.mutedForeground,
+      marginRight: 8,
     },
-    planName: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
-    planCat: {
-      marginTop: 2,
-      fontSize: 11,
-      fontWeight: '600',
-      color: colors.grayMedium,
-      textTransform: 'capitalize',
+    amountInput: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.foreground,
+      height: '100%',
     },
-    planPrice: { fontSize: 14, fontWeight: '800', color: Brand.orange },
-    summary: { marginTop: 12, gap: 10 },
+    presets: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    presetChip: {
+      borderRadius: 16,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    presetChipActive: { backgroundColor: Brand.orange },
+    presetText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    presetTextActive: { color: Brand.white },
+    summaryCard: {
+      marginBottom: 8,
+      borderRadius: 16,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      gap: 10,
+    },
     summaryRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 12,
     },
-    summaryLabel: { fontSize: 13, fontWeight: '500', color: colors.grayMedium },
+    summaryLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
     summaryValue: {
       maxWidth: '60%',
       textAlign: 'right',
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.charcoal,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.foreground,
     },
     summaryAccent: { color: Brand.orange },
     payRow: {
       marginTop: 4,
       paddingTop: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.grayDivider,
+      borderTopColor: colors.border,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
     },
-    payText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
+    payText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
     submitBtn: {
-      height: 46,
+      height: 48,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
@@ -517,65 +629,31 @@ function makeStyles(colors: ThemeColors) {
     },
     submitDisabled: { opacity: 0.5 },
     submitText: { color: Brand.white, fontSize: 16, fontWeight: '800' },
-    emptyHint: {
-      marginTop: 8,
-      textAlign: 'center',
-      fontSize: 13,
-      color: colors.grayMedium,
-      fontWeight: '500',
-    },
     retryBtn: {
-      marginTop: 12,
       alignSelf: 'center',
       backgroundColor: Brand.orange,
       borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
     errorBanner: {
-      marginBottom: 8,
+      marginBottom: 12,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
       backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 10,
+      padding: 12,
       flexDirection: 'row',
       gap: 10,
       alignItems: 'flex-start',
     },
     errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.charcoal },
-    successCard: {
-      borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      padding: 14,
-      alignItems: 'center',
-    },
-    successIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    successTitle: {
-      marginTop: 12,
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.charcoal,
-    },
-    successSub: {
-      marginTop: 8,
-      fontSize: 14,
+    errorText: {
+      marginTop: 2,
+      fontSize: 12,
       fontWeight: '500',
-      color: colors.grayMedium,
-      textAlign: 'center',
-      lineHeight: 20,
+      color: colors.foreground,
     },
-    successActions: { marginTop: 12, width: '100%', gap: 10 },
   });
 }

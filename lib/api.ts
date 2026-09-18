@@ -307,6 +307,14 @@ export async function apiFetch<T>(path: string, init?: ApiFetchOptions): Promise
     headers.set('X-Oryno-Clerk-Token', token);
   }
 
+  try {
+    const { getTwoFactorToken } = await import('@/lib/two-factor');
+    const twoFa = await getTwoFactorToken();
+    if (twoFa) headers.set('X-Oryno-2FA', twoFa);
+  } catch {
+    // 2FA token is optional until the user completes authenticator challenge
+  }
+
   const primaryPath = resolveApiPath(path);
   const primaryUrl = /^https?:\/\//i.test(primaryPath)
     ? primaryPath

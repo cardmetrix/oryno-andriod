@@ -125,12 +125,12 @@ export function SplashLoading({ showStatus = true }: Props) {
             <Animated.Text
               entering={FadeInDown.delay(200).duration(520).springify().damping(17)}
               style={styles.headlineDark}>
-              One App.
+              Your Digital World, 
             </Animated.Text>
             <Animated.Text
               entering={FadeInDown.delay(340).duration(560).springify().damping(17)}
               style={styles.headlineOrange}>
-              Endless Possibilities.
+              Simplified.
             </Animated.Text>
             <Animated.Text
               entering={FadeInUp.delay(480).duration(500)}

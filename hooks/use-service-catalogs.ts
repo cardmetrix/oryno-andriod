@@ -6,6 +6,20 @@ import { endpoints } from '@/lib/endpoints';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 
+export type BettingDemoTest = {
+  customerId: string;
+  name: string | null;
+  outcome: 'success' | 'verify_fail' | 'fund_fail';
+  note: string;
+};
+
+export type BettingProvidersPayload = {
+  demo?: boolean;
+  services?: VtpassServiceOption[];
+  presets?: string[];
+  demoTests?: BettingDemoTest[];
+};
+
 export function useVtpassServices(identifier: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.catalogs.vtpass(identifier),
@@ -53,6 +67,7 @@ export function useInternationalOperators(
           operator_id: string;
           name: string;
           operator_image?: string;
+          domain?: string;
         }[];
       }>(
         `${endpoints.services.internationalOperators}?code=${encodeURIComponent(countryCode)}&product_type_id=${productTypeId}`,
@@ -121,9 +136,12 @@ export function useGiftCardSellCatalog(enabled = true) {
   return useQuery({
     queryKey: queryKeys.catalogs.giftCardSell,
     queryFn: async () => {
-      return api.get<{ brands?: unknown[]; demo?: boolean }>(
-        endpoints.services.giftCardSellCatalog,
-      );
+      return api.get<{
+        brands?: unknown[];
+        demo?: boolean;
+        unavailable?: boolean;
+        partnerError?: string | null;
+      }>(endpoints.services.giftCardSellCatalog);
     },
     enabled,
     staleTime: STALE.catalog,
@@ -134,7 +152,7 @@ export function useGiftCardCountries(enabled = true) {
   return useQuery({
     queryKey: queryKeys.catalogs.giftCardCountries,
     queryFn: async () => {
-      return api.get<{ countries?: unknown[]; demo?: boolean }>(
+      return api.get<{ countries?: unknown[]; demo?: boolean; sandbox?: boolean }>(
         endpoints.services.giftCardCountries,
       );
     },
@@ -147,11 +165,22 @@ export function useGiftCardProducts(countryCode: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.catalogs.giftCardProducts(countryCode),
     queryFn: async () => {
-      return api.get<{ products?: unknown[]; demo?: boolean }>(
+      return api.get<{ products?: unknown[]; demo?: boolean; sandbox?: boolean }>(
         `${endpoints.services.giftCardProducts}?countryCode=${encodeURIComponent(countryCode)}`,
       );
     },
     enabled: enabled && Boolean(countryCode),
+    staleTime: STALE.catalog,
+  });
+}
+
+export function useBettingProviders(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.catalogs.betting,
+    queryFn: async () => {
+      return api.get<BettingProvidersPayload>(endpoints.services.bettingProviders);
+    },
+    enabled,
     staleTime: STALE.catalog,
   });
 }

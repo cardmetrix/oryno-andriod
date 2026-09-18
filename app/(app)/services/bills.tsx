@@ -1,14 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
@@ -24,11 +27,12 @@ import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { useProfile } from '@/hooks/use-profile';
 import { useVariations, useVtpassServices } from '@/hooks/use-service-catalogs';
+import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
-import { formatCountryMoney } from '@/lib/format';
+import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
 
-type BillCategory = 'tv' | 'electricity';
+type BillCategory = 'tv' | 'electricity' | 'water';
 
 type Variation = {
   variationCode: string;
@@ -37,35 +41,114 @@ type Variation = {
   fixedPrice: boolean;
 };
 
-const amountPresets = ['1000', '2000', '5000', '10000'];
+const NG_PRESETS = ['1000', '2000', '5000', '10000'];
+const GH_PRESETS = ['20', '50', '100', '200', '500'];
+const KE_PRESETS = ['200', '500', '1000', '2000', '5000'];
+const ZA_PRESETS = ['50', '100', '200', '500', '1000'];
+
+const VERIFY_DEBOUNCE_MS = 800;
+const TOKEN_POLL_DELAY_MS = 2500;
+const TOKEN_POLL_INTERVAL_MS = 3000;
+const TOKEN_POLL_MAX_ATTEMPTS = 40;
+
+function parseBillCategory(raw?: string | string[]): BillCategory {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === 'electricity' || value === 'water' || value === 'tv') return value;
+  return 'tv';
+}
 
 export default function BillsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { countryCode, loading: countryLoading } = useProfile();
+  const params = useLocalSearchParams<{ category?: string }>();
+  const { countryCode, countryName, loading: countryLoading, displayFx } = useProfile();
   const invalidateWallet = useInvalidateWallet();
+  const { canAfford, frozen } = useWalletBalance();
   const isNigeria = countryCode === 'NG';
+  const isGhana = countryCode === 'GH';
+  const isKenya = countryCode === 'KE';
+  const isSouthAfrica = countryCode === 'ZA';
+  const localCurrencyBills = isGhana || isKenya || isSouthAfrica;
+  const billsLive = isNigeria || localCurrencyBills;
+  const minBillAmount = isSouthAfrica ? 10 : isKenya ? 50 : isGhana ? 1 : 100;
+  const billsSubtitle = isSouthAfrica
+    ? 'DStv, Eskom & Johannesburg Water'
+    : isKenya
+      ? 'DStv, KPLC & Nairobi Water'
+      : isGhana
+        ? 'DStv, ECG & Ghana Water'
+        : 'TV subscriptions & electricity';
 
-  const [category, setCategory] = useState<BillCategory>('tv');
+  // Dedicated screens for electricity / TV (website parity).
+  useEffect(() => {
+    const cat = parseBillCategory(params.category);
+    if (cat === 'electricity') {
+      router.replace('/(app)/services/electricity');
+    } else if (cat === 'tv') {
+      router.replace('/(app)/services/tv');
+    }
+  }, [params.category]);
+  const [category, setCategory] = useState<BillCategory>(() =>
+    parseBillCategory(params.category),
+  );
+
+  useEffect(() => {
+    setCategory(parseBillCategory(params.category));
+  }, [params.category]);
+
+  const pageTitle =
+    category === 'electricity'
+      ? 'Electricity'
+      : category === 'water'
+        ? 'Water Bills'
+        : 'TV Bills';
+  const pageSubtitle =
+    category === 'electricity'
+      ? isSouthAfrica
+        ? 'Eskom & City Power'
+        : isKenya
+          ? 'Kenya Power (KPLC)'
+          : isGhana
+            ? 'ECG prepaid & postpaid'
+            : 'Prepaid & postpaid discos'
+      : category === 'water'
+        ? billsSubtitle
+        : isSouthAfrica
+          ? 'DStv, GOtv & Johannesburg Water'
+          : isKenya
+            ? 'DStv, GOtv & Nairobi Water'
+            : isGhana
+              ? 'DStv, GOtv & Ghana Water'
+              : 'DStv, GOtv & StarTimes';
   const [serviceID, setServiceID] = useState('');
   const [variationCode, setVariationCode] = useState('');
   const [customerRef, setCustomerRef] = useState('');
   const [amount, setAmount] = useState('2000');
   const [verifying, setVerifying] = useState(false);
   const [customerName, setCustomerName] = useState<string | null>(null);
+  const [verifyHint, setVerifyHint] = useState<string | null>(null);
+  const [verifyNonce, setVerifyNonce] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [receipt, setReceipt] = useState('');
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
   const [retailAmount, setRetailAmount] = useState<number | null>(null);
 
-  const identifier = category === 'tv' ? 'tv-subscription' : 'electricity-bill';
-  const servicesQuery = useVtpassServices(identifier, !countryLoading && isNigeria);
+  const identifier =
+    category === 'tv'
+      ? 'tv-subscription'
+      : category === 'water'
+        ? 'water-bill'
+        : 'electricity-bill';
+  const servicesQuery = useVtpassServices(identifier, !countryLoading && billsLive);
   const services = servicesQuery.data ?? [];
   const loadingServices =
     countryLoading || (servicesQuery.isLoading && !servicesQuery.data);
-  const variationsQuery = useVariations(serviceID, Boolean(serviceID) && isNigeria);
+  const variationsQuery = useVariations(serviceID, Boolean(serviceID) && billsLive);
   const variations: Variation[] = useMemo(
     () =>
       (variationsQuery.data ?? []).map((v) => ({
@@ -81,9 +164,27 @@ export default function BillsScreen() {
   const selectedService = services.find((s) => s.serviceID === serviceID);
   const selectedVariation = variations.find((v) => v.variationCode === variationCode);
 
+  const refNoun =
+    category === 'tv' ? 'smartcard' : category === 'water' ? 'account' : 'meter';
+  const customerLabel =
+    selectedService?.customerLabel ||
+    (category === 'tv'
+      ? 'Smartcard / IUC'
+      : category === 'water'
+        ? 'Account number'
+        : 'Meter number');
+
   const showAmountField =
     category === 'electricity' ||
+    category === 'water' ||
     (Boolean(selectedVariation) && !selectedVariation?.fixedPrice);
+  const amountPresets = isSouthAfrica
+    ? ZA_PRESETS
+    : isKenya
+      ? KE_PRESETS
+      : isGhana
+        ? GH_PRESETS
+        : NG_PRESETS;
 
   const faceAmount = useMemo(() => {
     if (category === 'tv' && selectedVariation?.fixedPrice) {
@@ -98,19 +199,50 @@ export default function BillsScreen() {
       ? retailAmount
       : faceAmount;
 
-  const money = (n: number) => formatCountryMoney(n, countryCode);
+  const money = (n: number) =>
+    isSouthAfrica
+      ? formatCountryMoney(n, 'ZA')
+      : isKenya
+        ? formatCountryMoney(n, 'KE')
+        : isGhana
+          ? formatCountryMoney(n, 'GH')
+          : formatServiceMoney(n, countryCode, displayFx?.ngnToLocal ?? 1);
 
   const canSubmit = useMemo(() => {
+    const verifiedOk = !isNigeria || Boolean(customerName);
     return (
       Boolean(serviceID && variationCode && customerRef.trim().length >= 6) &&
-      amountNumber >= 100 &&
+      verifiedOk &&
+      !verifying &&
+      amountNumber >= minBillAmount &&
       !submitting &&
-      isNigeria
+      billsLive &&
+      !frozen &&
+      canAfford(amountNumber)
     );
-  }, [serviceID, variationCode, customerRef, amountNumber, submitting, isNigeria]);
+  }, [
+    serviceID,
+    variationCode,
+    customerRef,
+    customerName,
+    verifying,
+    isNigeria,
+    amountNumber,
+    submitting,
+    minBillAmount,
+    billsLive,
+    frozen,
+    canAfford,
+  ]);
 
   useEffect(() => {
-    if (!showAmountField || !serviceID || !variationCode || faceAmount < 100) {
+    if (
+      !showAmountField ||
+      !serviceID ||
+      !variationCode ||
+      localCurrencyBills ||
+      faceAmount < 100
+    ) {
       setRetailAmount(null);
       return;
     }
@@ -131,7 +263,14 @@ export default function BillsScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [showAmountField, serviceID, variationCode, faceAmount]);
+  }, [showAmountField, serviceID, variationCode, faceAmount, localCurrencyBills]);
+
+  useEffect(() => {
+    if (isSouthAfrica) setAmount('100');
+    else if (isKenya) setAmount('500');
+    else if (isGhana) setAmount('50');
+    else if (isNigeria) setAmount('2000');
+  }, [isSouthAfrica, isKenya, isGhana, isNigeria]);
 
   useEffect(() => {
     setCustomerName(null);
@@ -173,30 +312,111 @@ export default function BillsScreen() {
     }
   }, [servicesQuery.error, variationsQuery.error]);
 
-  async function verifyCustomer() {
-    if (!serviceID || customerRef.trim().length < 6) return;
-    setVerifying(true);
-    setError(null);
-    try {
-      const data = await api.post<{
-        customerName?: string;
-        renewalAmount?: number | string;
-      }>(endpoints.services.billsVerify, {
-        billersCode: customerRef.trim(),
-        serviceID,
-        type: category === 'electricity' ? variationCode : undefined,
-      });
-      setCustomerName(data.customerName || 'Verified customer');
-      if (data.renewalAmount) {
-        setAmount(String(Math.round(Number(data.renewalAmount))));
-      }
-    } catch (e) {
+  // Auto-verify the smartcard / meter / account once enough digits are entered.
+  useEffect(() => {
+    if (!billsLive || !serviceID || customerRef.trim().length < 6) {
       setCustomerName(null);
-      setError(e instanceof Error ? e.message : 'Verification failed');
-    } finally {
       setVerifying(false);
+      setVerifyHint(null);
+      return;
     }
-  }
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void (async () => {
+        setVerifying(true);
+        setVerifyHint(null);
+        try {
+          const data = await api.post<{
+            customerName?: string;
+            renewalAmount?: number | string;
+          }>(endpoints.services.billsVerify, {
+            billersCode: customerRef.trim(),
+            serviceID,
+            category,
+            type: variationCode || undefined,
+          });
+          if (cancelled) return;
+          setCustomerName(data.customerName || 'Verified customer');
+          setVerifyHint(null);
+          if (data.renewalAmount) {
+            setAmount(String(Math.round(Number(data.renewalAmount))));
+          }
+        } catch (e) {
+          if (cancelled) return;
+          setCustomerName(null);
+          setVerifyHint(
+            e instanceof Error ? e.message : `Could not verify that ${refNoun}`,
+          );
+        } finally {
+          if (!cancelled) setVerifying(false);
+        }
+      })();
+    }, VERIFY_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    billsLive,
+    serviceID,
+    customerRef,
+    category,
+    variationCode,
+    refNoun,
+    verifyNonce,
+  ]);
+
+  // Electricity tokens settle asynchronously — poll until the token lands.
+  useEffect(() => {
+    if (!pending || !paymentId) return;
+    let cancelled = false;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = async () => {
+      attempts += 1;
+      try {
+        const data = await api.get<{
+          status?: string;
+          token?: string | null;
+          failureReason?: string | null;
+        }>(
+          `${endpoints.services.billsStatus}?paymentId=${encodeURIComponent(paymentId)}`,
+        );
+        if (cancelled) return;
+        if (data.token) setToken(String(data.token));
+        if (data.status === 'completed') {
+          setPending(false);
+          invalidateWallet();
+          return;
+        }
+        if (data.status === 'failed') {
+          setPending(false);
+          setSuccess(false);
+          setError(data.failureReason || 'Electricity payment failed');
+          invalidateWallet();
+          return;
+        }
+      } catch {
+        // Transient failures are expected while the disco settles — keep polling.
+      }
+      if (cancelled) return;
+      if (attempts < TOKEN_POLL_MAX_ATTEMPTS) {
+        timer = setTimeout(() => void tick(), TOKEN_POLL_INTERVAL_MS);
+      } else {
+        setPending(false);
+      }
+    };
+
+    timer = setTimeout(() => void tick(), TOKEN_POLL_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [pending, paymentId, invalidateWallet]);
 
   async function onSubmit() {
     if (!canSubmit || !selectedService) return;
@@ -206,6 +426,9 @@ export default function BillsScreen() {
       const data = await api.post<{
         amountFormatted?: string;
         token?: string;
+        status?: string;
+        paymentId?: string;
+        transactionId?: string;
         message?: string;
       }>(endpoints.services.billsPurchase, {
         serviceID,
@@ -214,9 +437,18 @@ export default function BillsScreen() {
         customerRef: customerRef.trim(),
         amount: showAmountField ? faceAmount : amountNumber,
         variationCode,
+        recipientName: customerName,
       });
       setReceipt(data.amountFormatted || money(amountNumber));
       setToken(data.token || null);
+      setPaymentId(data.paymentId || null);
+      setTransactionId(data.transactionId || null);
+      const settling =
+        category === 'electricity' &&
+        (data.status === 'processing' || data.status === 'pending') &&
+        !data.token &&
+        Boolean(data.paymentId);
+      setPending(settling);
       invalidateWallet();
       setSuccess(true);
     } catch (err) {
@@ -226,20 +458,28 @@ export default function BillsScreen() {
     }
   }
 
-  if (!countryLoading && !isNigeria) {
+  function resetSuccess() {
+    setSuccess(false);
+    setPending(false);
+    setToken(null);
+    setPaymentId(null);
+    setTransactionId(null);
+  }
+
+  const waitingForToken = pending && !token;
+
+  if (!countryLoading && !billsLive) {
     return (
       <Screen
         scroll
-        header={<PageHeader title="Bill Payments" subtitle="TV & electricity" showBack />}>
-        <Animated.View entering={FadeInDown.duration(280)} style={styles.gateCard}>
+        header={<PageHeader title={pageTitle} subtitle={pageSubtitle} showBack />}>
+        <Animated.View entering={cardEntering(0)} style={styles.gateCard}>
           <View style={styles.gateIcon}>
             <Ionicons name="flash-outline" size={28} color={Brand.orange} />
           </View>
-          <Text style={styles.gateTitle}>Bill payments for Nigeria</Text>
+          <Text style={styles.gateTitle}>{countryName || 'Local'} bills coming next</Text>
           <Text style={styles.gateSub}>
-            DSTV, GOtv, Startimes, Showmax and all electricity discos are available when
-            your account country is Nigeria. Switch country in settings, or use
-            international airtime/data for your market.
+            {`${countryName || 'Local'} bills will go live next. Airtime and data already work.`}
           </Text>
           <Button
             title="Buy airtime instead"
@@ -260,30 +500,44 @@ export default function BillsScreen() {
         scroll
         header={
           <PageHeader
-            title="Bill Payments"
-            subtitle="TV subscriptions & electricity"
+            title={pageTitle}
+            subtitle={pageSubtitle}
             showBack
           />
         }>
         <ServiceSuccess
-          title="Bill paid"
+          variant={waitingForToken ? 'pending' : 'success'}
+          title={
+            waitingForToken ? 'Waiting for token…' : token ? 'Token ready!' : 'Bill paid'
+          }
           subtitle={
-            selectedService?.name || 'Your bill was paid successfully.'
+            waitingForToken
+              ? `${selectedService?.name || 'Your provider'} is processing. Your token will appear here shortly.`
+              : selectedService?.name || 'Your bill was paid successfully.'
           }
           amountLabel="Amount charged"
           amount={receipt || money(amountNumber)}
-          onDismiss={() => setSuccess(false)}
+          reference={transactionId}
+          onDismiss={resetSuccess}
+          secondaryAction={{
+            label: 'Back to Home',
+            onPress: () => router.replace('/(app)/(tabs)'),
+            icon: 'home',
+          }}
           tertiaryAction={{
             label: 'Pay another bill',
-            onPress: () => {
-              setSuccess(false);
-              setToken(null);
-            },
+            onPress: resetSuccess,
             icon: 'plus',
           }}>
           {token ? (
             <View style={styles.tokenBox}>
               <Text style={styles.tokenText}>Token / receipt: {token}</Text>
+            </View>
+          ) : waitingForToken ? (
+            <View style={styles.tokenBox}>
+              <Text style={styles.tokenText}>
+                Waiting for the disco token… this usually takes a few seconds.
+              </Text>
             </View>
           ) : null}
         </ServiceSuccess>
@@ -304,14 +558,24 @@ export default function BillsScreen() {
             pressed && canSubmit && { opacity: 0.92 },
           ]}>
           <Text style={styles.submitText}>
-            {submitting ? 'Paying bill…' : `Pay bill · ${money(amountNumber)}`}
+            {submitting
+              ? 'Paying bill…'
+              : frozen
+                ? 'Wallet unavailable'
+                : isNigeria && !customerName
+                  ? verifying
+                    ? `Verifying ${refNoun}…`
+                    : `Verify ${refNoun} to continue`
+                  : amountNumber > 0 && !canAfford(amountNumber)
+                    ? 'Insufficient balance'
+                    : `Pay bill · ${money(amountNumber)}`}
           </Text>
         </Pressable>
       }
       header={
         <PageHeader
-          title="Bill Payments"
-          subtitle="TV subscriptions & electricity"
+          title={pageTitle}
+          subtitle={pageSubtitle}
           showBack
         />
       }>
@@ -327,41 +591,15 @@ export default function BillsScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
-        <View style={styles.segment}>
-          {(
-            [
-              { id: 'tv' as const, label: 'TV', icon: 'tv-outline' as const },
-              {
-                id: 'electricity' as const,
-                label: 'Electricity',
-                icon: 'flash-outline' as const,
-              },
-            ] as const
-          ).map((tab) => {
-            const active = category === tab.id;
-            return (
-              <Pressable
-                key={tab.id}
-                onPress={() => setCategory(tab.id)}
-                style={[styles.segmentBtn, active && styles.segmentBtnActive]}>
-                <Ionicons
-                  name={tab.icon}
-                  size={16}
-                  color={active ? Brand.orange : colors.mutedForeground}
-                />
-                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(40).duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(40)} style={styles.card}>
         <Text style={[styles.cardTitle, { marginBottom: 12 }]}>
-          {category === 'tv' ? 'TV providers' : 'Electricity discos'}
+          {category === 'tv'
+            ? 'TV providers'
+            : category === 'water'
+              ? 'Water'
+              : localCurrencyBills
+                ? 'Electricity'
+                : 'Electricity discos'}
         </Text>
         <VtpassServicePicker
           services={services}
@@ -369,8 +607,34 @@ export default function BillsScreen() {
           onChange={setServiceID}
           loading={loadingServices || countryLoading}
           label="Provider"
-          title={category === 'tv' ? 'Select TV provider' : 'Select electricity disco'}
-          subtitle={category === 'tv' ? 'DSTV, GOtv, Startimes & more' : 'Discos across Nigeria'}
+          title={
+            category === 'tv'
+              ? 'Select TV provider'
+              : category === 'water'
+                ? 'Select water utility'
+                : localCurrencyBills
+                  ? 'Select electricity provider'
+                  : 'Select electricity disco'
+          }
+          subtitle={
+            category === 'tv'
+              ? isSouthAfrica || isKenya || isGhana
+                ? 'DStv, GOtv, StarTimes'
+                : 'DSTV, GOtv, Startimes & more'
+              : category === 'water'
+                ? isSouthAfrica
+                  ? 'Johannesburg Water'
+                  : isKenya
+                    ? 'Nairobi Water'
+                    : 'Ghana Water Company'
+                : isSouthAfrica
+                  ? 'Eskom & City Power'
+                  : isKenya
+                    ? 'KPLC prepaid & postpaid'
+                    : isGhana
+                      ? 'ECG prepaid & postpaid'
+                      : 'Discos across Nigeria'
+          }
         />
         {error && !services.length ? (
           <Pressable
@@ -381,42 +645,45 @@ export default function BillsScreen() {
         ) : null}
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(80).duration(280)} style={styles.card}>
-        <Text style={styles.fieldLabel}>
-          {category === 'tv' ? 'Smartcard number' : 'Meter number'}
-        </Text>
-        <View style={styles.verifyRow}>
-          <TextInput
-            value={customerRef}
-            onChangeText={(t) => {
-              setCustomerRef(t);
-              setCustomerName(null);
-            }}
-            keyboardType="number-pad"
-            placeholder={category === 'tv' ? 'Smartcard / IUC' : 'Meter number'}
-            placeholderTextColor={colors.mutedForeground}
-            style={[styles.input, { flex: 1 }]}
-          />
-          <Pressable
-            disabled={verifying || customerRef.trim().length < 6}
-            onPress={() => void verifyCustomer()}
-            style={({ pressed }) => [
-              styles.verifyBtn,
-              (verifying || customerRef.trim().length < 6) && { opacity: 0.5 },
-              pressed && { opacity: 0.9 },
-            ]}>
-            {!verifying ? (
-              <Ionicons name="search-outline" size={16} color={colors.foreground} />
-            ) : null}
-            <Text style={styles.verifyText}>{verifying ? 'Checking…' : 'Verify'}</Text>
-          </Pressable>
-        </View>
-        {customerName ? (
+      <Animated.View entering={cardEntering(80)} style={styles.card}>
+        <Text style={styles.fieldLabel}>{customerLabel}</Text>
+        <TextInput
+          value={customerRef}
+          onChangeText={(t) => {
+            setCustomerRef(t);
+            setCustomerName(null);
+            setVerifyHint(null);
+          }}
+          keyboardType="number-pad"
+          placeholder={customerLabel}
+          placeholderTextColor={colors.mutedForeground}
+          style={styles.input}
+        />
+        {verifying ? (
+          <View style={styles.verifyStatusRow}>
+            <ActivityIndicator size="small" color={colors.mutedForeground} />
+            <Text style={styles.verifyStatusText}>{`Checking ${refNoun}…`}</Text>
+          </View>
+        ) : customerName ? (
           <Text style={styles.verifiedName}>{customerName}</Text>
-        ) : null}
+        ) : verifyHint ? (
+          <View style={styles.verifyStatusRow}>
+            <Text style={styles.verifyErrorText}>{verifyHint}</Text>
+            <Pressable
+              onPress={() => setVerifyNonce((n) => n + 1)}
+              hitSlop={8}
+              style={({ pressed }) => pressed && { opacity: 0.7 }}>
+              <Text style={styles.verifyRetryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Text style={styles.verifyHintText}>
+            {`Enter at least 6 digits — we verify the ${refNoun} automatically.`}
+          </Text>
+        )}
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(120).duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(120)} style={styles.card}>
         <Text style={[styles.cardTitle, { marginBottom: 12 }]}>
           {category === 'tv' ? 'Bouquets / plans' : 'Meter type'}
         </Text>
@@ -457,7 +724,7 @@ export default function BillsScreen() {
                     onPress={() => setAmount(p)}
                     style={[styles.presetChip, active && styles.presetChipActive]}>
                     <Text style={[styles.presetText, active && styles.presetTextActive]}>
-                      ₦{p}
+                      {money(Number(p))}
                     </Text>
                   </Pressable>
                 );
@@ -467,12 +734,18 @@ export default function BillsScreen() {
         ) : null}
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(160).duration(280)} style={styles.card}>
+      <Animated.View entering={cardEntering(160)} style={styles.card}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
           <SummaryRow label="Provider" value={selectedService?.name ?? '—'} />
           <SummaryRow
-            label={category === 'tv' ? 'Smartcard' : 'Meter'}
+            label={
+              category === 'tv'
+                ? 'Smartcard'
+                : category === 'water'
+                  ? 'Account'
+                  : 'Meter'
+            }
             value={customerRef || '—'}
           />
           <SummaryRow label="Plan" value={selectedVariation?.name ?? '—'} />
@@ -529,32 +802,6 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.charcoal,
     },
-    segment: {
-      flexDirection: 'row',
-      gap: 6,
-      borderRadius: 14,
-      backgroundColor: colors.grayLight,
-      padding: 4,
-    },
-    segmentBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      borderRadius: 12,
-      paddingVertical: 11,
-    },
-    segmentBtnActive: {
-      backgroundColor: colors.card,
-      shadowColor: '#000',
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 2 },
-      elevation: 2,
-    },
-    segmentText: { fontSize: 13, fontWeight: '700', color: colors.grayMedium },
-    segmentTextActive: { color: Brand.orange },
     input: {
       height: 48,
       borderRadius: 14,
@@ -565,19 +812,21 @@ function makeStyles(colors: ThemeColors) {
       fontSize: 14,
       color: colors.charcoal,
     },
-    verifyRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-    verifyBtn: {
-      height: 48,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.grayLight,
-      paddingHorizontal: 10,
+    verifyStatusRow: {
+      marginTop: 10,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
     },
-    verifyText: { fontSize: 13, fontWeight: '700', color: colors.charcoal },
+    verifyStatusText: { fontSize: 13, fontWeight: '600', color: colors.grayMedium },
+    verifyErrorText: { flex: 1, fontSize: 13, fontWeight: '600', color: Brand.error },
+    verifyRetryText: { fontSize: 13, fontWeight: '800', color: Brand.orange },
+    verifyHintText: {
+      marginTop: 10,
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.grayMedium,
+    },
     verifiedName: {
       marginTop: 10,
       fontSize: 14,

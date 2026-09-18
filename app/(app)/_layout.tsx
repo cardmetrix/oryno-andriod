@@ -1,41 +1,22 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, Stack } from 'expo-router';
-import { useEffect, useRef } from 'react';
 
-import { SplashLoading } from '@/components/ui/splash-loading';
 import {
   formSheetScreenOptions,
+  modalScreenOptions,
   stackScreenOptions,
 } from '@/constants/transitions';
 import { useAppTheme } from '@/context/theme-context';
-import { bootstrapSignedInSession, hasWarmAppCache } from '@/lib/app-boot';
 
+/**
+ * Signed-in shell. Session/wallet bootstrap is owned by BootGate so the splash
+ * stays up until the dashboard is ready (no dark blank gap).
+ */
 export default function AppLayout() {
-  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   const { colors } = useAppTheme();
-  const queryClient = useQueryClient();
-  const bootStarted = useRef(false);
 
-  useEffect(() => {
-    if (!isSignedIn) {
-      bootStarted.current = false;
-      return;
-    }
-    if (!isLoaded || bootStarted.current) return;
-
-    bootStarted.current = true;
-    const warm = hasWarmAppCache(queryClient);
-    void bootstrapSignedInSession({ queryClient, getToken, warm }).catch((error) => {
-      if (__DEV__) {
-        console.warn('[ORYNO app] boot failed', error);
-      }
-    });
-  }, [isLoaded, isSignedIn, getToken, queryClient]);
-
-  if (!isLoaded) {
-    return <SplashLoading />;
-  }
+  if (!isLoaded) return null;
 
   if (!isSignedIn) return <Redirect href="/(auth)/onboarding" />;
 
@@ -45,24 +26,10 @@ export default function AppLayout() {
         ...stackScreenOptions,
         contentStyle: { backgroundColor: colors.background },
       }}>
-      <Stack.Screen name="(tabs)" options={{ animation: 'fade', gestureEnabled: false }} />
-      <Stack.Screen
-        name="fund"
-        options={{
-          ...formSheetScreenOptions,
-          sheetAllowedDetents: [0.72, 0.94],
-          sheetInitialDetentIndex: 0,
-        }}
-      />
-      <Stack.Screen
-        name="withdraw"
-        options={{
-          ...formSheetScreenOptions,
-          sheetAllowedDetents: [0.72, 0.94],
-          sheetInitialDetentIndex: 0,
-        }}
-      />
-      <Stack.Screen name="notifications" options={formSheetScreenOptions} />
+      <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: 200, gestureEnabled: false }} />
+      <Stack.Screen name="fund" options={modalScreenOptions} />
+      <Stack.Screen name="withdraw" options={modalScreenOptions} />
+      <Stack.Screen name="notifications" />
       <Stack.Screen name="wallet/add-bank" options={formSheetScreenOptions} />
       <Stack.Screen name="support" />
       <Stack.Screen name="referrals" />
@@ -77,12 +44,15 @@ export default function AppLayout() {
       <Stack.Screen name="services/airtime" />
       <Stack.Screen name="services/data" />
       <Stack.Screen name="services/bills" />
+      <Stack.Screen name="services/electricity" />
+      <Stack.Screen name="services/tv" />
+      <Stack.Screen name="services/betting" />
       <Stack.Screen name="services/social" />
       <Stack.Screen name="services/gift-cards" />
       <Stack.Screen name="services/gift-cards-live" />
       <Stack.Screen name="services/virtual-numbers" />
       <Stack.Screen name="services/emails" />
-      <Stack.Screen name="admin" options={{ headerShown: false }} />
+      <Stack.Screen name="admin" options={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
     </Stack>
   );
 }

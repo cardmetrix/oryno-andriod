@@ -11,9 +11,11 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
+import { TotpDisableModal, TotpSetupModal } from '@/components/settings/totp-setup-modal';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
+import { useAppLock } from '@/context/app-lock-context';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
@@ -34,14 +36,20 @@ type SettingsPayload = {
 export default function SecurityScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { refreshMeta, setEnabled: setBiometricEnabled, enabled: biometricOn, meta } =
+    useAppLock();
   const [security, setSecurity] = useState<SecurityState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPinForm, setShowPinForm] = useState(false);
+  const [showTotp, setShowTotp] = useState(false);
+  const [showDisableTotp, setShowDisableTotp] = useState(false);
   const [currentPin, setCurrentPin] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+
+  const totpOn = Boolean(security?.twoFactorEnabled);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,12 +57,13 @@ export default function SecurityScreen() {
     try {
       const json = await api.get<SettingsPayload>(endpoints.settings.root);
       setSecurity(json.security);
+      await refreshMeta();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load security settings');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshMeta]);
 
   useEffect(() => {
     void load();
@@ -106,6 +115,25 @@ export default function SecurityScreen() {
     }
   }
 
+  function onToggle2fa(next: boolean) {
+    if (next) {
+      setShowTotp(true);
+      return;
+    }
+    setShowDisableTotp(true);
+  }
+
+  async function onToggleBiometric(next: boolean) {
+    setSaving(true);
+    const result = await setBiometricEnabled(next);
+    setSaving(false);
+    if (!result.ok) {
+      alert.warning(meta.title, result.error || 'Could not update biometric unlock.');
+      return;
+    }
+    setSecurity((prev) => (prev ? { ...prev, biometricEnabled: next } : prev));
+  }
+
   if (loading && !security) {
     return (
       <Screen
@@ -153,19 +181,25 @@ export default function SecurityScreen() {
       <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
         <SecurityRow
           icon="shield-checkmark-outline"
-          title="Two-Factor Auth (2FA)"
-          subtitle="Extra login protection"
-          value={security.twoFactorEnabled}
+          title="Google Authenticator"
+          subtitle={totpOn ? 'Required at every sign-in' : 'Add an authenticator app for 2FA'}
+          value={totpOn}
           disabled={saving}
-          onValueChange={(v) => void patch({ twoFactorEnabled: v })}
+          onValueChange={onToggle2fa}
         />
         <SecurityRow
-          icon="finger-print-outline"
-          title="Biometric Sign In"
-          subtitle="Face ID / fingerprint on device"
-          value={security.biometricEnabled}
-          disabled={saving}
-          onValueChange={(v) => void patch({ biometricEnabled: v })}
+          icon="finger-print"
+          title={meta.title}
+          subtitle={
+            meta.available
+              ? meta.subtitle
+              : meta.hasHardware
+                ? `Set up ${meta.title} in device settings first`
+                : 'Not available on this device'
+          }
+          value={biometricOn}
+          disabled={saving || !meta.available}
+          onValueChange={(v) => void onToggleBiometric(v)}
         />
 
         <View style={styles.pinRow}>
@@ -252,6 +286,21 @@ export default function SecurityScreen() {
           </View>
         </Animated.View>
       ) : null}
+
+      <TotpSetupModal
+        visible={showTotp}
+        onClose={() => setShowTotp(false)}
+        onEnabled={() => {
+          setSecurity((prev) => (prev ? { ...prev, twoFactorEnabled: true } : prev));
+        }}
+      />
+      <TotpDisableModal
+        visible={showDisableTotp}
+        onClose={() => setShowDisableTotp(false)}
+        onDisabled={() => {
+          setSecurity((prev) => (prev ? { ...prev, twoFactorEnabled: false } : prev));
+        }}
+      />
     </Screen>
   );
 }

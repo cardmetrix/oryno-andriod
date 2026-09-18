@@ -8,17 +8,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { PageHeader } from '@/components/app/page-header';
-import { SelectSheet } from '@/components/app/picker-sheet';
+import { PhoneNumberField } from '@/components/app/phone-number-field';
 import { ServiceSuccess } from '@/components/app/service-success';
-import {
-  VtpassServicePicker,
-  type VtpassServiceOption,
-} from '@/components/app/vtpass-service-picker';
+import { TelecomNetworkGrid } from '@/components/app/telecom-network-grid';
+import type { VtpassServiceOption } from '@/components/app/vtpass-service-picker';
 import { Screen } from '@/components/ui/screen';
-import { Brand, Radius, type ThemeColors } from '@/constants/theme';
+import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { useProfile } from '@/hooks/use-profile';
@@ -27,17 +27,17 @@ import {
   useInternationalProductTypes,
   useVtpassServices,
 } from '@/hooks/use-service-catalogs';
+import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
-import { formatCountryMoney } from '@/lib/format';
+import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
+import {
+  defaultIntlAirtimeAmount,
+  intlAirtimeCurrencySymbol,
+  intlAirtimeMinLocal,
+  intlAirtimePresets,
+} from '@/lib/intl-airtime';
 import { airtimePresets, estimateAirtimeCashback } from '@/lib/telecom';
-
-type Variation = {
-  variationCode: string;
-  name: string;
-  amount: number;
-  fixedPrice: boolean;
-};
 
 function cleanNetworkName(name: string) {
   return name
@@ -55,25 +55,24 @@ function cleanNetworkName(name: string) {
 export default function AirtimeScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { countryCode, countryName, loading: countryLoading } = useProfile();
+  const { countryCode, loading: countryLoading, displayFx } = useProfile();
+  const { canAfford, canAffordNgn, frozen } = useWalletBalance();
   const invalidateWallet = useInvalidateWallet();
   const isNigeria = countryCode === 'NG';
 
   const [networkId, setNetworkId] = useState('');
   const [phone, setPhone] = useState('');
-  const [amount, setAmount] = useState('500');
+  const [amount, setAmount] = useState(() =>
+    isNigeria ? '500' : defaultIntlAirtimeAmount(countryCode),
+  );
   const [saveBeneficiary, setSaveBeneficiary] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [walletLabel, setWalletLabel] = useState<string | null>(null);
   const [receiptAmount, setReceiptAmount] = useState('');
-  const [retailAmount, setRetailAmount] = useState<number | null>(null);
-
-  const [variations, setVariations] = useState<Variation[]>([]);
-  const [variationCode, setVariationCode] = useState('');
+  const [retailCharge, setRetailCharge] = useState(0);
   const [productTypeId, setProductTypeId] = useState(1);
-  const [loadingPackages, setLoadingPackages] = useState(false);
 
   const localNetworksQuery = useVtpassServices('airtime', !countryLoading && isNigeria);
   const productTypesQuery = useInternationalProductTypes(
@@ -99,6 +98,7 @@ export default function AirtimeScreen() {
       serviceID: String(op.operator_id),
       name: cleanNetworkName(op.name),
       image: op.operator_image ?? null,
+      domain: op.domain,
     }));
   }, [isNigeria, localNetworksQuery.data, operatorsQuery.data]);
 
@@ -110,19 +110,32 @@ export default function AirtimeScreen() {
         (operatorsQuery.isLoading && !operatorsQuery.data));
 
   const selectedNetwork = networks.find((n) => n.serviceID === networkId);
-  const selectedVariation = variations.find((v) => v.variationCode === variationCode);
 
+  const localAmount = Number(amount) || 0;
+  const minLocal = isNigeria ? 50 : intlAirtimeMinLocal(countryCode);
   const faceAmount = isNigeria
-    ? Number(amount) || 0
-    : selectedVariation?.amount || 0;
-  const amountNumber =
-    isNigeria && retailAmount != null && retailAmount > 0 ? retailAmount : faceAmount;
-  const cashback = estimateAirtimeCashback(amountNumber);
-  const money = (n: number) => formatCountryMoney(n, countryCode);
+    ? localAmount
+    : localAmount * (displayFx?.localToNgn ?? 1);
+  const chargeAmount =
+    isNigeria && retailCharge > 0 ? retailCharge : faceAmount;
+  const cashback = estimateAirtimeCashback(faceAmount);
+  const money = (n: number) =>
+    formatServiceMoney(n, countryCode, displayFx?.ngnToLocal ?? 1);
+  const amountLabel = isNigeria
+    ? money(faceAmount)
+    : formatCountryMoney(localAmount, countryCode);
+  const amountPresets = isNigeria ? airtimePresets : intlAirtimePresets(countryCode);
+  const currencyPrefix = intlAirtimeCurrencySymbol(countryCode);
+  const affordable = isNigeria ? canAfford(chargeAmount) : canAffordNgn(chargeAmount);
 
   useEffect(() => {
-    if (!isNigeria || !networkId || faceAmount < 50) {
-      setRetailAmount(null);
+    if (countryLoading) return;
+    setAmount(isNigeria ? '500' : defaultIntlAirtimeAmount(countryCode));
+  }, [countryLoading, isNigeria, countryCode]);
+
+  useEffect(() => {
+    if (!isNigeria || !networkId || localAmount < minLocal) {
+      setRetailCharge(0);
       return;
     }
     let cancelled = false;
@@ -130,26 +143,27 @@ export default function AirtimeScreen() {
       void (async () => {
         try {
           const data = await api.get<{ retail?: number }>(
-            `${endpoints.vtpass.quote}?serviceID=${encodeURIComponent(networkId)}&amount=${faceAmount}`,
+            `${endpoints.vtpass.quote}?serviceID=${encodeURIComponent(networkId)}&amount=${localAmount}`,
           );
-          if (!cancelled) setRetailAmount(Number(data.retail) || faceAmount);
+          if (!cancelled && typeof data.retail === 'number') {
+            setRetailCharge(data.retail);
+          }
         } catch {
-          if (!cancelled) setRetailAmount(faceAmount);
+          if (!cancelled) setRetailCharge(0);
         }
       })();
-    }, 250);
+    }, 280);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isNigeria, networkId, faceAmount]);
+  }, [isNigeria, networkId, localAmount, minLocal]);
 
   const canSubmit = useMemo(() => {
     const digits = phone.replace(/\D/g, '').length >= 10;
-    if (!digits || submitting || !networkId) return false;
-    if (isNigeria) return amountNumber >= 50;
-    return Boolean(variationCode && amountNumber > 0);
-  }, [phone, submitting, networkId, isNigeria, amountNumber, variationCode]);
+    if (!digits || submitting || !networkId || frozen || !affordable) return false;
+    return localAmount >= minLocal;
+  }, [phone, submitting, networkId, frozen, affordable, localAmount, minLocal]);
 
   useEffect(() => {
     if (airtimeProductTypeId != null) setProductTypeId(airtimeProductTypeId);
@@ -175,35 +189,6 @@ export default function AirtimeScreen() {
     }
   }, [localNetworksQuery.error, productTypesQuery.error, operatorsQuery.error]);
 
-  useEffect(() => {
-    if (isNigeria || !networkId) return;
-    let cancelled = false;
-
-    (async () => {
-      setLoadingPackages(true);
-      setVariationCode('');
-      try {
-        const data = await api.get<{ variations?: Variation[] }>(
-          `${endpoints.services.variations}?serviceID=foreign-airtime&operator_id=${encodeURIComponent(networkId)}&product_type_id=${productTypeId}`,
-        );
-        if (cancelled) return;
-        const list = data.variations ?? [];
-        setVariations(list);
-        if (list[0]?.variationCode) setVariationCode(list[0].variationCode);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load packages');
-        }
-      } finally {
-        if (!cancelled) setLoadingPackages(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isNigeria, networkId, productTypeId]);
-
   async function onSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
@@ -220,21 +205,21 @@ export default function AirtimeScreen() {
               mode: 'local',
               serviceID: networkId,
               phone,
-              amount: faceAmount,
+              amount: localAmount,
               saveBeneficiary,
             }
           : {
               mode: 'international',
               phone,
-              amount: faceAmount,
+              amount: localAmount,
               operatorId: networkId,
               countryIso: countryCode,
               productTypeId,
-              variationCode,
               saveBeneficiary,
+              flexibleLocalAmount: true,
             },
       );
-      setReceiptAmount(data.amountFormatted || money(amountNumber));
+      setReceiptAmount(data.amountFormatted || amountLabel);
       setWalletLabel(data.wallet?.balanceFormatted ?? null);
       invalidateWallet();
       setSuccess(true);
@@ -245,16 +230,40 @@ export default function AirtimeScreen() {
     }
   }
 
-  if (success) {
-    return (
-      <Screen
-        scroll
-        header={<PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />}>
+  return (
+    <Screen
+      scroll
+      footer={
+        <Pressable
+          disabled={!canSubmit}
+          onPress={() => void onSubmit()}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            !canSubmit && styles.submitDisabled,
+            pressed && canSubmit && { opacity: 0.92 },
+          ]}>
+          <Text style={styles.submitText}>
+            {submitting
+              ? 'Processing…'
+              : frozen
+                ? 'Wallet unavailable'
+                : !affordable && chargeAmount > 0
+                  ? 'Insufficient balance'
+                  : `Buy airtime · ${
+                      isNigeria && retailCharge > 0
+                        ? money(retailCharge)
+                        : amountLabel
+                    }`}
+          </Text>
+        </Pressable>
+      }
+      header={<PageHeader title="Buy Airtime" showBack />}>
+      {success ? (
         <ServiceSuccess
-          title="Airtime sent"
-          subtitle={`Sent to ${phone}${selectedNetwork ? ` · ${selectedNetwork.name}` : ''}`}
+          title="Airtime sent!"
+          subtitle={`${receiptAmount || money(faceAmount)} sent to ${phone}${selectedNetwork ? ` · ${selectedNetwork.name}` : ''}`}
           amountLabel="Amount charged"
-          amount={receiptAmount || money(amountNumber)}
+          amount={receiptAmount || money(faceAmount)}
           onDismiss={() => setSuccess(false)}
           tertiaryAction={{
             label: 'Buy again',
@@ -274,30 +283,8 @@ export default function AirtimeScreen() {
             </View>
           ) : null}
         </ServiceSuccess>
-      </Screen>
-    );
-  }
+      ) : null}
 
-  return (
-    <Screen
-      scroll
-      footer={
-        <Pressable
-          disabled={!canSubmit}
-          onPress={() => void onSubmit()}
-          style={({ pressed }) => [
-            styles.submitBtn,
-            !canSubmit && styles.submitDisabled,
-            pressed && canSubmit && { opacity: 0.92 },
-          ]}>
-          <Text style={styles.submitText}>
-            {submitting
-              ? 'Buying airtime…'
-              : `Buy airtime · ${money(amountNumber)}`}
-          </Text>
-        </Pressable>
-      }
-      header={<PageHeader title="Buy Airtime" subtitle="Top up any network instantly" showBack />}>
       {error ? (
         <View style={styles.errorBanner}>
           <View style={{ flex: 1 }}>
@@ -310,22 +297,13 @@ export default function AirtimeScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.iconBubble}>
-            <Ionicons name="phone-portrait-outline" size={20} color={Brand.orange} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Select network</Text>
-            <Text style={styles.cardSub}>Networks for {countryName}</Text>
-          </View>
-        </View>
-        <VtpassServicePicker
+      <Animated.View entering={cardEntering(0)} style={styles.section}>
+        <Text style={styles.sectionTitle}>Select Network</Text>
+        <TelecomNetworkGrid
           services={networks}
           value={networkId}
           onChange={setNetworkId}
           loading={loadingNetworks || countryLoading}
-          subtitle={`Networks for ${countryName}`}
         />
         {error && !networks.length ? (
           <Pressable
@@ -340,95 +318,70 @@ export default function AirtimeScreen() {
         ) : null}
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(40).duration(280)} style={styles.card}>
-        <Text style={styles.fieldLabel}>Phone number</Text>
-        <TextInput
+      <Animated.View entering={cardEntering(40)} style={styles.section}>
+        <PhoneNumberField
           value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
+          onChange={setPhone}
           placeholder={isNigeria ? '0803 000 0000' : 'Recipient number'}
-          placeholderTextColor={colors.mutedForeground}
-          style={styles.input}
         />
         <View style={styles.beneficiaryRow}>
           <Text style={styles.beneficiaryLabel}>Save as beneficiary</Text>
           <Switch
             value={saveBeneficiary}
             onValueChange={setSaveBeneficiary}
-            trackColor={{ false: colors.grayDivider, true: Brand.orangeSoft }}
+            trackColor={{ false: colors.border, true: Brand.orangeSoft }}
             thumbColor={saveBeneficiary ? Brand.orange : Brand.white}
           />
         </View>
       </Animated.View>
 
-      {isNigeria ? (
-        <Animated.View entering={FadeInDown.delay(80).duration(280)} style={styles.card}>
-          <Text style={styles.fieldLabel}>Amount</Text>
-          <View style={styles.amountWrap}>
-            <Text style={styles.currencyPrefix}>₦</Text>
-            <TextInput
-              value={amount}
-              onChangeText={(t) => setAmount(t.replace(/[^\d]/g, ''))}
-              keyboardType="number-pad"
-              placeholder="500"
-              placeholderTextColor={colors.mutedForeground}
-              style={styles.amountInput}
-            />
-          </View>
-          <View style={styles.presets}>
-            {airtimePresets.map((preset) => {
-              const active = amount === preset;
-              return (
-                <Pressable
-                  key={preset}
-                  onPress={() => setAmount(preset)}
-                  style={[styles.presetChip, active && styles.presetChipActive]}>
-                  <Text style={[styles.presetText, active && styles.presetTextActive]}>
-                    ₦{preset}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <View style={styles.cashbackRow}>
-            <Ionicons name="gift-outline" size={14} color={Brand.orange} />
-            <Text style={styles.cashbackHint}>Est. cashback {money(cashback)}</Text>
-          </View>
-        </Animated.View>
-      ) : (
-        <Animated.View entering={FadeInDown.delay(80).duration(280)} style={styles.card}>
-          <Text style={[styles.cardTitle, { marginBottom: 12 }]}>Package</Text>
-          <SelectSheet
-            label="Package"
-            title="Select package"
-            subtitle="Airtime packages for this network"
-            hint="Tap to choose a package"
-            value={variationCode}
-            onChange={setVariationCode}
-            loading={loadingPackages}
-            emptyText="No packages for this network"
-            options={variations.map((v) => ({
-              id: v.variationCode,
-              title: v.name,
-              trailing: money(v.amount),
-            }))}
+      <Animated.View entering={cardEntering(80)} style={styles.section}>
+        <Text style={styles.sectionTitle}>Select Amount</Text>
+        <View style={styles.amountWrap}>
+          <Text style={styles.currencyPrefix}>{currencyPrefix}</Text>
+          <TextInput
+            value={amount}
+            onChangeText={(t) => setAmount(t.replace(/[^\d.]/g, ''))}
+            keyboardType="decimal-pad"
+            placeholder={String(minLocal)}
+            placeholderTextColor={colors.mutedForeground}
+            style={styles.amountInput}
           />
-        </Animated.View>
-      )}
+        </View>
+        <View style={styles.presets}>
+          {amountPresets.map((preset) => {
+            const active = amount === preset;
+            return (
+              <Pressable
+                key={preset}
+                onPress={() => setAmount(preset)}
+                style={[styles.presetChip, active && styles.presetChipActive]}>
+                <Text style={[styles.presetText, active && styles.presetTextActive]}>
+                  {currencyPrefix}
+                  {Number(preset).toLocaleString()}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.cashbackRow}>
+          <Ionicons name="gift-outline" size={14} color={Brand.orange} />
+          <Text style={styles.cashbackHint}>Est. cashback {money(cashback)}</Text>
+        </View>
+      </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(120).duration(280)} style={styles.card}>
-        <Text style={styles.cardTitle}>Order summary</Text>
-        <View style={styles.summary}>
-          <SummaryRow label="Network" value={selectedNetwork?.name ?? '—'} />
-          <SummaryRow label="Phone" value={phone || '—'} />
-          {isNigeria && retailAmount != null && retailAmount !== faceAmount ? (
-            <SummaryRow label="Airtime value" value={money(faceAmount)} />
-          ) : null}
-          <SummaryRow label="You pay" value={money(amountNumber)} accent />
-          <View style={styles.payRow}>
-            <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
-            <Text style={styles.payText}>Pay from wallet</Text>
-          </View>
+      <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
+        <SummaryRow label="Network" value={selectedNetwork?.name ?? '—'} />
+        <SummaryRow label="Phone" value={phone || '—'} />
+        <SummaryRow label="Airtime value" value={amountLabel} />
+        {isNigeria && retailCharge > 0 && retailCharge !== localAmount ? (
+          <SummaryRow label="You pay" value={money(retailCharge)} accent />
+        ) : (
+          <SummaryRow label="Amount" value={amountLabel} accent />
+        )}
+        <View style={styles.payRow}>
+          <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
+          <Text style={styles.payText}>Pay from wallet</Text>
         </View>
       </Animated.View>
     </Screen>
@@ -458,129 +411,124 @@ function SummaryRow({
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    card: {
-      marginBottom: 8,
-      borderRadius: Radius.card,
-      backgroundColor: colors.card,
-      padding: 10,
+    section: {
+      marginBottom: 20,
+      gap: 12,
     },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-    iconBubble: {
-      width: 40,
-      height: 40,
-      borderRadius: 16,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: colors.charcoal },
-    cardSub: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.grayMedium },
-    fieldLabel: {
-      marginBottom: 8,
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.charcoal,
-    },
-    input: {
-      height: 48,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.card,
-      paddingHorizontal: 12,
-      fontSize: 14,
-      color: colors.charcoal,
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.foreground,
     },
     beneficiaryRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      paddingHorizontal: 4,
     },
-    beneficiaryLabel: { fontSize: 14, fontWeight: '500', color: colors.grayMedium },
+    beneficiaryLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
     amountWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      height: 48,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      paddingHorizontal: 10,
+      height: 56,
+      borderRadius: 16,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 16,
     },
     currencyPrefix: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.mutedForeground,
+      marginRight: 8,
+    },
+    amountInput: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.foreground,
+      height: '100%',
+    },
+    presets: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    presetChip: {
+      width: '31%',
+      flexGrow: 1,
+      borderRadius: 16,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 8,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    presetChipActive: {
+      backgroundColor: Brand.orange,
+    },
+    presetText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.grayMedium,
-      marginRight: 6,
+      color: colors.foreground,
     },
-    amountInput: { flex: 1, fontSize: 14, color: colors.charcoal, height: '100%' },
-    presets: { marginTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    presetChip: {
-      borderRadius: 999,
-      backgroundColor: colors.grayLight,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
-    },
-    presetChipActive: { backgroundColor: Brand.orange },
-    presetText: { fontSize: 13, fontWeight: '700', color: colors.charcoal },
     presetTextActive: { color: Brand.white },
     cashbackRow: {
-      marginTop: 12,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+      paddingHorizontal: 4,
     },
-    cashbackHint: { fontSize: 12, fontWeight: '500', color: colors.grayMedium },
-    packageList: { marginTop: 12, gap: 8 },
-    packageSkel: {
-      height: 56,
+    cashbackHint: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
+    summaryCard: {
+      marginBottom: 8,
       borderRadius: 16,
-      backgroundColor: colors.grayLight,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      gap: 10,
     },
-    packageRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    packageRowActive: {
-      borderColor: Brand.orange,
-      backgroundColor: Brand.orangeMuted,
-    },
-    packageName: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.charcoal },
-    packagePrice: { fontSize: 14, fontWeight: '800', color: Brand.orange },
-    summary: { marginTop: 12, gap: 10 },
     summaryRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 12,
     },
-    summaryLabel: { fontSize: 13, fontWeight: '500', color: colors.grayMedium },
+    summaryLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
     summaryValue: {
       maxWidth: '60%',
       textAlign: 'right',
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.charcoal,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.foreground,
     },
     summaryAccent: { color: Brand.orange },
     payRow: {
       marginTop: 4,
       paddingTop: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.grayDivider,
+      borderTopColor: colors.border,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
     },
-    payText: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
+    payText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
     submitBtn: {
-      height: 46,
+      height: 48,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
@@ -588,35 +536,32 @@ function makeStyles(colors: ThemeColors) {
     },
     submitDisabled: { opacity: 0.5 },
     submitText: { color: Brand.white, fontSize: 16, fontWeight: '800' },
-    emptyHint: {
-      marginTop: 12,
-      textAlign: 'center',
-      fontSize: 13,
-      color: colors.grayMedium,
-      fontWeight: '500',
-    },
     retryBtn: {
-      marginTop: 12,
       alignSelf: 'center',
       backgroundColor: Brand.orange,
       borderRadius: 12,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
     errorBanner: {
-      marginBottom: 8,
+      marginBottom: 12,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: 'rgba(255,59,48,0.25)',
       backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 10,
+      padding: 12,
       flexDirection: 'row',
       gap: 10,
       alignItems: 'flex-start',
     },
     errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.charcoal },
+    errorText: {
+      marginTop: 2,
+      fontSize: 12,
+      fontWeight: '500',
+      color: colors.foreground,
+    },
     successExtras: { alignItems: 'center', gap: 4 },
     cashbackAccent: {
       marginTop: 12,
@@ -628,7 +573,7 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 4,
       fontSize: 12,
       fontWeight: '500',
-      color: colors.grayMedium,
+      color: colors.mutedForeground,
     },
   });
 }

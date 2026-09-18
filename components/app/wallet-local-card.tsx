@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { Brand, Radius } from '@/constants/theme';
+import { WalletCardShine } from '@/components/app/wallet-card-shine';
+import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { maskBalance } from '@/lib/format';
 
@@ -32,17 +33,14 @@ export function WalletLocalCard({
   const protectedLabel = status === 'healthy' ? 'Protected' : status;
 
   return (
-    <View
-      style={[
-        styles.shell,
-        { backgroundColor: colors.card },
-      ]}>
+    <View style={[styles.shell, { backgroundColor: colors.card }]}>
       <LinearGradient
         colors={['#FF8124', Brand.orange, '#E85D00']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.card}>
         <View style={styles.glow} />
+        <WalletCardShine intensity="bright" />
 
         <View style={styles.top}>
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -58,7 +56,7 @@ export function WalletLocalCard({
               {maskBalance(hidden, balanceFormatted)}
             </Animated.Text>
             <Text style={styles.holder} numberOfLines={1}>
-              {holderName} · {countryCode} wallet
+              {countryCode} wallet
             </Text>
           </View>
 
@@ -102,19 +100,19 @@ export function WalletLocalCard({
 
 const styles = StyleSheet.create({
   shell: {
-    borderRadius: Radius.card,
+    borderRadius: 28,
     overflow: 'hidden',
     shadowColor: '#0F0F12',
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    elevation: 4,
   },
   card: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     overflow: 'hidden',
-    minHeight: 140,
+    minHeight: 168,
   },
   glow: {
     position: 'absolute',
@@ -134,19 +132,19 @@ const styles = StyleSheet.create({
     letterSpacing: 1.6,
   },
   balance: {
-    marginTop: 4,
+    marginTop: 6,
     color: Brand.white,
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '800',
-    letterSpacing: -0.6,
+    letterSpacing: -0.8,
   },
   holder: {
-    marginTop: 3,
+    marginTop: 4,
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
   },
-  topRight: { alignItems: 'flex-end', gap: 6 },
+  topRight: { alignItems: 'flex-end', gap: 8 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -165,31 +163,31 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   eyeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.2)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  actions: { marginTop: 10, flexDirection: 'row', gap: 8 },
+  actions: { marginTop: 16, flexDirection: 'row', gap: 10 },
   fundBtn: {
     flex: 1,
-    height: 40,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     backgroundColor: Brand.white,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
-  fundText: { color: '#111', fontSize: 14, fontWeight: '800' },
+  fundText: { color: '#111', fontSize: 15, fontWeight: '800' },
   withdrawBtn: {
     flex: 1,
-    height: 40,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     backgroundColor: 'rgba(0,0,0,0.25)',
     flexDirection: 'row',
     alignItems: 'center',
@@ -198,5 +196,5 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
   },
-  withdrawText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
+  withdrawText: { color: Brand.white, fontSize: 15, fontWeight: '800' },
 });

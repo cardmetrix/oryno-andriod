@@ -61,14 +61,14 @@ export default function SettingsScreen() {
     try {
       const json = await api.get<SettingsPayload>(endpoints.settings.root);
       setData(json);
-      const theme = json.preferences?.theme === 'dark' ? 'dark' : 'light';
-      await setPreference(theme);
+      // Do not apply API theme here — the live toggle owns local theme.
+      // Overwriting on load caused a visible light/dark glitch.
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load settings');
     } finally {
       setLoading(false);
     }
-  }, [setPreference]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -144,7 +144,7 @@ export default function SettingsScreen() {
 
   if (!data) return null;
 
-  const darkMode = preference === 'dark' || data.preferences.theme === 'dark';
+  const darkMode = preference === 'dark';
   const language = data.preferences.language?.startsWith('fr') ? 'fr' : 'en';
   const languageLabel = LANGUAGES.find((l) => l.code === language)?.label ?? 'English';
   const verified = data.profile.kycStatus === 'verified';
@@ -300,7 +300,7 @@ export default function SettingsScreen() {
             label="Dark Mode"
             hint="Saved to your account"
             value={darkMode}
-            disabled={saving}
+            disabled={saving || loading}
             onValueChange={(v) => void patch({ theme: v ? 'dark' : 'light' })}
             last
           />

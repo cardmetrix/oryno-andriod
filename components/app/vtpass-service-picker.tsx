@@ -4,8 +4,11 @@ export type VtpassServiceOption = {
   serviceID: string;
   name: string;
   image?: string | null;
+  domain?: string | null;
+  imageFallbacks?: string[] | null;
   minAmount?: number;
   maxAmount?: number;
+  customerLabel?: string;
 };
 
 type Props = {
@@ -34,6 +37,8 @@ export function VtpassServicePicker({
     subtitle: value === s.serviceID ? 'Selected' : 'Tap to select',
     // Always pass image (null → letter fallback) so logos show in the sheet.
     image: s.image ?? null,
+    domain: s.domain,
+    imageFallbacks: s.imageFallbacks,
   }));
 
   return (

@@ -46,15 +46,15 @@ export function GiftCardBrandLogo({ brand, fallbacks, size = 44 }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 16,
+    borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: 'transparent',
+    backgroundColor: Brand.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   img: { width: '100%', height: '100%' },
   fallback: {
-    borderRadius: 16,
+    borderRadius: 999,
     backgroundColor: Brand.orangeMuted,
     alignItems: 'center',
     justifyContent: 'center',

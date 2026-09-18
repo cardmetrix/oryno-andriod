@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react';
 import { useSegments } from 'expo-router';
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-  type ViewProps,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OrynoPullToRefresh } from '@/components/app/oryno-pull-to-refresh';
 import { useAppTheme } from '@/context/theme-context';
 
 type Props = ViewProps & {
@@ -17,7 +12,10 @@ type Props = ViewProps & {
   padded?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
-  /** Soft content enter motion (default true). */
+  /**
+   * Soft content enter motion. Default: only on tab / admin root screens.
+   * Stack pushes rely on native transitions — JS enter animations fight them.
+   */
   animate?: boolean;
   /** Fixed top bar (e.g. PageHeader). Stays pinned while content scrolls. */
   header?: ReactNode;
@@ -31,7 +29,7 @@ export function Screen({
   padded = true,
   refreshing,
   onRefresh,
-  animate = true,
+  animate,
   header,
   footer,
   style,
@@ -43,14 +41,12 @@ export function Screen({
   const inTabs = segments.includes('(tabs)');
   const inAdmin =
     segments.includes('admin') && !segments.includes('login');
+  /** Let native stack own motion on pushed screens. */
+  const shouldAnimate = animate ?? (inTabs || inAdmin);
   const content = (
     <Animated.View
       entering={
-        animate
-          ? FadeInDown.duration(inAdmin ? 200 : 280)
-              .springify()
-              .damping(inAdmin ? 20 : 18)
-          : undefined
+        shouldAnimate ? FadeIn.duration(inAdmin ? 140 : 180) : undefined
       }
       style={[padded && styles.padded, style]}
       {...props}>
@@ -64,29 +60,35 @@ export function Screen({
       ? 108
       : 28;
 
+  const scrollContentStyle = [
+    styles.scrollContent,
+    {
+      paddingBottom: scrollBottomPad,
+      paddingTop: header ? 12 : 0,
+    },
+  ];
+
+  const scrollProps = {
+    style: styles.flex,
+    contentContainerStyle: scrollContentStyle,
+    keyboardShouldPersistTaps: 'handled' as const,
+    keyboardDismissMode: 'on-drag' as const,
+    showsVerticalScrollIndicator: false,
+    /** Helps long service / admin lists during transitions on Android. */
+    removeClippedSubviews: Platform.OS === 'android',
+  };
+
   const body = scroll ? (
-    <ScrollView
-      style={styles.flex}
-      contentContainerStyle={[
-        styles.scrollContent,
-        {
-          paddingBottom: scrollBottomPad,
-          paddingTop: header ? 12 : 0,
-        },
-      ]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={Boolean(refreshing)}
-            onRefresh={onRefresh}
-            tintColor={colors.orange}
-          />
-        ) : undefined
-      }>
-      {content}
-    </ScrollView>
+    onRefresh ? (
+      <OrynoPullToRefresh
+        {...scrollProps}
+        refreshing={Boolean(refreshing)}
+        onRefresh={onRefresh}>
+        {content}
+      </OrynoPullToRefresh>
+    ) : (
+      <Animated.ScrollView {...scrollProps}>{content}</Animated.ScrollView>
+    )
   ) : (
     <View style={[styles.flex, header ? styles.bodyAfterHeader : null]}>{content}</View>
   );

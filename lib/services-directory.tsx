@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
 import { Brand } from '@/constants/theme';
+import { getCountryInfo, type SupportedCountryCode } from '@/lib/country';
 
 export type ServiceCategory =
   | 'Popular'
@@ -32,6 +33,28 @@ function ion(name: IoniconName) {
   );
 }
 
+const BETTING_COPY: Record<
+  SupportedCountryCode,
+  { short: string; tags: string[] }
+> = {
+  NG: {
+    short: 'Fund SportyBet, Bet9ja & more',
+    tags: ['Bet9ja', 'SportyBet', '1xBet', 'BetKing', 'MelBet'],
+  },
+  GH: {
+    short: 'Fund SportyBet, Betway & more',
+    tags: ['SportyBet', 'Betway', 'Premier Bet', '1xBet', 'MelBet'],
+  },
+  KE: {
+    short: 'Fund SportPesa, Betika & more',
+    tags: ['SportPesa', 'Betika', 'Odibets', 'Betway', '1xBet'],
+  },
+  ZA: {
+    short: 'Fund Betway, Hollywoodbets & more',
+    tags: ['Betway', 'Hollywoodbets', 'SuperSportBet', 'Easybet'],
+  },
+};
+
 export const servicesDirectory: ServiceDirectoryItem[] = [
   {
     id: 'airtime',
@@ -39,7 +62,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     label: 'Airtime',
     shortDescription: 'Top up any network instantly',
     category: 'Telecom',
-    tags: ['MTN', 'Airtel', 'Glo', '9mobile'],
+    tags: ['MTN', 'Airtel', 'Glo', '9mobile', 'International'],
     accent: Brand.orange,
     popular: true,
     renderIcon: ion('phone-portrait-outline'),
@@ -50,21 +73,43 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     label: 'Data Bundles',
     shortDescription: 'Daily, weekly & monthly plans',
     category: 'Telecom',
-    tags: ['MTN', 'Airtel', 'Glo', 'Smile'],
-    accent: Brand.orangeSoft,
+    tags: ['MTN', 'Airtel', 'Glo', 'Smile', 'SME'],
+    accent: Brand.orange,
     popular: true,
     renderIcon: ion('wifi-outline'),
   },
   {
-    id: 'bills',
-    href: '/(app)/services/bills',
-    label: 'Bill Payments',
-    shortDescription: 'TV & electricity',
+    id: 'electricity',
+    href: '/(app)/services/electricity',
+    label: 'Electricity',
+    shortDescription: 'Prepaid & postpaid discos',
     category: 'Utilities',
-    tags: ['DStv', 'GOtv', 'IKEDC', 'EKEDC'],
-    accent: '#E85D00',
+    tags: ['IKEDC', 'EKEDC', 'AEDC', 'Prepaid'],
+    accent: Brand.orange,
     popular: true,
     renderIcon: ion('flash-outline'),
+  },
+  {
+    id: 'bills',
+    href: '/(app)/services/tv',
+    label: 'TV Bills',
+    shortDescription: 'DStv, GOtv & StarTimes',
+    category: 'Utilities',
+    tags: ['DStv', 'GOtv', 'StarTimes'],
+    accent: Brand.orange,
+    popular: true,
+    renderIcon: ion('tv-outline'),
+  },
+  {
+    id: 'betting',
+    href: '/(app)/services/betting',
+    label: 'Betting',
+    shortDescription: 'Fund SportyBet, Bet9ja & more',
+    category: 'Utilities',
+    tags: ['Bet9ja', 'SportyBet', '1xBet', 'BetKing', 'MelBet'],
+    accent: Brand.orange,
+    popular: true,
+    renderIcon: ion('trophy-outline'),
   },
   {
     id: 'social',
@@ -73,7 +118,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     shortDescription: 'Followers, likes & views',
     category: 'Lifestyle',
     tags: ['Instagram', 'TikTok', 'YouTube'],
-    accent: '#C44D00',
+    accent: Brand.orange,
     popular: true,
     renderIcon: ion('trending-up-outline'),
   },
@@ -81,22 +126,11 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     id: 'virtual-numbers',
     href: '/(app)/services/virtual-numbers',
     label: 'Virtual Numbers',
-    shortDescription: 'Buy or rent SMS lines',
+    shortDescription: 'Get verification numbers worldwide',
     category: 'Lifestyle',
     tags: ['Buy', 'Rent', 'SMS'],
-    accent: '#9A3A00',
+    accent: Brand.orange,
     renderIcon: ion('call-outline'),
-  },
-  {
-    id: 'emails',
-    href: '/(app)/services/emails',
-    label: 'Rent Email',
-    shortDescription: 'Temporary inboxes for OTP',
-    category: 'Lifestyle',
-    tags: ['Rent', 'OTP', 'Inbox'],
-    accent: '#7A2E00',
-    popular: true,
-    renderIcon: ion('mail-outline'),
   },
   {
     id: 'gift-cards-live',
@@ -107,9 +141,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['Live', 'Rates', 'Trade'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: (color, size = 24) => (
-      <GiftCardIcon size={size} color={color} strokeWidth={1.75} />
-    ),
+    renderIcon: ion('pulse-outline'),
   },
   {
     id: 'gift-cards',
@@ -124,6 +156,104 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     ),
   },
 ];
+
+export function getServicesDirectory(countryCode?: string | null) {
+  const country = getCountryInfo(countryCode);
+  const betting = BETTING_COPY[country.code];
+
+  return servicesDirectory.map((item) => {
+    if (item.id === 'airtime') {
+      if (country.code === 'ZA') {
+        return {
+          ...item,
+          shortDescription: 'MTN, Vodacom, Cell C & Telkom',
+          tags: ['MTN', 'Vodacom', 'Cell C', 'Telkom'],
+        };
+      }
+      return item;
+    }
+
+    if (item.id === 'data' && country.code === 'ZA') {
+      return {
+        ...item,
+        shortDescription: 'MTN, Vodacom, Cell C & Telkom',
+        tags: ['MTN', 'Vodacom', 'Cell C', 'Telkom'],
+      };
+    }
+    if (item.id === 'data' && country.code === 'KE') {
+      return {
+        ...item,
+        shortDescription: 'Safaricom, Airtel & Telkom Kenya',
+        tags: ['Safaricom', 'Airtel', 'Telkom'],
+      };
+    }
+    if (item.id === 'data' && country.code === 'GH') {
+      return {
+        ...item,
+        shortDescription: 'MTN, Telecel & AirtelTigo',
+        tags: ['MTN', 'Telecel', 'AirtelTigo'],
+      };
+    }
+
+    if (item.id === 'betting') {
+      return {
+        ...item,
+        shortDescription: betting.short,
+        tags: betting.tags,
+      };
+    }
+
+    if (item.id === 'bills') {
+      if (country.code === 'GH') {
+        return {
+          ...item,
+          shortDescription: 'DStv, GOtv & Ghana Water',
+          tags: ['DStv', 'GOtv', 'Ghana Water'],
+        };
+      }
+      if (country.code === 'KE') {
+        return {
+          ...item,
+          shortDescription: 'DStv, GOtv & Nairobi Water',
+          tags: ['DStv', 'GOtv', 'Nairobi Water', 'Zuku'],
+        };
+      }
+      if (country.code === 'ZA') {
+        return {
+          ...item,
+          shortDescription: 'DStv, GOtv & Johannesburg Water',
+          tags: ['DStv', 'GOtv', 'Johannesburg Water'],
+        };
+      }
+    }
+
+    if (item.id === 'electricity') {
+      if (country.code === 'GH') {
+        return {
+          ...item,
+          shortDescription: 'ECG prepaid & postpaid',
+          tags: ['ECG', 'Prepaid', 'Postpaid'],
+        };
+      }
+      if (country.code === 'KE') {
+        return {
+          ...item,
+          shortDescription: 'Kenya Power (KPLC)',
+          tags: ['KPLC', 'Prepaid', 'Postpaid'],
+        };
+      }
+      if (country.code === 'ZA') {
+        return {
+          ...item,
+          shortDescription: 'Eskom & City Power',
+          tags: ['Eskom', 'City Power'],
+        };
+      }
+    }
+
+    return item;
+  });
+}
 
 export const serviceCategories: Array<ServiceCategory | 'All'> = [
   'All',

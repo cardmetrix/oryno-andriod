@@ -1,7 +1,6 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useLayoutEffect } from 'react';
 
-import { SplashLoading } from '@/components/ui/splash-loading';
 import { usePrefetchAppData } from '@/hooks/use-prefetch-app-data';
 import { setApiAuthReady, setApiTokenGetter } from '@/lib/api';
 
@@ -69,9 +68,6 @@ export function ApiAuthBridge({ children }: { children: React.ReactNode }) {
     setApiAuthReady(true);
   }, [isLoaded, isSignedIn, userId]);
 
-  if (!isLoaded) {
-    return <SplashLoading />;
-  }
-
+  // Splash is owned by AppQueryProvider (cache + Clerk) — don't remount it here.
   return <PrefetchWhenReady>{children}</PrefetchWhenReady>;
 }

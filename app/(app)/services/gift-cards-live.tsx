@@ -9,17 +9,23 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+
+import { cardEntering } from '@/lib/motion';
 
 import { GiftCardBrandLogo } from '@/components/app/gift-card-brand-logo';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { Screen } from '@/components/ui/screen';
+import { GiftCardLiveListSkeleton } from '@/components/ui/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { giftCardRateChangePercent } from '@/lib/gift-cards';
+import { useProfile } from '@/hooks/use-profile';
+import { formatServiceMoney } from '@/lib/format';
 
 type Mode = 'sell' | 'buy';
 
@@ -57,19 +63,20 @@ const FALLBACK_BUY_COUNTRIES = [
   { code: 'AU', label: 'Australia' },
 ];
 
-function formatNairaRate(rate: number) {
-  return `₦${rate.toLocaleString('en-NG')}`;
-}
-
 export default function GiftCardsLiveScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { countryCode, displayFx } = useProfile();
+  const moneyRate = (rate: number) =>
+    formatServiceMoney(rate, countryCode || 'NG', displayFx?.ngnToLocal ?? 1);
   const [mode, setMode] = useState<Mode>('sell');
 
   const [sellBrands, setSellBrands] = useState<SellBrand[]>([]);
   const [rateMap, setRateMap] = useState<Record<string, number | null>>({});
   const [sellLoading, setSellLoading] = useState(true);
   const [sellDemo, setSellDemo] = useState(false);
+  const [sellUnavailable, setSellUnavailable] = useState(false);
+  const [sellPartnerError, setSellPartnerError] = useState<string | null>(null);
   const [sellQuery, setSellQuery] = useState('');
   const [sellCategory, setSellCategory] = useState('All');
   const [sellError, setSellError] = useState<string | null>(null);
@@ -117,18 +124,34 @@ export default function GiftCardsLiveScreen() {
     setSellError(null);
     try {
       const [catalog, ratesJson] = await Promise.all([
-        api.get<{ brands?: SellBrand[]; demo?: boolean }>(
-          endpoints.services.giftCardSellCatalog,
-        ),
+        api.get<{
+          brands?: SellBrand[];
+          demo?: boolean;
+          unavailable?: boolean;
+          partnerError?: string | null;
+        }>(endpoints.services.giftCardSellCatalog),
         api
           .get<{
             simplified?: Array<{ slug?: string; ratePerUnit?: number }>;
             demo?: boolean;
+            unavailable?: boolean;
+            partnerError?: string | null;
           }>(`${endpoints.services.giftCardSellRates}?currency=USD&cardType=ecode`)
-          .catch(() => ({ simplified: [] as Array<{ slug?: string; ratePerUnit?: number }>, demo: false })),
+          .catch(() => ({
+            simplified: [] as Array<{ slug?: string; ratePerUnit?: number }>,
+            demo: false,
+            unavailable: false,
+            partnerError: null,
+          })),
       ]);
       setSellBrands((catalog.brands ?? []).filter((b) => b.active !== false));
       setSellDemo(Boolean(catalog.demo || ratesJson.demo));
+      setSellUnavailable(Boolean(catalog.unavailable || ratesJson.unavailable));
+      setSellPartnerError(
+        (typeof ratesJson.partnerError === 'string' && ratesJson.partnerError) ||
+          (typeof catalog.partnerError === 'string' && catalog.partnerError) ||
+          null,
+      );
 
       const map: Record<string, number | null> = {};
       const rows = Array.isArray(ratesJson.simplified) ? ratesJson.simplified : [];
@@ -142,6 +165,8 @@ export default function GiftCardsLiveScreen() {
     } catch (e) {
       setSellBrands([]);
       setRateMap({});
+      setSellUnavailable(false);
+      setSellPartnerError(null);
       setSellError(e instanceof Error ? e.message : 'Failed to load sell rates');
     } finally {
       setSellLoading(false);
@@ -252,7 +277,7 @@ export default function GiftCardsLiveScreen() {
 
       {mode === 'sell' ? (
         <View style={styles.stack}>
-          <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+          <Animated.View entering={cardEntering(0)} style={styles.card}>
             <View style={styles.searchWrap}>
               <Ionicons name="search" size={16} color={colors.mutedForeground} />
               <TextInput
@@ -286,17 +311,26 @@ export default function GiftCardsLiveScreen() {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(40).duration(280)}
+            entering={cardEntering(40)}
             style={styles.listCard}>
             <View style={styles.listHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.listTitle}>Live sell rates</Text>
-                <Text style={styles.listSub}>
-                  {sellLoading
-                    ? 'Loading…'
-                    : `${filteredSell.length} brands · tap to sell`}
-                  {sellDemo ? ' · demo rates' : ''}
-                </Text>
+                {sellLoading ? (
+                  <Skeleton width={140} height={11} style={{ marginTop: 6 }} />
+                ) : (
+                  <Text style={styles.listSub}>
+                    {`${filteredSell.length} brands · tap to sell`}
+                    {sellDemo
+                      ? ' · demo rates'
+                      : sellUnavailable
+                        ? ' · indicative rates'
+                        : ''}
+                  </Text>
+                )}
+                {sellUnavailable && sellPartnerError ? (
+                  <Text style={styles.partnerNote}>{sellPartnerError}</Text>
+                ) : null}
               </View>
               <Ionicons name="trending-up" size={20} color={Brand.orange} />
             </View>
@@ -310,14 +344,10 @@ export default function GiftCardsLiveScreen() {
               </View>
             ) : null}
 
-            {sellLoading
-              ? Array.from({ length: 8 }).map((_, i) => (
-                  <View key={i} style={styles.skelRow}>
-                    <View style={styles.skelLogo} />
-                    <View style={styles.skelLine} />
-                  </View>
-                ))
-              : filteredSell.map((brand) => {
+            {sellLoading ? (
+              <GiftCardLiveListSkeleton count={8} />
+            ) : (
+              filteredSell.map((brand) => {
                   const rate = rateMap[brand.slug];
                   const change = giftCardRateChangePercent(brand.slug, rate);
                   const up = change >= 0;
@@ -351,7 +381,7 @@ export default function GiftCardsLiveScreen() {
                       </View>
                       <View style={styles.rateCol}>
                         <Text style={styles.rateValue}>
-                          {rate != null ? formatNairaRate(rate) : '—'}
+                          {rate != null ? moneyRate(rate) : '—'}
                         </Text>
                         <Text style={styles.rateUnit}>/ $1</Text>
                       </View>
@@ -376,7 +406,8 @@ export default function GiftCardsLiveScreen() {
                       </View>
                     </Pressable>
                   );
-                })}
+                })
+            )}
 
             {!sellLoading && !sellError && filteredSell.length === 0 ? (
               <Text style={styles.emptyText}>No brands match your search.</Text>
@@ -385,13 +416,14 @@ export default function GiftCardsLiveScreen() {
         </View>
       ) : (
         <View style={styles.stack}>
-          <Animated.View entering={FadeInDown.duration(280)} style={styles.card}>
+          <Animated.View entering={cardEntering(0)} style={styles.card}>
             <SelectSheet
               label="Card country"
               title="Card country"
               subtitle="Where the gift card can be redeemed"
               value={buyCountry}
               onChange={setBuyCountry}
+              fullScreen={false}
               options={buyCountries.map((c) => ({
                 id: c.code,
                 title: c.label,
@@ -413,17 +445,23 @@ export default function GiftCardsLiveScreen() {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(40).duration(280)}
+            entering={cardEntering(40)}
             style={styles.listCard}>
             <View style={styles.listHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.listTitle}>Buy gift cards</Text>
-                <Text style={styles.listSub}>
-                  {buyLoading
-                    ? 'Loading…'
-                    : `${filteredBuy.length} products · tap to buy`}
-                  {buyDemo ? ' · demo catalog' : buySandbox ? ' · sandbox' : ' · live'}
-                </Text>
+                {buyLoading ? (
+                  <Skeleton width={150} height={11} style={{ marginTop: 6 }} />
+                ) : (
+                  <Text style={styles.listSub}>
+                    {`${filteredBuy.length} products · tap to buy`}
+                    {buyDemo
+                      ? ' · demo catalog'
+                      : buySandbox
+                        ? ' · sandbox'
+                        : ' · live'}
+                  </Text>
+                )}
               </View>
               <Ionicons name="bag-handle-outline" size={20} color={Brand.orange} />
             </View>
@@ -443,14 +481,10 @@ export default function GiftCardsLiveScreen() {
               </Text>
             ) : null}
 
-            {buyLoading
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <View key={i} style={styles.skelRow}>
-                    <View style={styles.skelLogo} />
-                    <View style={styles.skelLine} />
-                  </View>
-                ))
-              : filteredBuy.map((product) => {
+            {buyLoading ? (
+              <GiftCardLiveListSkeleton count={6} />
+            ) : (
+              filteredBuy.map((product) => {
                   const from =
                     product.denominations[0] ?? product.minAmount ?? 10;
                   return (
@@ -493,7 +527,8 @@ export default function GiftCardsLiveScreen() {
                       </View>
                     </Pressable>
                   );
-                })}
+                })
+            )}
           </Animated.View>
         </View>
       )}
@@ -514,7 +549,7 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       gap: 8,
       padding: 6,
-      marginBottom: 10,
+      marginBottom: 14,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.grayDivider,
@@ -533,21 +568,23 @@ function makeStyles(colors: ThemeColors) {
     modeTabText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.grayMedium,
+      color: colors.mutedForeground,
       textTransform: 'capitalize',
     },
     modeTabTextActive: { color: Brand.white },
-    stack: { gap: 10 },
+    stack: { gap: 12 },
     card: {
       borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      padding: 12,
+      padding: 14,
     },
     searchWrap: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      height: 44,
+      height: 48,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.grayDivider,
@@ -557,20 +594,20 @@ function makeStyles(colors: ThemeColors) {
     },
     searchInput: {
       flex: 1,
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '600',
       color: colors.charcoal,
       paddingVertical: 0,
     },
     chipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 4 },
     chip: {
-      paddingHorizontal: 10,
+      paddingHorizontal: 14,
       paddingVertical: 7,
       borderRadius: 99,
-      backgroundColor: colors.grayLight,
+      backgroundColor: colors.muted,
     },
     chipActive: { backgroundColor: Brand.orange },
-    chipText: { fontSize: 12, fontWeight: '700', color: colors.grayMedium },
+    chipText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
     chipTextActive: { color: Brand.white },
     listCard: {
       borderRadius: 22,
@@ -583,8 +620,8 @@ function makeStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.grayDivider,
     },
@@ -593,15 +630,22 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 2,
       fontSize: 12,
       fontWeight: '500',
-      color: colors.grayMedium,
+      color: colors.mutedForeground,
+    },
+    partnerNote: {
+      marginTop: 4,
+      fontSize: 11,
+      fontWeight: '600',
+      color: '#92400e',
+      lineHeight: 16,
     },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
       minHeight: 68,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.grayDivider,
     },
@@ -611,7 +655,7 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 2,
       fontSize: 11,
       fontWeight: '500',
-      color: colors.grayMedium,
+      color: colors.mutedForeground,
     },
     rateCol: { alignItems: 'flex-end' },
     rateValue: { fontSize: 13, fontWeight: '800', color: colors.charcoal },
@@ -619,7 +663,7 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 2,
       fontSize: 10,
       fontWeight: '500',
-      color: colors.grayMedium,
+      color: colors.mutedForeground,
     },
     changeBadge: {
       minWidth: 68,
@@ -634,28 +678,9 @@ function makeStyles(colors: ThemeColors) {
     changeUp: { backgroundColor: 'rgba(52,199,89,0.12)' },
     changeDown: { backgroundColor: 'rgba(255,59,48,0.12)' },
     changeText: { fontSize: 11, fontWeight: '700' },
-    skelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      height: 72,
-      paddingHorizontal: 12,
-    },
-    skelLogo: {
-      width: 44,
-      height: 44,
-      borderRadius: 16,
-      backgroundColor: colors.grayLight,
-    },
-    skelLine: {
-      flex: 1,
-      height: 14,
-      borderRadius: 8,
-      backgroundColor: colors.grayLight,
-    },
     errorBlock: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.grayDivider,
       gap: 8,
@@ -663,21 +688,21 @@ function makeStyles(colors: ThemeColors) {
     errorText: { fontSize: 13, fontWeight: '600', color: Brand.error },
     retry: { fontSize: 13, fontWeight: '700', color: Brand.orange },
     emptyText: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 28,
       textAlign: 'center',
       fontSize: 13,
       fontWeight: '600',
-      color: colors.grayMedium,
+      color: colors.mutedForeground,
     },
     footerLink: {
-      marginTop: 14,
+      marginTop: 18,
       marginBottom: 8,
       flexDirection: 'row',
       justifyContent: 'center',
       flexWrap: 'wrap',
     },
-    footerMuted: { fontSize: 12, fontWeight: '500', color: colors.grayMedium },
+    footerMuted: { fontSize: 12, fontWeight: '500', color: colors.mutedForeground },
     footerAction: { fontSize: 12, fontWeight: '700', color: Brand.orange },
   });
 }

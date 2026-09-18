@@ -32,18 +32,29 @@ const CATEGORY_LABELS: Record<string, string> = {
   data: 'Mobile data',
   bill: 'Bills',
   bills: 'Bills',
+  betting: 'Betting funding',
   gift_card: 'Gift cards',
   giftcard: 'Gift cards',
   social: 'Social boost',
   numbers: 'Virtual numbers',
+  virtual_number: 'Virtual numbers',
   email: 'Temp emails',
+  email_rental: 'Temp emails',
   convert: 'FX convert',
   usd: 'USD wallet',
   transfer: 'Transfers',
   fee: 'Fees',
   referral: 'Referrals',
+  refund: 'Refunds',
   other: 'Other',
 };
+
+function transactionAmount(item: AppTransaction) {
+  if (typeof item.amountValue === 'number' && Number.isFinite(item.amountValue)) {
+    return Math.abs(item.amountValue);
+  }
+  return Math.abs(parseAmount(item.amount));
+}
 
 export function parseAmount(raw: string | number | undefined | null) {
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0;
@@ -191,7 +202,7 @@ export function summarizeCashflow(items: AppTransaction[]) {
   let inflow = 0;
   let outflow = 0;
   for (const item of items) {
-    const amount = Math.abs(parseAmount(item.amount));
+    const amount = transactionAmount(item);
     if (item.type === 'credit') inflow += amount;
     else outflow += amount;
   }
@@ -210,7 +221,7 @@ export function buildCategoryBreakdown(items: AppTransaction[]): CategoryBreakdo
       outflow: 0,
       total: 0,
     };
-    const amount = Math.abs(parseAmount(item.amount));
+    const amount = transactionAmount(item);
     current.count += 1;
     if (item.type === 'credit') current.inflow += amount;
     else current.outflow += amount;
@@ -243,7 +254,7 @@ export function buildDailySeries(items: AppTransaction[], monthKey: string): Day
     if (Number.isNaN(date.getTime())) continue;
     if (monthKeyFromDate(date) !== monthKey) continue;
     const idx = date.getDate() - 1;
-    const amount = Math.abs(parseAmount(item.amount));
+    const amount = transactionAmount(item);
     if (item.type === 'credit') points[idx].inflow += amount;
     else points[idx].outflow += amount;
   }
@@ -287,7 +298,7 @@ export function buildStatementCsv(
       csvEscape(item.subtitle),
       csvEscape(categoryLabel(item.category)),
       item.type,
-      normalizeStatusLabel(item.status),
+      statusDisplayLabel(item.status),
       signed.toFixed(2),
       (item.currency ?? opts.currency ?? 'NGN').toUpperCase(),
       item.id,

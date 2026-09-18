@@ -2,90 +2,163 @@ import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated from 'react-native-reanimated';
 
-import { Brand, type ThemeColors } from '@/constants/theme';
+import { cardEntering } from '@/lib/motion';
+
+import { PageHeader } from '@/components/app/page-header';
+import { Screen } from '@/components/ui/screen';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
+import { useWallet, fetchWallet } from '@/hooks/use-wallet';
 import { alert } from '@/lib/alert';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
-import { formatNaira } from '@/lib/format';
 import type { DepositAccount } from '@/lib/types';
-import { Skeleton } from '@/components/ui/skeleton';
 
-const PRESETS = ['1000', '2000', '5000', '10000', '20000', '50000'];
+type IdentityRequired = {
+  required: true;
+  idTypes: Array<'BVN' | 'NIN'>;
+  message: string;
+  kycStatus: string;
+  kycLevel: number;
+  hasPendingKyc: boolean;
+};
 
 /**
- * Fund wallet bottom sheet — dedicated virtual account + optional demo simulate.
+ * Fund wallet — matches website `/fund`:
+ * dedicated Flutterwave deposit account, BVN/NIN gate, reconcile check.
  */
-export default function FundSheet() {
+export default function FundScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
   const invalidateWallet = useInvalidateWallet();
+  const { data: walletPayload, refresh: refreshWallet } = useWallet();
 
-  const [amount, setAmount] = useState('5000');
-  const [account, setAccount] = useState<DepositAccount | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+  const [deposit, setDeposit] = useState<DepositAccount | null>(null);
+  const [identityRequired, setIdentityRequired] = useState<IdentityRequired | null>(null);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [simulating, setSimulating] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [submittingIdentity, setSubmittingIdentity] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [setupHint, setSetupHint] = useState<string | null>(null);
   const [copied, setCopied] = useState<'number' | 'name' | null>(null);
+  const [idType, setIdType] = useState<'BVN' | 'NIN'>('BVN');
+  const [idNumber, setIdNumber] = useState('');
+  const lastBalanceRef = useRef<string | null>(null);
+  const redirectedRef = useRef(false);
 
-  const loadAccount = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const wallet = walletPayload?.primary ?? null;
+
+  const goToLatestFundReceipt = useCallback(async () => {
+    if (redirectedRef.current) return;
     try {
-      const json = await api.get<{ account?: DepositAccount; demoMode?: boolean }>(
-        endpoints.wallet.depositAccount,
-      );
-      setAccount(json.account ?? null);
-      setDemoMode(Boolean(json.demoMode));
+      const json = await fetchWallet();
+      const latest =
+        json.recent?.find(
+          (tx) => tx.type === 'credit' && (!tx.category || tx.category === 'fund'),
+        ) ?? json.recent?.find((tx) => tx.type === 'credit');
+      if (latest?.id) {
+        redirectedRef.current = true;
+        router.replace(`/(app)/history/${latest.id}`);
+      }
+    } catch {
+      // stay on fund screen
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!wallet) return;
+    const prev = lastBalanceRef.current;
+    if (
+      prev != null &&
+      wallet.balance !== prev &&
+      Number(wallet.balance) > Number(prev)
+    ) {
+      alert.success('Payment received', `Your wallet is now ${wallet.balanceFormatted}`);
+      void goToLatestFundReceipt();
+    }
+    lastBalanceRef.current = wallet.balance;
+  }, [wallet, goToLatestFundReceipt]);
+
+  // Soft-poll wallet while the fund screen is open (website uses 8s interval).
+  useEffect(() => {
+    const id = setInterval(() => {
+      void refreshWallet();
+    }, 8000);
+    return () => clearInterval(id);
+  }, [refreshWallet]);
+
+  /** `silent` keeps the loaded card on screen for refresh instead of flashing skeletons. */
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
+    setSetupHint(null);
+    try {
+      const json = await api.get<{
+        account?: DepositAccount | null;
+        identityRequired?: IdentityRequired | null;
+        error?: string;
+        setupHint?: string | null;
+      }>(endpoints.wallet.depositAccount);
+
+      setDeposit(json.account ?? null);
+      setIdentityRequired(json.identityRequired ?? null);
+      setSetupHint(json.setupHint ?? null);
+      if (!json.account && !json.identityRequired) {
+        setError(json.error || 'Could not load your dedicated account. Try refresh.');
+      }
     } catch (e) {
-      setAccount(null);
-      setError(e instanceof Error ? e.message : 'Could not load deposit account');
+      // Website returns identityRequired on some non-2xx responses — keep that UX.
+      if (e instanceof ApiError && e.body && typeof e.body === 'object') {
+        const body = e.body as {
+          account?: DepositAccount | null;
+          identityRequired?: IdentityRequired | null;
+          error?: string;
+          setupHint?: string | null;
+        };
+        setDeposit(body.account ?? null);
+        setIdentityRequired(body.identityRequired ?? null);
+        setSetupHint(body.setupHint ?? null);
+        if (body.identityRequired) {
+          setError(null);
+          return;
+        }
+        setError(body.error || e.message);
+        return;
+      }
+      setDeposit(null);
+      setIdentityRequired(null);
+      setError(e instanceof Error ? e.message : 'Could not load your dedicated account');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadAccount();
-  }, [loadAccount]);
+    void load();
+  }, [load]);
 
-  async function createAccount() {
-    setCreating(true);
-    setError(null);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
     try {
-      const json = await api.post<{ account: DepositAccount; demoMode?: boolean }>(
-        endpoints.wallet.depositAccount,
-        {},
-      );
-      setAccount(json.account);
-      setDemoMode(Boolean(json.demoMode));
-      alert.success(
-        'Account ready',
-        'Transfer to the virtual account below to fund your wallet.',
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create deposit account');
+      await Promise.all([load(true), refreshWallet()]);
     } finally {
-      setCreating(false);
+      setRefreshing(false);
     }
-  }
+  }, [load, refreshWallet]);
 
   async function copyValue(kind: 'number' | 'name', value: string) {
     await Clipboard.setStringAsync(value);
@@ -93,278 +166,313 @@ export default function FundSheet() {
     setTimeout(() => setCopied(null), 1600);
   }
 
-  async function simulate() {
-    const n = Number(amount.replace(/,/g, ''));
-    if (!Number.isFinite(n) || n <= 0) {
-      setError('Enter a valid amount to simulate');
+  async function onIHaveFunded() {
+    setChecking(true);
+    setError(null);
+    alert.info(
+      'Checking for your transfer',
+      'We’re matching your bank payment with Flutterwave. This can take a few minutes.',
+    );
+    try {
+      const json = await api.post<{
+        credited?: number;
+        message?: string;
+        error?: string;
+      }>(endpoints.wallet.depositReconcile, {});
+
+      if ((json.credited ?? 0) > 0) {
+        alert.success('Deposit received', json.message || 'Your wallet was credited.');
+        invalidateWallet();
+        await refreshWallet();
+        void goToLatestFundReceipt();
+      } else {
+        alert.info(
+          json.message || 'No new deposit yet',
+          'If you just transferred, wait a few minutes and try again.',
+        );
+        await refreshWallet();
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not check for your deposit';
+      setError(msg);
+      alert.error('Check failed', msg);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function onSubmitIdentity() {
+    const digits = idNumber.replace(/\D/g, '');
+    if (digits.length !== 11) {
+      setError(`${idType} must be exactly 11 digits.`);
       return;
     }
-    setSimulating(true);
+
+    setSubmittingIdentity(true);
     setError(null);
     try {
-      const json = await api.post<{ message?: string; amountFormatted?: string }>(
-        endpoints.wallet.fundSimulate,
-        { amount: n },
-      );
-      invalidateWallet();
-      alert.success(
-        'Funded',
-        json.message || `Credited ${json.amountFormatted ?? formatNaira(n)}`,
-      );
-      router.back();
+      const json = await api.post<{
+        account?: DepositAccount | null;
+        identityRequired?: IdentityRequired | null;
+        error?: string;
+      }>(endpoints.wallet.depositAccount, { idType, idNumber: digits });
+
+      if (json.account) {
+        setDeposit(json.account);
+        setIdentityRequired(null);
+        setIdNumber('');
+        alert.success('Account ready', 'Your fund account is ready.');
+        return;
+      }
+
+      setIdentityRequired(json.identityRequired ?? null);
+      setError(json.error || 'Could not create your fund account. Try again.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Simulate only works in Paystack demo mode');
+      setError(e instanceof Error ? e.message : 'Could not save your details. Try again.');
     } finally {
-      setSimulating(false);
+      setSubmittingIdentity(false);
     }
   }
 
   return (
-    <View style={styles.sheet}>
-      {Platform.OS === 'android' ? (
-        <View style={styles.handleWrap}>
-          <View style={styles.handle} />
+    <Screen
+      scroll
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      header={
+        <PageHeader
+          title="Fund Wallet"
+          subtitle="Transfer to your dedicated account"
+          showBack
+        />
+      }>
+      {wallet ? (
+        <Animated.View entering={cardEntering(0)} style={styles.balanceBanner}>
+          <Text style={styles.balanceLabel}>Current balance</Text>
+          <Text style={styles.balanceValue}>{wallet.balanceFormatted}</Text>
+        </Animated.View>
+      ) : null}
+
+      {error ? (
+        <Animated.View entering={cardEntering(0)} style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+        </Animated.View>
+      ) : null}
+
+      {loading ? (
+        <View style={styles.card}>
+          <Skeleton width="40%" height={14} style={{ marginBottom: 12 }} />
+          <Skeleton width="100%" height={140} radius={18} />
         </View>
+      ) : identityRequired ? (
+        <Animated.View entering={cardEntering(0).delay(40)} style={styles.card}>
+          <View style={styles.identityHead}>
+            <View style={styles.identityIcon}>
+              <Ionicons name="shield-checkmark" size={22} color={Brand.orange} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.identityTitle}>Verify to get your account number</Text>
+              <Text style={styles.identitySub}>{identityRequired.message}</Text>
+            </View>
+          </View>
+
+          <View style={styles.segRow}>
+            {identityRequired.idTypes.map((type) => (
+              <Pressable
+                key={type}
+                onPress={() => {
+                  setIdType(type);
+                  setError(null);
+                }}
+                style={[styles.seg, idType === type && styles.segActive]}>
+                <Text style={[styles.segText, idType === type && styles.segTextActive]}>
+                  {type}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.fieldLabel}>
+            {idType === 'BVN' ? 'Bank Verification Number' : 'National ID Number'}
+          </Text>
+          <TextInput
+            value={idNumber}
+            onChangeText={(v) => {
+              setIdNumber(v.replace(/\D/g, '').slice(0, 11));
+              setError(null);
+            }}
+            keyboardType="number-pad"
+            maxLength={11}
+            placeholder={`11-digit ${idType}`}
+            placeholderTextColor={colors.mutedForeground}
+            style={styles.input}
+          />
+          <Text style={styles.hint}>
+            We use your {idType} only to create your personal fund account. It must match your
+            name on ORYNO.
+          </Text>
+
+          <Pressable
+            style={[
+              styles.primaryBtn,
+              (submittingIdentity || idNumber.length !== 11) && { opacity: 0.5 },
+            ]}
+            disabled={submittingIdentity || idNumber.length !== 11}
+            onPress={() => void onSubmitIdentity()}>
+            {submittingIdentity ? (
+              <ActivityIndicator color={Brand.white} />
+            ) : (
+              <Text style={styles.primaryBtnText}>Get my account number</Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={styles.kycLink}
+            onPress={() => router.push('/(app)/settings/kyc')}>
+            <Text style={styles.kycLinkText}>Already started verification? View KYC status</Text>
+          </Pressable>
+        </Animated.View>
       ) : (
-        <View style={styles.handleSpacer} />
-      )}
-
-      <View style={styles.header}>
-        <View style={styles.headerCopy}>
-          <Text style={styles.title}>Fund wallet</Text>
-          <Text style={styles.subtitle}>Transfer to your Paystack virtual account</Text>
-        </View>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.75 }]}
-          accessibilityLabel="Close"
-          hitSlop={8}>
-          <Ionicons name="close" size={18} color={colors.foreground} />
-        </Pressable>
-      </View>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: Math.max(insets.bottom, 16) + 12 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        {loading && !account ? (
-          <View style={styles.dvaCard}>
-            <View style={styles.dvaHead}>
-              <Skeleton width={40} height={40} radius={14} />
-              <View style={{ flex: 1, gap: 6 }}>
-                <Skeleton width="55%" height={14} />
-                <Skeleton width="40%" height={11} />
-              </View>
-            </View>
-            <Skeleton width={88} height={10} style={{ marginBottom: 8 }} />
-            <Skeleton width="100%" height={48} radius={14} style={{ marginBottom: 12 }} />
-            <Skeleton width={72} height={10} style={{ marginBottom: 8 }} />
-            <Skeleton width="100%" height={44} radius={14} style={{ marginBottom: 12 }} />
-            <Skeleton width="90%" height={11} />
-            <Skeleton width="70%" height={11} style={{ marginTop: 6 }} />
-          </View>
-        ) : !account ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <MaterialIcons name="account-balance" size={28} color={Brand.orange} />
-            </View>
-            <Text style={styles.emptyTitle}>No virtual account yet</Text>
-            <Text style={styles.emptySub}>
-              Generate a dedicated account number to receive Naira deposits into your wallet.
-            </Text>
+        <Animated.View entering={cardEntering(0).delay(40)} style={styles.card}>
+          <View style={styles.cardHead}>
+            <Text style={styles.sectionTitle}>Bank details</Text>
             <Pressable
-              style={[styles.primaryBtn, creating && { opacity: 0.7 }]}
-              disabled={creating}
-              onPress={() => void createAccount()}>
-              {creating ? (
-                <ActivityIndicator color={Brand.white} />
-              ) : (
-                <Text style={styles.primaryBtnText}>Generate virtual account</Text>
-              )}
+              style={styles.refreshBtn}
+              onPress={() => {
+                void load(true);
+                void refreshWallet();
+              }}>
+              <Ionicons name="refresh" size={14} color={Brand.orange} />
+              <Text style={styles.refreshText}>Refresh</Text>
             </Pressable>
           </View>
-        ) : (
-          <View style={styles.dvaCard}>
-            <View style={styles.dvaHead}>
-              <View style={styles.dvaBankIcon}>
-                <MaterialIcons name="account-balance" size={20} color={Brand.orange} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.dvaBank} numberOfLines={1}>
-                  {account.bankName}
-                </Text>
-                <Text style={styles.dvaLabel}>Dedicated virtual account</Text>
-              </View>
-              {demoMode ? (
-                <View style={styles.demoPill}>
-                  <Text style={styles.demoPillText}>Demo</Text>
-                </View>
+
+          {deposit ? (
+            <View style={styles.detailsBox}>
+              <DetailRow label="Bank" value={deposit.bankName} colors={colors} styles={styles} />
+              <DetailRow
+                label="Account name"
+                value={deposit.accountName}
+                colors={colors}
+                styles={styles}
+                onCopy={() => void copyValue('name', deposit.accountName)}
+                copied={copied === 'name'}
+              />
+              <DetailRow
+                label="Account number"
+                value={deposit.accountNumber}
+                colors={colors}
+                styles={styles}
+                mono
+                emphasize
+                onCopy={() => void copyValue('number', deposit.accountNumber)}
+                copied={copied === 'number'}
+              />
+              {deposit.instructions ? (
+                <Text style={styles.instructions}>{deposit.instructions}</Text>
               ) : null}
             </View>
-
-            <Text style={styles.copyLabel}>Account number</Text>
-            <Pressable
-              style={styles.copyRow}
-              onPress={() => void copyValue('number', account.accountNumber)}
-              accessibilityLabel="Copy account number">
-              <Text style={styles.acctNumber}>{account.accountNumber}</Text>
-              <View style={styles.copyBtn}>
-                <Ionicons
-                  name={copied === 'number' ? 'checkmark' : 'copy-outline'}
-                  size={16}
-                  color={copied === 'number' ? Brand.success : Brand.orange}
-                />
-                <Text
-                  style={[
-                    styles.copyBtnText,
-                    copied === 'number' && { color: Brand.success },
-                  ]}>
-                  {copied === 'number' ? 'Copied' : 'Copy'}
-                </Text>
-              </View>
-            </Pressable>
-
-            <Text style={styles.copyLabel}>Account name</Text>
-            <Pressable
-              style={styles.copyRowMuted}
-              onPress={() => void copyValue('name', account.accountName)}
-              accessibilityLabel="Copy account name">
-              <Text style={styles.acctName} numberOfLines={2}>
-                {account.accountName}
+          ) : (
+            <View style={styles.emptyCard}>
+              <MaterialIcons name="account-balance" size={28} color={Brand.orange} />
+              <Text style={styles.emptyTitle}>Deposit account unavailable</Text>
+              <Text style={styles.emptySub}>
+                Try refresh, or complete identity verification.
               </Text>
-              <Ionicons
-                name={copied === 'name' ? 'checkmark-circle' : 'copy-outline'}
-                size={18}
-                color={copied === 'name' ? Brand.success : colors.mutedForeground}
-              />
-            </Pressable>
-
-            {account.instructions ? (
-              <Text style={styles.instructions}>{account.instructions}</Text>
-            ) : null}
-          </View>
-        )}
-
-        {demoMode ? (
-          <View style={styles.simulateBlock}>
-            <Text style={styles.fieldLabel}>Simulate deposit (demo)</Text>
-            <View style={styles.presets}>
-              {PRESETS.map((p) => {
-                const active = amount === p;
-                return (
-                  <Pressable
-                    key={p}
-                    onPress={() => setAmount(p)}
-                    style={[styles.chip, active && styles.chipActive]}>
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {formatNaira(p)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              <Pressable style={styles.primaryBtn} onPress={() => void load()}>
+                <Text style={styles.primaryBtnText}>Retry</Text>
+              </Pressable>
             </View>
-            <View style={styles.amountWrap}>
-              <Text style={styles.currencyPrefix}>₦</Text>
-              <TextInput
-                value={amount}
-                onChangeText={(v) => setAmount(v.replace(/[^\d.]/g, ''))}
-                keyboardType="decimal-pad"
-                placeholder="0.00"
-                placeholderTextColor={colors.mutedForeground}
-                style={styles.amountInput}
-              />
-            </View>
-            <Pressable
-              style={[styles.secondaryBtn, simulating && { opacity: 0.7 }]}
-              disabled={simulating}
-              onPress={() => void simulate()}>
-              {simulating ? (
-                <ActivityIndicator color={Brand.orange} />
-              ) : (
-                <Text style={styles.secondaryBtnText}>
-                  Simulate {amount ? formatNaira(amount) : 'deposit'}
-                </Text>
-              )}
-            </Pressable>
-          </View>
-        ) : null}
+          )}
+        </Animated.View>
+      )}
 
-        {account ? (
-          <Pressable style={styles.doneBtn} onPress={() => router.back()}>
-            <Text style={styles.doneBtnText}>Done</Text>
+      {deposit && !identityRequired ? (
+        <Animated.View entering={cardEntering(0).delay(100)}>
+          <Pressable
+            style={[styles.primaryBtn, styles.checkBtn, checking && { opacity: 0.7 }]}
+            disabled={checking}
+            onPress={() => void onIHaveFunded()}>
+            {checking ? (
+              <ActivityIndicator color={Brand.white} />
+            ) : (
+              <Text style={styles.primaryBtnText}>I’ve funded — check balance</Text>
+            )}
           </Pressable>
-        ) : null}
-      </ScrollView>
+        </Animated.View>
+      ) : null}
+
+      {setupHint ? <Text style={styles.setupHint}>{setupHint}</Text> : null}
+    </Screen>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono,
+  emphasize,
+  onCopy,
+  copied,
+  colors,
+  styles,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  emphasize?: boolean;
+  onCopy?: () => void;
+  copied?: boolean;
+  colors: ThemeColors;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={styles.detailRow}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text
+          style={[
+            styles.detailValue,
+            mono && styles.detailMono,
+            emphasize && styles.detailEmphasize,
+            { color: emphasize ? Brand.orange : colors.foreground },
+          ]}
+          selectable>
+          {value}
+        </Text>
+      </View>
+      {onCopy ? (
+        <Pressable style={styles.copyPill} onPress={onCopy}>
+          <Ionicons
+            name={copied ? 'checkmark' : 'copy-outline'}
+            size={14}
+            color={copied ? Brand.success : colors.foreground}
+          />
+          <Text style={[styles.copyPillText, copied && { color: Brand.success }]}>
+            {copied ? 'Copied' : 'Copy'}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    sheet: {
-      flex: 1,
-      backgroundColor: colors.card,
-    },
-    handleWrap: {
-      alignItems: 'center',
-      paddingTop: 10,
-      paddingBottom: 4,
-    },
-    handle: {
-      width: 40,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: colors.border,
-    },
-    handleSpacer: { height: 10 },
-    header: {
+    balanceBanner: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: 12,
-      paddingHorizontal: 12,
-      paddingTop: 4,
-      paddingBottom: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    headerCopy: { flex: 1, minWidth: 0 },
-    title: {
-      fontSize: 22,
-      fontWeight: '800',
-      color: colors.foreground,
-      letterSpacing: -0.3,
-    },
-    subtitle: {
-      marginTop: 3,
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.mutedForeground,
-    },
-    closeBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: colors.muted,
       alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 2,
+      gap: 8,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      marginBottom: 12,
     },
-    scroll: { flex: 1 },
-    scrollContent: {
-      paddingHorizontal: 12,
-      paddingTop: 12,
-    },
+    balanceLabel: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
+    balanceValue: { fontSize: 14, fontWeight: '800', color: colors.foreground },
     errorBox: {
       marginBottom: 10,
       borderRadius: 14,
@@ -373,202 +481,146 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 10,
     },
     errorText: { color: Brand.error, fontSize: 13, fontWeight: '600' },
-    emptyCard: {
-      borderRadius: 16,
-      backgroundColor: colors.muted,
-      padding: 16,
-      alignItems: 'center',
-    },
-    emptyIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 18,
-      backgroundColor: Brand.orangeMuted,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 10,
-    },
-    emptyTitle: { fontSize: 16, fontWeight: '800', color: colors.foreground },
-    emptySub: {
-      marginTop: 4,
-      fontSize: 13,
-      lineHeight: 18,
-      textAlign: 'center',
-      color: colors.mutedForeground,
-      fontWeight: '500',
-    },
-    primaryBtn: {
-      marginTop: 14,
-      alignSelf: 'stretch',
-      height: 48,
-      borderRadius: 16,
-      backgroundColor: Brand.orange,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    primaryBtnText: { color: Brand.white, fontWeight: '800', fontSize: 15 },
-    dvaCard: {
-      borderRadius: 18,
-      borderWidth: 1,
+    card: {
+      borderRadius: Radius.card,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      backgroundColor: colors.muted,
-      padding: 14,
-    },
-    dvaHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      marginBottom: 14,
-    },
-    dvaBankIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 14,
       backgroundColor: colors.card,
-      alignItems: 'center',
-      justifyContent: 'center',
+      padding: 16,
     },
-    dvaBank: { fontSize: 16, fontWeight: '800', color: colors.foreground },
-    dvaLabel: {
-      marginTop: 2,
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.mutedForeground,
-    },
-    demoPill: {
-      borderRadius: 999,
-      backgroundColor: Brand.orangeMuted,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-    },
-    demoPillText: { fontSize: 11, fontWeight: '800', color: Brand.orange },
-    copyLabel: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: colors.mutedForeground,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      marginBottom: 6,
-    },
-    copyRow: {
+    cardHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 10,
-      borderRadius: 14,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
       marginBottom: 12,
     },
-    acctNumber: {
-      flex: 1,
-      fontSize: 24,
-      fontWeight: '800',
-      color: Brand.orange,
-      letterSpacing: 0.6,
-      fontVariant: ['tabular-nums'],
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.foreground },
+    refreshBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    refreshText: { fontSize: 12, fontWeight: '700', color: Brand.orange },
+    detailsBox: {
+      borderRadius: 18,
+      backgroundColor: colors.muted,
+      padding: 14,
+      gap: 14,
     },
-    copyBtn: {
+    detailRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    detailLabel: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.mutedForeground,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    detailValue: {
+      marginTop: 2,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    detailMono: { fontVariant: ['tabular-nums'], letterSpacing: 0.4 },
+    detailEmphasize: { fontSize: 18, fontWeight: '800' },
+    copyPill: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
       borderRadius: 999,
-      backgroundColor: Brand.orangeMuted,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    copyBtnText: { fontSize: 12, fontWeight: '800', color: Brand.orange },
-    copyRowMuted: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      borderRadius: 14,
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      marginBottom: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
     },
-    acctName: {
-      flex: 1,
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.foreground,
-    },
+    copyPillText: { fontSize: 12, fontWeight: '700', color: colors.foreground },
     instructions: {
       fontSize: 12,
       lineHeight: 18,
       fontWeight: '500',
       color: colors.mutedForeground,
     },
-    simulateBlock: { marginTop: 14 },
-    fieldLabel: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.foreground,
-      marginBottom: 8,
-    },
-    presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-    chip: {
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+    identityHead: { flexDirection: 'row', gap: 12, marginBottom: 14 },
+    identityIcon: {
+      width: 40,
+      height: 40,
       borderRadius: 999,
-      backgroundColor: colors.muted,
-      borderWidth: 1.5,
-      borderColor: 'transparent',
-    },
-    chipActive: {
-      backgroundColor: Brand.orangeMuted,
-      borderColor: Brand.orange,
-    },
-    chipText: { fontWeight: '700', fontSize: 12, color: colors.foreground },
-    chipTextActive: { color: Brand.orange },
-    amountWrap: {
-      height: 48,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.muted,
-      paddingHorizontal: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginBottom: 10,
-    },
-    currencyPrefix: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: colors.mutedForeground,
-    },
-    amountInput: {
-      flex: 1,
-      fontSize: 18,
-      fontWeight: '800',
-      color: colors.foreground,
-    },
-    secondaryBtn: {
-      height: 46,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      borderColor: Brand.orange,
       backgroundColor: Brand.orangeMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    secondaryBtnText: { color: Brand.orange, fontWeight: '800', fontSize: 14 },
-    doneBtn: {
-      marginTop: 14,
+    identityTitle: { fontSize: 16, fontWeight: '700', color: colors.foreground },
+    identitySub: {
+      marginTop: 4,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.mutedForeground,
+    },
+    segRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+    seg: {
+      flex: 1,
+      borderRadius: 999,
+      paddingVertical: 10,
+      alignItems: 'center',
+      backgroundColor: colors.muted,
+    },
+    segActive: { backgroundColor: Brand.orange },
+    segText: { fontSize: 13, fontWeight: '700', color: colors.mutedForeground },
+    segTextActive: { color: Brand.white },
+    fieldLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.foreground,
+      marginBottom: 8,
+    },
+    input: {
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 14,
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
+    hint: {
+      marginTop: 8,
+      fontSize: 12,
+      lineHeight: 17,
+      color: colors.mutedForeground,
+    },
+    primaryBtn: {
+      marginTop: 16,
       height: 48,
       borderRadius: 16,
       backgroundColor: Brand.orange,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    doneBtnText: { color: Brand.white, fontWeight: '800', fontSize: 15 },
+    checkBtn: { marginTop: 14 },
+    primaryBtnText: { color: Brand.white, fontWeight: '800', fontSize: 15 },
+    kycLink: { marginTop: 14, alignItems: 'center' },
+    kycLinkText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: Brand.orange,
+      textAlign: 'center',
+    },
+    emptyCard: { alignItems: 'center', paddingVertical: 12, gap: 6 },
+    emptyTitle: { fontSize: 15, fontWeight: '700', color: colors.foreground },
+    emptySub: {
+      fontSize: 13,
+      color: colors.mutedForeground,
+      textAlign: 'center',
+      marginBottom: 4,
+    },
+    setupHint: {
+      marginTop: 10,
+      fontSize: 12,
+      lineHeight: 17,
+      color: colors.mutedForeground,
+    },
   });
 }

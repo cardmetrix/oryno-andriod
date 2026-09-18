@@ -95,13 +95,20 @@ export default function AdminLayout() {
       <Stack.Screen name="wallets" />
       <Stack.Screen name="more" />
       <Stack.Screen name="gift-cards" options={adminPushScreenOptions} />
+      <Stack.Screen name="support" options={adminPushScreenOptions} />
+      <Stack.Screen name="waitlist" options={adminPushScreenOptions} />
+      <Stack.Screen name="transaction-pins" options={adminPushScreenOptions} />
       <Stack.Screen name="virtual-numbers" options={adminPushScreenOptions} />
       <Stack.Screen name="providers" options={adminPushScreenOptions} />
       <Stack.Screen name="pricing" options={adminPushScreenOptions} />
+      <Stack.Screen name="revenue" options={adminPushScreenOptions} />
       <Stack.Screen name="bills" options={adminPushScreenOptions} />
+      <Stack.Screen name="betting" options={adminPushScreenOptions} />
       <Stack.Screen name="referrals" options={adminPushScreenOptions} />
       <Stack.Screen name="notifications" options={adminPushScreenOptions} />
       <Stack.Screen name="ads" options={adminPushScreenOptions} />
+      <Stack.Screen name="landing" options={adminPushScreenOptions} />
+      <Stack.Screen name="testimonials" options={adminPushScreenOptions} />
       <Stack.Screen name="onboarding" options={adminPushScreenOptions} />
       <Stack.Screen name="countries" options={adminPushScreenOptions} />
       <Stack.Screen name="gateways" options={adminPushScreenOptions} />

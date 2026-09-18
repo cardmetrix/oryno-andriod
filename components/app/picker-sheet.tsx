@@ -119,6 +119,8 @@ export type PickerOption = {
   title: string;
   subtitle?: string;
   image?: string | null;
+  domain?: string | null;
+  imageFallbacks?: string[] | null;
   trailing?: string;
 };
 
@@ -198,6 +200,8 @@ export function PickerOptionList({
               <ServiceLogo
                 src={option.image}
                 alt={option.title}
+                domain={option.domain}
+                fallbacks={option.imageFallbacks}
                 fallback={option.title}
                 size={40}
               />
@@ -239,6 +243,8 @@ type TriggerProps = {
   icon?: keyof typeof Ionicons.glyphMap;
   /** Optional provider/network logo shown on the closed field. */
   image?: string | null;
+  domain?: string | null;
+  imageFallbacks?: string[] | null;
   showLogo?: boolean;
 };
 
@@ -252,6 +258,8 @@ export function PickerTrigger({
   onPress,
   icon = 'chevron-down',
   image,
+  domain,
+  imageFallbacks,
   showLogo,
 }: TriggerProps) {
   const { colors } = useAppTheme();
@@ -268,9 +276,11 @@ export function PickerTrigger({
       ]}>
       {showLogo ? (
         <ServiceLogo
-          key={`${valueLabel || label}-${image || 'fallback'}`}
+          key={`${valueLabel || label}-${image || domain || 'fallback'}`}
           src={image}
           alt={valueLabel || label}
+          domain={domain}
+          fallbacks={imageFallbacks}
           fallback={valueLabel || label}
           size={36}
         />
@@ -339,6 +349,8 @@ export function SelectSheet({
         onPress={() => setOpen(true)}
         showLogo={showLogo && Boolean(value)}
         image={selected?.image}
+        domain={selected?.domain}
+        imageFallbacks={selected?.imageFallbacks}
       />
       <PickerSheet
         visible={open}

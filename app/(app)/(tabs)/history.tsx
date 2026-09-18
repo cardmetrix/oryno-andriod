@@ -11,6 +11,7 @@ import { TransactionListSkeleton } from '@/components/ui/skeletons';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useSettlePendingTransactions } from '@/hooks/use-settle-pending-transactions';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useWallet } from '@/hooks/use-wallet';
 import { alert } from '@/lib/alert';
@@ -36,6 +37,7 @@ export default function HistoryScreen() {
   const { items, loading, error, refresh } = useTransactions();
   const { data: wallet } = useWallet();
   const { pulling, onRefresh } = usePullRefresh(refresh);
+  useSettlePendingTransactions(true);
 
   const months = useMemo(() => buildHistoryMonths(items), [items]);
   const [monthKey, setMonthKey] = useState('');
@@ -159,37 +161,36 @@ export default function HistoryScreen() {
         />
       </View>
 
-      <View style={styles.monthBar}>
-        <Pressable style={styles.monthBtn} onPress={() => setSheet('month')}>
-          <Text style={styles.monthLabel}>{activeMonth?.label ?? '—'}</Text>
-          <Ionicons name="chevron-down" size={16} color={colors.foreground} />
-        </Pressable>
-        <Pressable
-          style={styles.analysisBtn}
-          onPress={() =>
-            router.push({
-              pathname: '/(app)/history/analytics',
-              params: { month: activeMonth?.key ?? '' },
-            })
-          }>
-          <Ionicons name="pie-chart-outline" size={14} color={Brand.white} />
-          <Text style={styles.analysisText}>Analysis</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.cashflow}>
-        <Text style={styles.cashflowText}>
-          In{' '}
-          <Text style={styles.cashflowIn}>
-            {formatMoneyAmount(totals.inflow, currency)}
-          </Text>
-        </Text>
-        <Text style={styles.cashflowText}>
-          Out{' '}
-          <Text style={styles.cashflowOut}>
-            {formatMoneyAmount(totals.outflow, currency)}
-          </Text>
-        </Text>
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryTop}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Pressable style={styles.monthBtn} onPress={() => setSheet('month')}>
+              <Text style={styles.monthLabel}>{activeMonth?.label ?? '—'}</Text>
+              <Ionicons name="chevron-down" size={16} color={colors.mutedForeground} />
+            </Pressable>
+            <Text style={styles.cashflowText}>
+              <Text style={styles.cashflowMuted}>In </Text>
+              <Text style={styles.cashflowIn}>
+                {formatMoneyAmount(totals.inflow, currency)}
+              </Text>
+              <Text style={styles.cashflowDot}> · </Text>
+              <Text style={styles.cashflowMuted}>Out </Text>
+              <Text style={styles.cashflowOut}>
+                {formatMoneyAmount(totals.outflow, currency)}
+              </Text>
+            </Text>
+          </View>
+          <Pressable
+            style={styles.analysisBtn}
+            onPress={() =>
+              router.push({
+                pathname: '/(app)/history/analytics',
+                params: { month: activeMonth?.key ?? '' },
+              })
+            }>
+            <Text style={styles.analysisText}>Analysis</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.list}>
@@ -382,9 +383,11 @@ function HistorySkeleton() {
         <View style={[styles.filterPill, { opacity: 0.5, flex: 1 }]} />
         <View style={[styles.filterPill, { opacity: 0.5, flex: 1 }]} />
       </View>
-      <View style={styles.monthBar}>
-        <View style={[styles.boneMd, { width: 48 }]} />
-        <View style={[styles.boneMd, { width: 88, height: 32, borderRadius: 999 }]} />
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryTop}>
+          <View style={[styles.boneMd, { width: 48 }]} />
+          <View style={[styles.boneMd, { width: 88, height: 32, borderRadius: 999 }]} />
+        </View>
       </View>
       <TransactionListSkeleton count={5} />
     </View>
@@ -463,53 +466,83 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       marginBottom: 10,
     },
+    summaryCard: {
+      borderRadius: 24,
+      backgroundColor: colors.background,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 4,
+      marginBottom: 10,
+      shadowColor: '#0F0F12',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 1,
+    },
+    summaryTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 8,
+    },
     monthBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      paddingVertical: 4,
+      paddingVertical: 2,
       paddingRight: 8,
     },
     monthLabel: {
-      fontSize: 22,
-      fontWeight: '800',
+      fontSize: 16,
+      fontWeight: '700',
       color: colors.foreground,
-      letterSpacing: -0.3,
+      letterSpacing: -0.2,
     },
     analysisBtn: {
-      flexDirection: 'row',
+      height: 36,
       alignItems: 'center',
-      gap: 6,
+      justifyContent: 'center',
       backgroundColor: Brand.orange,
       borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
+      paddingHorizontal: 16,
     },
     analysisText: {
       color: Brand.white,
       fontSize: 13,
-      fontWeight: '800',
+      fontWeight: '700',
+    },
+    cashflowText: {
+      marginTop: 6,
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.mutedForeground,
+    },
+    cashflowMuted: {
+      fontWeight: '500',
+      color: colors.foreground,
+    },
+    cashflowDot: {
+      color: colors.border,
+      fontWeight: '600',
+    },
+    cashflowIn: {
+      color: Brand.success,
+      fontWeight: '600',
+      fontVariant: ['tabular-nums'],
+    },
+    cashflowOut: {
+      color: colors.foreground,
+      fontWeight: '600',
+      fontVariant: ['tabular-nums'],
     },
     cashflow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 12,
       marginBottom: 10,
-    },
-    cashflowText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.mutedForeground,
-    },
-    cashflowIn: {
-      color: Brand.success,
-      fontWeight: '800',
-      fontVariant: ['tabular-nums'],
-    },
-    cashflowOut: {
-      color: colors.foreground,
-      fontWeight: '800',
-      fontVariant: ['tabular-nums'],
     },
     list: {
       marginTop: 4,

@@ -29,6 +29,30 @@ export function formatCountryMoney(
   return `${info.symbol}${formatted}`;
 }
 
+/** Nigeria-priced amount shown in the user's local currency. */
+export function formatServiceMoney(
+  ngnAmount: string | number,
+  countryCode?: string | null,
+  ngnToLocal = 1,
+) {
+  const raw = typeof ngnAmount === 'number' ? ngnAmount : Number(ngnAmount);
+  const code = countryCode || 'NG';
+  const rate = code === 'NG' ? 1 : ngnToLocal;
+  const converted = Number.isFinite(raw) ? raw * rate : 0;
+  return formatCountryMoney(converted, code);
+}
+
+export function formatUsd(amount: string | number) {
+  const value = typeof amount === 'number' ? amount : Number(amount);
+  const formatted = Number.isFinite(value)
+    ? Math.abs(value).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    : '0.00';
+  return `$${formatted}`;
+}
+
 export function maskBalance(hidden: boolean, formatted: string) {
   return hidden ? '••••••••' : formatted;
 }
