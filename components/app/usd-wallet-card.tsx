@@ -11,13 +11,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+
 import { WalletCardShine } from '@/components/app/wallet-card-shine';
-import { Brand, type ThemeColors } from '@/constants/theme';
+import { WalletCardUsdGlow } from '@/components/app/wallet-card-usd-glow';
+import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
-import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { maskBalance } from '@/lib/format';
+import { toast } from '@/lib/toast';
 import type { WalletSummary } from '@/lib/types';
 
 type FxQuote = {
@@ -31,98 +34,107 @@ type FxQuote = {
 
 export type UsdPanel = 'fund' | 'convert';
 
-type SharedProps = {
+type CardProps = {
   usd: WalletSummary | null | undefined;
-  localCurrency: string;
-  localBalanceFormatted: string;
-  fx?: FxQuote | null;
   hidden?: boolean;
-  onUpdated?: () => void;
+  holderName?: string;
   panel: UsdPanel;
   onPanelChange: (panel: UsdPanel) => void;
 };
 
+type ActionsProps = {
+  localCurrency: string;
+  localBalance: number;
+  localBalanceFormatted: string;
+  usdBalance?: number;
+  fx?: FxQuote | null;
+  panel: UsdPanel;
+  onPanelChange: (panel: UsdPanel) => void;
+  onUpdated?: () => void;
+};
+
 const USD_PRESETS = ['5', '10', '20', '50', '100'];
 
-/** Dark USD balance card — matches website `UsdWalletCard` + local card sizing. */
+/** Dark USD balance card — matches website `UsdWalletCard`. */
 export function UsdWalletCard({
   usd,
   hidden,
   panel,
   onPanelChange,
-}: Pick<SharedProps, 'usd' | 'hidden' | 'panel' | 'onPanelChange'> & {
-  holderName?: string;
-  countryCode?: string;
-}) {
+}: CardProps) {
   const balance = usd?.balanceFormatted ?? '$0.00';
 
   return (
     <View style={styles.card}>
-      <View style={styles.glowA} />
-      <View style={styles.glowB} />
+      <WalletCardUsdGlow />
       <WalletCardShine intensity="soft" />
 
-      <View style={styles.top}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.eyebrowText}>USD WALLET</Text>
-          <Text style={styles.balance} numberOfLines={1}>
-            {maskBalance(Boolean(hidden), balance)}
-          </Text>
-          <Text style={styles.holder}>USD wallet</Text>
+      <View style={styles.content}>
+        <View style={styles.top}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.eyebrowText}>USD Wallet</Text>
+            <Text style={styles.balance} numberOfLines={1}>
+              {maskBalance(Boolean(hidden), balance)}
+            </Text>
+          </View>
+          <View style={styles.badge}>
+            <Ionicons name="shield-checkmark" size={13} color={Brand.orange} />
+            <Text style={styles.badgeText}>Protected</Text>
+          </View>
         </View>
-        <View style={styles.badge}>
-          <Ionicons name="shield-checkmark" size={13} color={Brand.orange} />
-          <Text style={styles.badgeText}>Protected</Text>
-        </View>
-      </View>
 
-      <View style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.fundBtn,
-            panel === 'fund' ? styles.fundActive : styles.fundIdle,
-            pressed && { opacity: 0.92 },
-          ]}
-          onPress={() => onPanelChange('fund')}>
-          <Ionicons name="add" size={18} color="#111" />
-          <Text style={styles.fundText}>Fund</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.convertBtn,
-            panel === 'convert' ? styles.convertActive : styles.convertIdle,
-            pressed && { opacity: 0.92 },
-          ]}
-          onPress={() => onPanelChange('convert')}>
-          <Ionicons
-            name="swap-horizontal"
-            size={16}
-            color={panel === 'convert' ? '#111' : Brand.white}
-          />
-          <Text
-            style={[
-              styles.convertText,
-              panel === 'convert' ? styles.convertTextActive : null,
-            ]}>
-            Convert
-          </Text>
-        </Pressable>
+        <Text style={styles.holder}>USD Wallet</Text>
+
+        <View style={styles.actions}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.fundBtn,
+              panel === 'fund' ? styles.fundActive : styles.fundIdle,
+              pressed && { opacity: 0.92 },
+            ]}
+            onPress={() => onPanelChange('fund')}>
+            <Ionicons name="add" size={18} color="#111" />
+            <Text style={styles.fundText}>Fund</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.convertBtn,
+              panel === 'convert' ? styles.convertActive : styles.convertIdle,
+              pressed && { opacity: 0.92 },
+            ]}
+            onPress={() => onPanelChange('convert')}>
+            <Ionicons
+              name="swap-horizontal"
+              size={16}
+              color={panel === 'convert' ? '#111' : Brand.white}
+            />
+            <Text
+              style={[
+                styles.convertText,
+                panel === 'convert' ? styles.convertTextActive : null,
+              ]}>
+              Convert
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 }
 
-/** Fund (default) / Convert form — themed for light & dark. */
+/** Fund / Convert form — matches website `UsdWalletActionsPanel`. */
 export function UsdWalletActionsPanel({
   localCurrency,
+  localBalance,
   localBalanceFormatted,
+  usdBalance = 0,
   fx,
   onUpdated,
   panel,
   onPanelChange,
-}: Omit<SharedProps, 'usd' | 'hidden'>) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makePanelStyles(colors), [colors]);
+}: ActionsProps) {
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makePanelStyles(colors, isDark), [colors, isDark]);
   const [fundMethod, setFundMethod] = useState<'checkout' | 'convert'>('checkout');
   const [direction, setDirection] = useState<'to_usd' | 'to_local'>('to_usd');
   const [amount, setAmount] = useState('10');
@@ -135,11 +147,8 @@ export function UsdWalletActionsPanel({
   }, [fx]);
 
   useEffect(() => {
-    setError(null);
-  }, [panel]);
-
-  useEffect(() => {
     if (panel === 'fund') setFundMethod('checkout');
+    setError(null);
   }, [panel]);
 
   useEffect(() => {
@@ -187,6 +196,60 @@ export function UsdWalletActionsPanel({
     return null;
   }, [liveFx, amount, panel, direction, localCurrency]);
 
+  const usdAmount = Number(amount) || 0;
+  const localCost = liveFx && usdAmount > 0 ? usdAmount * liveFx.buyRate : 0;
+
+  const needsLocalBalance =
+    (panel === 'fund' && fundMethod === 'convert') ||
+    (panel === 'convert' && direction === 'to_usd');
+  const needsUsdBalance = panel === 'convert' && direction === 'to_local';
+
+  const canSubmit = useMemo(() => {
+    if (busy || !amount || usdAmount <= 0) return false;
+    if (needsLocalBalance && localCost > localBalance) return false;
+    if (needsUsdBalance && usdAmount > usdBalance) return false;
+    return true;
+  }, [
+    busy,
+    amount,
+    usdAmount,
+    needsLocalBalance,
+    needsUsdBalance,
+    localCost,
+    localBalance,
+    usdBalance,
+  ]);
+
+  const submitLabel = useMemo(() => {
+    if (busy) return null;
+    if (needsLocalBalance && localCost > localBalance) {
+      return 'Insufficient local balance';
+    }
+    if (needsUsdBalance && usdAmount > usdBalance) {
+      return 'Insufficient USD balance';
+    }
+    if (panel === 'fund') {
+      return fundMethod === 'checkout'
+        ? 'Fund with local currency'
+        : `Convert from ${localCurrency}`;
+    }
+    return direction === 'to_usd'
+      ? 'Convert to USD'
+      : `Convert to ${localCurrency}`;
+  }, [
+    busy,
+    needsLocalBalance,
+    needsUsdBalance,
+    localCost,
+    localBalance,
+    usdAmount,
+    usdBalance,
+    panel,
+    fundMethod,
+    direction,
+    localCurrency,
+  ]);
+
   async function onFund() {
     setBusy(true);
     setError(null);
@@ -212,7 +275,9 @@ export function UsdWalletActionsPanel({
         return;
       }
 
-      alert.success('USD wallet funded', json.usdFormatted ?? `$${amount} credited`);
+      toast.success('USD wallet funded', {
+        description: json.usdFormatted ?? `$${amount} credited`,
+      });
       onPanelChange('fund');
       onUpdated?.();
       if (json.transactionId) {
@@ -237,7 +302,9 @@ export function UsdWalletActionsPanel({
           amountUsd: amount,
           method: 'convert',
         });
-        alert.success('Converted to USD', json.toFormatted ?? `$${amount}`);
+        toast.success('Converted to USD', {
+          description: json.toFormatted,
+        });
         onPanelChange('fund');
         onUpdated?.();
         if (json.transactionId) {
@@ -253,7 +320,9 @@ export function UsdWalletActionsPanel({
         direction: 'to_local',
         amount,
       });
-      alert.success('Converted to local', json.toFormatted ?? 'Done');
+      toast.success('Converted to local', {
+        description: json.toFormatted,
+      });
       onPanelChange('fund');
       onUpdated?.();
       if (json.transactionId) {
@@ -267,113 +336,143 @@ export function UsdWalletActionsPanel({
   }
 
   return (
-    <View style={styles.panel}>
-      {panel === 'fund' ? (
-        <>
-          <Text style={styles.panelTitle}>Fund USD wallet</Text>
-          <Text style={styles.panelSub}>
-            Fund with local currency or convert from your {localCurrency} balance (
-            {localBalanceFormatted}).
-          </Text>
-          <View style={styles.segRow}>
-            <Pressable
-              style={[styles.seg, fundMethod === 'checkout' && styles.segActive]}
-              onPress={() => setFundMethod('checkout')}>
-              <Text
-                style={[styles.segText, fundMethod === 'checkout' && styles.segTextActive]}>
-                Local currency
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.seg, fundMethod === 'convert' && styles.segActive]}
-              onPress={() => setFundMethod('convert')}>
-              <Text
-                style={[styles.segText, fundMethod === 'convert' && styles.segTextActive]}>
-                From {localCurrency}
-              </Text>
-            </Pressable>
-          </View>
-        </>
-      ) : (
-        <>
-          <Text style={styles.panelTitle}>Convert currencies</Text>
-          <Text style={styles.panelSub}>
-            Live open-market rate + 1% ORYNO commission.
-          </Text>
-          <View style={styles.segRow}>
-            <Pressable
-              style={[styles.seg, direction === 'to_usd' && styles.segActive]}
-              onPress={() => setDirection('to_usd')}>
-              <Text style={[styles.segText, direction === 'to_usd' && styles.segTextActive]}>
-                {localCurrency} → USD
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.seg, direction === 'to_local' && styles.segActive]}
-              onPress={() => setDirection('to_local')}>
-              <Text
-                style={[styles.segText, direction === 'to_local' && styles.segTextActive]}>
-                USD → {localCurrency}
-              </Text>
-            </Pressable>
-          </View>
-        </>
-      )}
-
-      <Text style={styles.fieldLabel}>USD amount</Text>
-      <TextInput
-        value={amount}
-        onChangeText={(v) =>
-          setAmount(v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1'))
-        }
-        keyboardType="decimal-pad"
-        style={styles.input}
-        placeholder="10"
-        placeholderTextColor={colors.mutedForeground}
-      />
-
-      <View style={styles.presets}>
-        {USD_PRESETS.map((preset) => (
-          <Pressable
-            key={preset}
-            onPress={() => setAmount(preset)}
-            style={[styles.preset, amount === preset && styles.presetActive]}>
-            <Text style={[styles.presetText, amount === preset && styles.presetTextActive]}>
-              ${preset}
+    <Animated.View
+      key={panel}
+      entering={FadeIn.duration(220)}
+      exiting={FadeOut.duration(140)}
+      style={styles.wrap}>
+      <View style={styles.panel}>
+        {panel === 'fund' ? (
+          <>
+            <Text style={styles.panelTitle}>Fund USD wallet</Text>
+            <Text style={styles.panelSub}>
+              Fund with local currency or convert from your {localCurrency}{' '}
+              balance ({localBalanceFormatted}).
             </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {preview ? (
-        <View style={styles.preview}>
-          <Text style={styles.previewLabel}>{preview.label}</Text>
-          <Text style={styles.previewValue}>{preview.value}</Text>
-          <Text style={styles.previewReceive}>{preview.receive}</Text>
-        </View>
-      ) : null}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Pressable
-        disabled={busy || !amount || Number(amount) <= 0}
-        onPress={() => void (panel === 'fund' ? onFund() : onConvert())}
-        style={[styles.cta, (busy || !amount || Number(amount) <= 0) && { opacity: 0.5 }]}>
-        {busy ? (
-          <ActivityIndicator color={Brand.white} />
+            <View style={styles.segRow}>
+              <Pressable
+                style={[
+                  styles.seg,
+                  fundMethod === 'checkout' && styles.segActive,
+                ]}
+                onPress={() => setFundMethod('checkout')}>
+                <Text
+                  style={[
+                    styles.segText,
+                    fundMethod === 'checkout' && styles.segTextActive,
+                  ]}>
+                  Local currency
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.seg,
+                  fundMethod === 'convert' && styles.segActive,
+                ]}
+                onPress={() => setFundMethod('convert')}>
+                <Text
+                  style={[
+                    styles.segText,
+                    fundMethod === 'convert' && styles.segTextActive,
+                  ]}>
+                  From {localCurrency}
+                </Text>
+              </Pressable>
+            </View>
+          </>
         ) : (
-          <Text style={styles.ctaText}>
-            {panel === 'fund'
-              ? fundMethod === 'checkout'
-                ? 'Fund with local currency'
-                : `Convert from ${localCurrency}`
-              : direction === 'to_usd'
-                ? 'Convert to USD'
-                : `Convert to ${localCurrency}`}
-          </Text>
+          <>
+            <Text style={styles.panelTitle}>Convert currencies</Text>
+            <Text style={styles.panelSub}>
+              Live open-market rate + 1% ORYNO commission.
+            </Text>
+            <View style={styles.segRow}>
+              <Pressable
+                style={[styles.seg, direction === 'to_usd' && styles.segActive]}
+                onPress={() => setDirection('to_usd')}>
+                <Text
+                  style={[
+                    styles.segText,
+                    direction === 'to_usd' && styles.segTextActive,
+                  ]}>
+                  {localCurrency} → USD
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.seg,
+                  direction === 'to_local' && styles.segActive,
+                ]}
+                onPress={() => setDirection('to_local')}>
+                <Text
+                  style={[
+                    styles.segText,
+                    direction === 'to_local' && styles.segTextActive,
+                  ]}>
+                  USD → {localCurrency}
+                </Text>
+              </Pressable>
+            </View>
+          </>
         )}
-      </Pressable>
-    </View>
+
+        <Text style={styles.fieldLabel}>USD amount</Text>
+        <TextInput
+          value={amount}
+          onChangeText={(v) =>
+            setAmount(v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1'))
+          }
+          keyboardType="decimal-pad"
+          style={styles.input}
+          placeholder="10"
+          placeholderTextColor={colors.mutedForeground}
+        />
+
+        <View style={styles.presets}>
+          {USD_PRESETS.map((preset) => {
+            const active = amount === preset;
+            return (
+              <Pressable
+                key={preset}
+                onPress={() => setAmount(preset)}
+                style={[styles.preset, active && styles.presetActive]}>
+                <Text
+                  style={[
+                    styles.presetText,
+                    active && styles.presetTextActive,
+                  ]}>
+                  ${preset}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {preview ? (
+          <View style={styles.preview}>
+            <Text style={styles.previewLabel}>{preview.label}</Text>
+            <Text style={styles.previewValue}>{preview.value}</Text>
+            <Text style={styles.previewReceive}>{preview.receive}</Text>
+          </View>
+        ) : null}
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <Pressable
+          disabled={!canSubmit}
+          onPress={() => void (panel === 'fund' ? onFund() : onConvert())}
+          style={[styles.cta, !canSubmit && { opacity: 0.5 }]}>
+          {busy ? (
+            <View style={styles.ctaBusy}>
+              <ActivityIndicator color={Brand.white} />
+              <Text style={styles.ctaText}>Processing…</Text>
+            </View>
+          ) : (
+            <Text style={styles.ctaText}>{submitLabel}</Text>
+          )}
+        </Pressable>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -384,52 +483,38 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     overflow: 'hidden',
-    minHeight: 168,
+    minHeight: 140,
     shadowColor: '#0F0F12',
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  glowA: {
-    position: 'absolute',
-    top: -40,
-    right: -20,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,106,0,0.22)',
-  },
-  glowB: {
-    position: 'absolute',
-    bottom: -36,
-    left: -24,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  content: {
+    position: 'relative',
+    zIndex: 1,
   },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   eyebrowText: {
     color: 'rgba(255,255,255,0.65)',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.6,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
   balance: {
-    marginTop: 6,
-    color: Brand.white,
-    fontSize: 34,
+    marginTop: 4,
+    color: '#FFFFFF',
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.8,
+    letterSpacing: -0.6,
   },
   holder: {
-    marginTop: 4,
+    marginTop: 2,
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
   badge: {
@@ -438,21 +523,21 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.15)',
   },
   badgeText: {
     color: 'rgba(255,255,255,0.9)',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
   },
-  actions: { marginTop: 16, flexDirection: 'row', gap: 10 },
+  actions: { marginTop: 12, flexDirection: 'row', gap: 8 },
   fundBtn: {
     flex: 1,
-    height: 50,
-    borderRadius: 16,
+    height: 42,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -460,11 +545,11 @@ const styles = StyleSheet.create({
   },
   fundIdle: { backgroundColor: Brand.white },
   fundActive: { backgroundColor: Brand.orange },
-  fundText: { color: '#111', fontSize: 15, fontWeight: '800' },
+  fundText: { color: '#111', fontSize: 14, fontWeight: '800' },
   convertBtn: {
     flex: 1,
-    height: 50,
-    borderRadius: 16,
+    height: 42,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -479,36 +564,49 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.orange,
     borderColor: 'transparent',
   },
-  convertText: { color: Brand.white, fontSize: 15, fontWeight: '800' },
+  convertText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
   convertTextActive: { color: '#111' },
 });
 
-function makePanelStyles(colors: ThemeColors) {
+function makePanelStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
-    panel: {
-      marginTop: 10,
-      marginBottom: 28,
-      borderRadius: 18,
-      backgroundColor: colors.card,
-      paddingHorizontal: 10,
-      paddingTop: 10,
-      paddingBottom: 10,
+    wrap: {
+      marginTop: 12,
+      marginBottom: 24,
     },
-    panelTitle: { fontSize: 14, fontWeight: '700', color: colors.foreground },
+    panel: {
+      borderRadius: 22,
+      backgroundColor: colors.background,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 16,
+      shadowColor: '#0F0F12',
+      shadowOpacity: isDark ? 0.28 : 0.06,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    panelTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.foreground,
+    },
     panelSub: {
-      marginTop: 2,
+      marginTop: 4,
       fontSize: 12,
       color: colors.mutedForeground,
-      lineHeight: 16,
+      lineHeight: 17,
     },
-    segRow: { marginTop: 8, flexDirection: 'row', gap: 6 },
+    segRow: { marginTop: 12, flexDirection: 'row', gap: 8 },
     seg: {
       flex: 1,
-      borderRadius: 12,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
-      paddingVertical: 8,
-      paddingHorizontal: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
       alignItems: 'center',
       backgroundColor: colors.background,
     },
@@ -516,65 +614,101 @@ function makePanelStyles(colors: ThemeColors) {
       borderColor: Brand.orange,
       backgroundColor: colors.orangeMuted,
     },
-    segText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
+    segText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.mutedForeground,
+      textAlign: 'center',
+    },
     segTextActive: { color: Brand.orange },
     fieldLabel: {
-      marginTop: 8,
-      fontSize: 12,
+      marginTop: 16,
+      fontSize: 14,
       fontWeight: '600',
       color: colors.foreground,
     },
     input: {
-      marginTop: 6,
-      height: 40,
-      borderRadius: 12,
+      marginTop: 8,
+      height: 48,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.muted,
-      paddingHorizontal: 10,
-      fontSize: 15,
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.04)'
+        : 'rgba(245,245,247,0.7)',
+      paddingHorizontal: 16,
+      fontSize: 16,
       fontWeight: '600',
       color: colors.foreground,
     },
-    presets: { marginTop: 8, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    presets: {
+      marginTop: 12,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
     preset: {
       borderRadius: 999,
       backgroundColor: colors.muted,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
     },
-    presetActive: { backgroundColor: colors.foreground },
-    presetText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
-    presetTextActive: { color: colors.background },
+    presetActive: {
+      backgroundColor: Brand.charcoal,
+    },
+    presetText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.mutedForeground,
+    },
+    presetTextActive: { color: Brand.white },
     preview: {
-      marginTop: 8,
-      borderRadius: 14,
-      backgroundColor: colors.muted,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      marginTop: 16,
+      borderRadius: 16,
+      backgroundColor: isDark
+        ? 'rgba(255,255,255,0.06)'
+        : 'rgba(245,245,247,0.8)',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
-    previewLabel: { fontSize: 12, color: colors.mutedForeground },
+    previewLabel: { fontSize: 13, color: colors.mutedForeground },
     previewValue: {
       marginTop: 2,
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '800',
       color: colors.foreground,
     },
     previewReceive: {
-      marginTop: 4,
+      marginTop: 8,
       fontSize: 12,
       fontWeight: '700',
       color: Brand.orange,
     },
-    error: { marginTop: 8, fontSize: 13, fontWeight: '600', color: Brand.error },
+    error: {
+      marginTop: 12,
+      fontSize: 13,
+      fontWeight: '600',
+      color: Brand.error,
+    },
     cta: {
-      marginTop: 8,
-      height: 42,
-      borderRadius: 12,
+      marginTop: 16,
+      height: 48,
+      borderRadius: Radius.md,
       backgroundColor: Brand.orange,
       alignItems: 'center',
       justifyContent: 'center',
+      paddingHorizontal: 12,
     },
-    ctaText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
+    ctaBusy: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    ctaText: {
+      color: Brand.white,
+      fontSize: 14,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
   });
 }

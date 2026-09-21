@@ -6,8 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -17,7 +17,6 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeOutUp,
-  Layout,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -43,6 +42,9 @@ import { endpoints } from '@/lib/endpoints';
 
 type PagerItem = 'local' | 'usd';
 
+/** Matches website wallet pager: edge-to-edge snap + px-4 inset per card. */
+const WALLET_PAGER_PAD = 16;
+
 function currencySymbol(currency: string) {
   if (currency === 'NGN') return '₦';
   if (currency === 'GHS') return 'GH₵';
@@ -60,10 +62,12 @@ export default function WalletScreen() {
   const [hidden, setHidden] = useState(false);
   const [walletView, setWalletView] = useState<PagerItem>('local');
   const [usdPanel, setUsdPanel] = useState<UsdPanel>('fund');
-  const pagerRef = useRef<ScrollView>(null);
+  const pagerRef = useRef<Animated.ScrollView>(null);
   const { width: windowWidth } = useWindowDimensions();
-  const [pageWidth, setPageWidth] = useState(windowWidth - 32);
+  /** One snap page = full screen width (website: basis-full + inner px-4). */
+  const pageWidth = windowWidth;
   const skipNextFocusRefresh = useRef(true);
+  const lastPagerIndex = useRef(0);
 
   const softRefresh = useCallback(async () => {
     await refresh();
@@ -86,31 +90,52 @@ export default function WalletScreen() {
 
   useEffect(() => {
     localDot.value = withSpring(walletView === 'local' ? 1 : 0, {
-      damping: 18,
-      stiffness: 220,
+      damping: 20,
+      stiffness: 320,
+      mass: 0.55,
+      overshootClamping: true,
     });
     usdDot.value = withSpring(walletView === 'usd' ? 1 : 0, {
-      damping: 18,
-      stiffness: 220,
+      damping: 20,
+      stiffness: 320,
+      mass: 0.55,
+      overshootClamping: true,
     });
   }, [walletView, localDot, usdDot]);
 
+  /** Keep snap position when screen width changes (rotation). */
+  useEffect(() => {
+    const index = walletView === 'usd' ? 1 : 0;
+    lastPagerIndex.current = index;
+    pagerRef.current?.scrollTo({ x: index * pageWidth, animated: false });
+    // walletView intentionally omitted — dot/swipe handlers own scroll position.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageWidth]);
+
   const localDotStyle = useAnimatedStyle(() => ({
-    width: 8 + localDot.value * 16,
+    width: 8 + localDot.value * 14,
     backgroundColor: localDot.value > 0.5 ? Brand.orange : 'rgba(142,142,147,0.35)',
   }));
 
   const usdDotStyle = useAnimatedStyle(() => ({
-    width: 8 + usdDot.value * 16,
+    width: 8 + usdDot.value * 14,
     backgroundColor: usdDot.value > 0.5 ? Brand.orange : 'rgba(142,142,147,0.35)',
   }));
 
+  const syncPagerIndex = useCallback((offsetX: number) => {
+    const idx = Math.round(offsetX / Math.max(pageWidth, 1));
+    const next: PagerItem = idx >= 1 ? 'usd' : 'local';
+    if (lastPagerIndex.current === (next === 'usd' ? 1 : 0)) return;
+    lastPagerIndex.current = next === 'usd' ? 1 : 0;
+    setWalletView(next);
+  }, [pageWidth]);
+
   const onPagerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / Math.max(pageWidth, 1));
-    setWalletView(idx >= 1 ? 'usd' : 'local');
+    syncPagerIndex(e.nativeEvent.contentOffset.x);
   };
 
   const scrollToPage = (index: 0 | 1) => {
+    lastPagerIndex.current = index;
     setWalletView(index === 0 ? 'local' : 'usd');
     pagerRef.current?.scrollTo({ x: index * pageWidth, animated: true });
   };
@@ -177,19 +202,22 @@ export default function WalletScreen() {
 
   return (
     <Screen scroll refreshing={pulling} onRefresh={onRefresh} header={<WalletHeader />}>
-      <ScrollView
+      <Animated.ScrollView
         ref={pagerRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
+        decelerationRate={Platform.OS === 'ios' ? 0.988 : 0.92}
+        snapToInterval={pageWidth}
+        snapToAlignment="center"
+        disableIntervalMomentum
+        bounces={false}
+        overScrollMode="never"
+        scrollEventThrottle={16}
+        onScroll={onPagerScroll}
         onMomentumScrollEnd={onPagerScroll}
-        onLayout={(e) => {
-          const next = Math.round(e.nativeEvent.layout.width);
-          if (next > 0 && next !== pageWidth) setPageWidth(next);
-        }}
-        style={styles.pager}>
-        <View style={{ width: pageWidth }}>
+        style={[styles.pager, { width: pageWidth, marginHorizontal: -WALLET_PAGER_PAD }]}>
+        <View style={[styles.pagerPage, { width: pageWidth }]}>
           <WalletLocalCard
             currency={data.totals.currency ?? data.primary.currency}
             balanceFormatted={data.primary.balanceFormatted}
@@ -200,17 +228,16 @@ export default function WalletScreen() {
             onToggleHidden={() => setHidden((v) => !v)}
           />
         </View>
-        <View style={{ width: pageWidth }}>
+        <View style={[styles.pagerPage, { width: pageWidth }]}>
           <UsdWalletCard
             usd={data.usd}
             hidden={hidden}
             panel={usdPanel}
             onPanelChange={setUsdPanel}
             holderName={data.user.fullName}
-            countryCode={data.user.countryCode}
           />
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Always directly under the wallet cards */}
       <View style={styles.pagerHint}>
@@ -224,7 +251,7 @@ export default function WalletScreen() {
         </View>
         <Animated.Text
           key={walletView}
-          entering={FadeIn.duration(220)}
+          entering={FadeIn.duration(140)}
           style={styles.hintText}>
           {walletView === 'local' ? 'Swipe for USD wallet' : 'Swipe for local wallet'}
         </Animated.Text>
@@ -233,7 +260,9 @@ export default function WalletScreen() {
       {walletView === 'usd' ? (
         <UsdWalletActionsPanel
           localCurrency={data.totals.currency ?? data.primary.currency}
+          localBalance={Number(data.primary.balance) || 0}
           localBalanceFormatted={data.primary.balanceFormatted}
+          usdBalance={Number(data.usd?.balance) || 0}
           fx={data.fx}
           panel={usdPanel}
           onPanelChange={setUsdPanel}
@@ -244,9 +273,8 @@ export default function WalletScreen() {
       {showLocalSections ? (
         <Animated.View
           key="local-sections"
-          entering={FadeInDown.duration(320).springify().damping(18)}
-          exiting={FadeOutUp.duration(180)}
-          layout={Layout.springify().damping(18)}>
+          entering={FadeInDown.duration(180)}
+          exiting={FadeOutUp.duration(120)}>
           <View style={styles.statsRow}>
             {[
               {
@@ -289,8 +317,7 @@ export default function WalletScreen() {
           </View>
 
           <Animated.View
-            entering={FadeInDown.delay(80).duration(300)}
-            layout={Layout.springify().damping(18)}
+            entering={FadeInDown.delay(40).duration(180)}
             style={styles.panel}>
             <View style={styles.panelHead}>
               <View style={styles.panelHeadLeft}>
@@ -413,17 +440,17 @@ function makeStyles(colors: ThemeColors) {
     },
     sub: { marginTop: 4, fontSize: 13, color: colors.grayMedium, fontWeight: '500' },
     historyBtn: {
-      borderRadius: 14,
-      backgroundColor: Brand.orange,
+      minWidth: 84,
+      height: 36,
+      borderRadius: 12,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingHorizontal: 10,
     },
     historyBtnText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
-      color: Brand.white,
+      color: Brand.orange,
     },
     errorCard: {
       borderRadius: Radius.card,
@@ -447,7 +474,12 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 12,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 14 },
-    pager: { width: '100%' },
+    pager: {
+      alignSelf: 'center',
+    },
+    pagerPage: {
+      paddingHorizontal: WALLET_PAGER_PAD,
+    },
     pagerHint: { alignItems: 'center', marginTop: 10, gap: 8 },
     dots: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     dot: {

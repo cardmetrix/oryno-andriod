@@ -56,8 +56,20 @@ export function WalletCardShine({ intensity = 'bright' }: Props) {
 
   const colors =
     intensity === 'bright'
-      ? (['transparent', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.28)', 'rgba(255,255,255,0.08)', 'transparent'] as const)
-      : (['transparent', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent'] as const);
+      ? ([
+          'rgba(255,255,255,0)',
+          'rgba(255,255,255,0.08)',
+          'rgba(255,255,255,0.25)',
+          'rgba(255,255,255,0.08)',
+          'rgba(255,255,255,0)',
+        ] as const)
+      : ([
+          'rgba(255,255,255,0)',
+          'rgba(255,255,255,0.02)',
+          'rgba(255,255,255,0.1)',
+          'rgba(255,255,255,0.02)',
+          'rgba(255,255,255,0)',
+        ] as const);
 
   return (
     <Animated.View style={[styles.wrap, style]} pointerEvents="none">
