@@ -17,6 +17,7 @@ import Animated from 'react-native-reanimated';
 import { cardEntering } from '@/lib/motion';
 
 import { GiftCardBrandLogo } from '@/components/app/gift-card-brand-logo';
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet, SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceSuccess } from '@/components/app/service-success';
@@ -745,17 +746,11 @@ export default function GiftCardsScreen() {
         })}
       </View>
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-          <Pressable onPress={() => setError(null)} hitSlop={8}>
-            <Ionicons name="close" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      ) : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Gift Cards"
+      />
 
       {mode === 'sell' && sellBlocked ? (
         <View style={styles.warnBanner}>
@@ -1453,24 +1448,6 @@ function makeStyles(colors: ThemeColors) {
       color: colors.grayMedium,
     },
     modeTabTextActive: { color: Brand.white },
-    errorBanner: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 10,
-      marginBottom: 8,
-      padding: 10,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: 'rgba(255,59,48,0.25)',
-      backgroundColor: 'rgba(255,59,48,0.08)',
-    },
-    errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: {
-      marginTop: 3,
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.charcoal,
-    },
     warnBanner: {
       flexDirection: 'row',
       alignItems: 'flex-start',

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
@@ -13,6 +14,7 @@ import Animated from 'react-native-reanimated';
 import { cardEntering } from '@/lib/motion';
 
 import { DataPlanGrid } from '@/components/app/data-plan-grid';
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { PhoneNumberField } from '@/components/app/phone-number-field';
 import { ServiceSuccess } from '@/components/app/service-success';
@@ -34,6 +36,10 @@ import {
   buildDataPlanFilters,
   planMatchesFilter,
 } from '@/lib/data-plans';
+import {
+  readDataPlansCache,
+  writeDataPlansCache,
+} from '@/lib/data-plans-cache';
 import { endpoints } from '@/lib/endpoints';
 import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
 import {
@@ -208,6 +214,11 @@ export default function DataScreen() {
   }, [countryLoading, countryCode]);
 
   useEffect(() => {
+    // Keep AsyncStorage plan cache across remounts — only clear in-memory map.
+    plansCacheRef.current.clear();
+  }, [countryCode]);
+
+  useEffect(() => {
     if (dataProductTypeId != null) setProductTypeId(dataProductTypeId);
   }, [dataProductTypeId]);
 
@@ -239,13 +250,25 @@ export default function DataScreen() {
       const cacheKey = isNigeria
         ? `ng:${networkId}`
         : `intl:${networkId}:${productTypeId}`;
-      const cached = plansCacheRef.current.get(cacheKey);
-      if (cached?.length) {
-        setVariations(cached);
+
+      const memory = plansCacheRef.current.get(cacheKey);
+      const session = memory?.length
+        ? memory
+        : await readDataPlansCache(cacheKey);
+      if (cancelled) return;
+
+      if (session?.length) {
+        const hydrated = session.map((v) => ({
+          ...v,
+          amount: Number(v.amount) || 0,
+          fixedPrice: Boolean(v.fixedPrice),
+        }));
+        plansCacheRef.current.set(cacheKey, hydrated);
+        setVariations(hydrated);
         setVariationCode((prev) =>
-          cached.some((v) => v.variationCode === prev)
+          hydrated.some((v) => v.variationCode === prev)
             ? prev
-            : cached[0]?.variationCode || '',
+            : hydrated[0]?.variationCode || '',
         );
         setLoadingPlans(false);
       } else {
@@ -263,16 +286,20 @@ export default function DataScreen() {
         const next = (data.variations ?? []).map((v) => ({
           ...v,
           amount: Number(v.amount) || 0,
+          fixedPrice: Boolean(v.fixedPrice),
         }));
         plansCacheRef.current.set(cacheKey, next);
+        void writeDataPlansCache(cacheKey, next);
         setVariations(next);
         if (next[0]?.variationCode) {
           setVariationCode((prev) =>
-            next.some((v) => v.variationCode === prev) ? prev : next[0].variationCode,
+            next.some((v) => v.variationCode === prev)
+              ? prev
+              : next[0].variationCode,
           );
         }
       } catch (e) {
-        if (!cancelled && !cached?.length) {
+        if (!cancelled && !session?.length) {
           setVariations([]);
           setError(e instanceof Error ? e.message : 'Failed to load plans');
         }
@@ -285,6 +312,58 @@ export default function DataScreen() {
       cancelled = true;
     };
   }, [isFlexibleIntl, isNigeria, networkId, productTypeId]);
+
+  // Prefetch sibling network catalogs after the active one is ready (NG).
+  useEffect(() => {
+    if (!isNigeria || networks.length < 2 || !networkId || loadingPlans) return;
+    if (!variations.length) return;
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void (async () => {
+        for (const net of networks) {
+          if (cancelled) return;
+          if (net.serviceID === networkId) continue;
+          const key = `ng:${net.serviceID}`;
+          if (plansCacheRef.current.get(key)?.length) continue;
+          const cached = await readDataPlansCache(key);
+          if (cancelled) return;
+          if (cached?.length) {
+            plansCacheRef.current.set(
+              key,
+              cached.map((v) => ({
+                ...v,
+                amount: Number(v.amount) || 0,
+                fixedPrice: Boolean(v.fixedPrice),
+              })),
+            );
+            continue;
+          }
+          try {
+            const data = await api.get<{ variations?: Variation[] }>(
+              `${endpoints.services.variations}?serviceID=${encodeURIComponent(net.serviceID)}&identifier=data`,
+            );
+            if (cancelled) return;
+            const next = (data.variations ?? []).map((v) => ({
+              ...v,
+              amount: Number(v.amount) || 0,
+              fixedPrice: Boolean(v.fixedPrice),
+            }));
+            if (!next.length) continue;
+            plansCacheRef.current.set(key, next);
+            void writeDataPlansCache(key, next);
+          } catch {
+            // Prefetch is best-effort.
+          }
+        }
+      })();
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isNigeria, networks, networkId, loadingPlans, variations.length]);
 
   async function onSubmit() {
     if (!canSubmit) return;
@@ -374,6 +453,11 @@ export default function DataScreen() {
           amountLabel="Amount charged"
           amount={receipt || amountLabel}
           onDismiss={() => setSuccess(false)}
+          secondaryAction={{
+            label: 'Back to Home',
+            onPress: () => router.replace('/(app)/(tabs)'),
+            icon: 'home',
+          }}
           tertiaryAction={{
             label: 'Buy again',
             onPress: () => setSuccess(false),
@@ -382,17 +466,11 @@ export default function DataScreen() {
         />
       ) : null}
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-          <Pressable onPress={() => setError(null)} hitSlop={8}>
-            <Ionicons name="close" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      ) : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Buy Data"
+      />
 
       <Animated.View entering={cardEntering(0)} style={styles.section}>
         <Text style={styles.sectionTitle}>Select Network</Text>
@@ -637,23 +715,5 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 10,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
-    errorBanner: {
-      marginBottom: 12,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: 'rgba(255,59,48,0.25)',
-      backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 12,
-      flexDirection: 'row',
-      gap: 10,
-      alignItems: 'flex-start',
-    },
-    errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: {
-      marginTop: 2,
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.foreground,
-    },
   });
 }

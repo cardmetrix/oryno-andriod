@@ -15,6 +15,7 @@ import Animated from 'react-native-reanimated';
 
 import { cardEntering } from '@/lib/motion';
 
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { Screen } from '@/components/ui/screen';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -195,7 +196,6 @@ export default function FundScreen() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not check for your deposit';
       setError(msg);
-      alert.error('Check failed', msg);
     } finally {
       setChecking(false);
     }
@@ -253,11 +253,11 @@ export default function FundScreen() {
         </Animated.View>
       ) : null}
 
-      {error ? (
-        <Animated.View entering={cardEntering(0)} style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </Animated.View>
-      ) : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Fund Wallet"
+      />
 
       {loading ? (
         <View style={styles.card}>
@@ -473,14 +473,6 @@ function makeStyles(colors: ThemeColors) {
     },
     balanceLabel: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
     balanceValue: { fontSize: 14, fontWeight: '800', color: colors.foreground },
-    errorBox: {
-      marginBottom: 10,
-      borderRadius: 14,
-      backgroundColor: 'rgba(255,59,48,0.08)',
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    errorText: { color: Brand.error, fontSize: 13, fontWeight: '600' },
     card: {
       borderRadius: Radius.card,
       borderWidth: StyleSheet.hairlineWidth,

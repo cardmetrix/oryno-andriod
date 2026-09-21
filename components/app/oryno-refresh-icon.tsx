@@ -3,11 +3,13 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
+  type SharedValue,
+  cancelAnimation,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
-  cancelAnimation,
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
@@ -15,8 +17,12 @@ import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 
 type Props = {
-  /** 0–1 pull progress; when refreshing, treat as spinning. */
+  /** 0–1 pull progress (legacy); prefer `pull` shared value to avoid re-renders. */
   progress?: number;
+  /** Live pull distance from OrynoPullToRefresh (UI-thread). */
+  pull?: SharedValue<number>;
+  /** Pull distance that equals full progress. */
+  threshold?: number;
   refreshing?: boolean;
   size?: number;
 };
@@ -27,21 +33,48 @@ type Props = {
  */
 export function OrynoRefreshIcon({
   progress = 0,
+  pull,
+  threshold = 72,
   refreshing = false,
   size = 40,
 }: Props) {
   const { colors } = useAppTheme();
   const gradId = 'orynoRefreshGrad';
-  const p = Math.max(0, Math.min(1, progress));
-  const active = refreshing || p > 0.02;
+  const staticP = Math.max(0, Math.min(1, progress));
   const iconSize = Math.round(size * 0.52);
   const stroke = Math.max(2.5, size * 0.07);
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const arcLen = refreshing ? c * 0.72 : c * (0.18 + p * 0.54);
+  // Fixed arc while pulling — avoids SVG remount / dasharray thrash each frame.
+  const arcLen = refreshing ? c * 0.72 : c * 0.45;
 
   const spin = useSharedValue(0);
   const pulse = useSharedValue(1);
+  const visible = useSharedValue(refreshing || staticP > 0.02 ? 1 : 0);
+
+  useAnimatedReaction(
+    () => {
+      if (refreshing) return 1;
+      if (pull) return pull.value > 4 ? 1 : 0;
+      return staticP > 0.02 ? 1 : 0;
+    },
+    (v) => {
+      visible.value = v;
+    },
+    [pull, refreshing, staticP],
+  );
+
+  useAnimatedReaction(
+    () => {
+      if (refreshing || !pull) return -1;
+      return Math.min(1, pull.value / threshold) * 270;
+    },
+    (deg) => {
+      if (deg < 0 || refreshing) return;
+      spin.value = deg;
+    },
+    [pull, refreshing, threshold],
+  );
 
   useEffect(() => {
     if (refreshing) {
@@ -63,9 +96,11 @@ export function OrynoRefreshIcon({
     }
     cancelAnimation(spin);
     cancelAnimation(pulse);
-    spin.value = p * 270;
+    if (!pull) {
+      spin.value = staticP * 270;
+    }
     pulse.value = withTiming(1, { duration: 160 });
-  }, [p, pulse, refreshing, spin]);
+  }, [pull, pulse, refreshing, spin, staticP]);
 
   const arcStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${spin.value - 90}deg` }],
@@ -75,18 +110,20 @@ export function OrynoRefreshIcon({
     transform: [{ scale: pulse.value }],
   }));
 
-  const glowOpacity = refreshing ? 1 : 0.35 + p * 0.65;
+  const rootStyle = useAnimatedStyle(() => ({
+    opacity: visible.value,
+  }));
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.root,
         {
           width: size,
           height: size,
-          opacity: active ? 1 : 0,
-          shadowOpacity: active ? 0.28 : 0,
+          shadowOpacity: refreshing ? 0.28 : 0.18,
         },
+        rootStyle,
       ]}
       pointerEvents="none">
       <View
@@ -94,7 +131,7 @@ export function OrynoRefreshIcon({
           styles.glow,
           {
             backgroundColor: Brand.orangeMuted,
-            opacity: glowOpacity,
+            opacity: refreshing ? 1 : 0.55,
           },
         ]}
       />
@@ -151,7 +188,7 @@ export function OrynoRefreshIcon({
           contentFit="cover"
         />
       </Animated.View>
-    </View>
+    </Animated.View>
   );
 }
 

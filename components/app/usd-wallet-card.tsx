@@ -11,8 +11,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-
 import { WalletCardShine } from '@/components/app/wallet-card-shine';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
@@ -67,14 +65,9 @@ export function UsdWalletCard({
       <View style={styles.top}>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.eyebrowText}>USD WALLET</Text>
-          <Animated.Text
-            key={hidden ? 'h' : balance}
-            entering={FadeIn.duration(180)}
-            exiting={FadeOut.duration(120)}
-            style={styles.balance}
-            numberOfLines={1}>
+          <Text style={styles.balance} numberOfLines={1}>
             {maskBalance(Boolean(hidden), balance)}
-          </Animated.Text>
+          </Text>
           <Text style={styles.holder}>USD wallet</Text>
         </View>
         <View style={styles.badge}>

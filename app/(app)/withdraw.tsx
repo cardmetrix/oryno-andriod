@@ -14,6 +14,7 @@ import Animated from 'react-native-reanimated';
 
 import { cardEntering } from '@/lib/motion';
 
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import {
   TransactionPinModal,
@@ -382,7 +383,11 @@ export default function WithdrawScreen() {
         )}
       </Animated.View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Withdraw"
+      />
 
       <TransactionPinModal
         visible={pinModalOpen}
@@ -546,12 +551,6 @@ function makeStyles(colors: ThemeColors) {
       borderColor: colors.border,
     },
     radioActive: { borderColor: Brand.orange, backgroundColor: Brand.orange },
-    errorText: {
-      marginTop: 14,
-      fontSize: 13,
-      fontWeight: '600',
-      color: Brand.error,
-    },
     primaryBtn: {
       height: 48,
       borderRadius: 16,

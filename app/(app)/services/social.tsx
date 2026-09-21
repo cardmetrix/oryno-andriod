@@ -12,6 +12,7 @@ import Animated from 'react-native-reanimated';
 
 import { cardEntering } from '@/lib/motion';
 
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
@@ -692,22 +693,11 @@ export default function SocialScreen() {
         </ServiceSuccess>
       ) : null}
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              setError(null);
-              void catalogQuery.refetch();
-            }}
-            hitSlop={8}>
-            <Ionicons name="close" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      ) : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Social Boost"
+      />
 
       {catalogData?.fallback && !error ? (
         <View style={styles.fallbackBanner}>
@@ -1145,19 +1135,6 @@ function makeStyles(colors: ThemeColors) {
     },
     submitDisabled: { opacity: 0.5 },
     submitText: { color: Brand.white, fontSize: 16, fontWeight: '800' },
-    errorBanner: {
-      marginBottom: 8,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: 'rgba(255,59,48,0.25)',
-      backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 10,
-      flexDirection: 'row',
-      gap: 10,
-      alignItems: 'flex-start',
-    },
-    errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: { marginTop: 2, fontSize: 12, fontWeight: '500', color: colors.charcoal },
     statusRow: {
       flexDirection: 'row',
       alignItems: 'center',

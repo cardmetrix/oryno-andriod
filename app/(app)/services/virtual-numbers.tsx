@@ -14,6 +14,7 @@ import Animated from 'react-native-reanimated';
 
 import { cardEntering } from '@/lib/motion';
 
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet } from '@/components/app/picker-sheet';
 import { ServiceSuccess } from '@/components/app/service-success';
@@ -383,17 +384,11 @@ export default function VirtualNumbersScreen() {
       }>
       {successModal}
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-          <Pressable onPress={() => setError(null)} hitSlop={8}>
-            <Ionicons name="close" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      ) : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Virtual Numbers"
+      />
 
       <Animated.View entering={cardEntering(0)} style={styles.card}>
         <View style={styles.cardHeader}>
@@ -691,24 +686,6 @@ function CopyRow({
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    errorBanner: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 10,
-      marginBottom: 8,
-      padding: 10,
-      borderRadius: Radius.lg,
-      borderWidth: 1,
-      borderColor: 'rgba(255,59,48,0.25)',
-      backgroundColor: 'rgba(255,59,48,0.08)',
-    },
-    errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: {
-      marginTop: 3,
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.charcoal,
-    },
     card: {
       marginBottom: 8,
       borderRadius: 22,

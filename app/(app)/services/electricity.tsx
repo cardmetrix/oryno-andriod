@@ -12,6 +12,7 @@ import Animated from 'react-native-reanimated';
 
 import { cardEntering } from '@/lib/motion';
 
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceSuccess } from '@/components/app/service-success';
@@ -477,17 +478,11 @@ export default function ElectricityScreen() {
         </ServiceSuccess>
       ) : null}
 
-      {error ? (
-        <View style={styles.errorBanner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.errorTitle}>Something went wrong</Text>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-          <Pressable onPress={() => setError(null)} hitSlop={8}>
-            <Ionicons name="close" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      ) : null}
+      <ErrorAlertModal
+        error={error}
+        onClose={() => setError(null)}
+        page="Electricity"
+      />
 
       <Animated.View entering={cardEntering(0)} style={styles.section}>
         <Text style={styles.sectionTitle}>Select Disco</Text>
@@ -776,24 +771,6 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 10,
     },
     retryText: { color: Brand.white, fontWeight: '700', fontSize: 13 },
-    errorBanner: {
-      marginBottom: 12,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: 'rgba(255,59,48,0.25)',
-      backgroundColor: 'rgba(255,59,48,0.08)',
-      padding: 12,
-      flexDirection: 'row',
-      gap: 10,
-      alignItems: 'flex-start',
-    },
-    errorTitle: { fontSize: 13, fontWeight: '800', color: Brand.error },
-    errorText: {
-      marginTop: 2,
-      fontSize: 12,
-      fontWeight: '500',
-      color: colors.foreground,
-    },
     tokenBox: {
       borderRadius: 14,
       borderWidth: 1,

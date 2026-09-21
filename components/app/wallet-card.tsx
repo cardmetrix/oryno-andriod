@@ -3,8 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-
 import { WalletCardSkeleton } from '@/components/ui/skeletons';
 import { Brand } from '@/constants/theme';
 import { maskBalance } from '@/lib/format';
@@ -47,14 +45,9 @@ export function WalletCard({
           <View style={styles.balanceRow}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.available}>Available balance</Text>
-              <Animated.Text
-                key={hidden ? 'hidden' : balanceFormatted}
-                entering={FadeIn.duration(180)}
-                exiting={FadeOut.duration(120)}
-                style={styles.balance}
-                numberOfLines={1}>
+              <Text style={styles.balance} numberOfLines={1}>
                 {maskBalance(hidden, balanceFormatted)}
-              </Animated.Text>
+              </Text>
             </View>
             <Pressable
               onPress={() => setHidden((v) => !v)}

@@ -1,4 +1,3 @@
-import { AdminAccessBanner } from '@/components/admin/admin-banner';
 import { AdCarousel } from '@/components/app/ad-carousel';
 import { ServiceActionCard } from '@/components/app/service-action-card';
 import { TransactionRow } from '@/components/app/transaction-row';
@@ -100,9 +99,11 @@ export default function HomeScreen() {
     }, [refreshNotificationsIfStale]),
   );
 
-  const { pulling, onRefresh } = usePullRefresh(async () => {
+  const onPullRefresh = useCallback(async () => {
     await Promise.all([refresh(), refreshNotifications(), refreshProfile()]);
-  });
+  }, [refresh, refreshNotifications, refreshProfile]);
+
+  const { pulling, onRefresh } = usePullRefresh(onPullRefresh);
 
   if (loading && !data) {
     return (
@@ -169,9 +170,6 @@ export default function HomeScreen() {
         label={`${currency} Wallet`}
         loading={loading && !data}
       />
-
-      {canAccessAdmin ? <AdminAccessBanner hasSession={hasSession} /> : null}
-
       <AdCarousel />
 
       {error ? (

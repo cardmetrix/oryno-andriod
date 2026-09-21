@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
+import { useRef } from 'react';
 import { useSegments } from 'expo-router';
-import { Platform, StyleSheet, View, type ViewProps } from 'react-native';
+import { StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -43,11 +44,19 @@ export function Screen({
     segments.includes('admin') && !segments.includes('login');
   /** Let native stack own motion on pushed screens. */
   const shouldAnimate = animate ?? (inTabs || inAdmin);
+  /** Enter once — remounting FadeIn on data refresh causes dashboard shake. */
+  const enteredRef = useRef(false);
+  const entering =
+    shouldAnimate && !enteredRef.current
+      ? FadeIn.duration(inAdmin ? 140 : 180)
+      : undefined;
+  if (shouldAnimate && !enteredRef.current) {
+    enteredRef.current = true;
+  }
+
   const content = (
     <Animated.View
-      entering={
-        shouldAnimate ? FadeIn.duration(inAdmin ? 140 : 180) : undefined
-      }
+      entering={entering}
       style={[padded && styles.padded, style]}
       {...props}>
       {children}
@@ -74,8 +83,11 @@ export function Screen({
     keyboardShouldPersistTaps: 'handled' as const,
     keyboardDismissMode: 'on-drag' as const,
     showsVerticalScrollIndicator: false,
-    /** Helps long service / admin lists during transitions on Android. */
-    removeClippedSubviews: Platform.OS === 'android',
+    /**
+     * Off for scroll screens — Android clipped-subview recycling
+     * flickers/shakes when wallet + list content updates mid-refresh.
+     */
+    removeClippedSubviews: false as const,
   };
 
   const body = scroll ? (

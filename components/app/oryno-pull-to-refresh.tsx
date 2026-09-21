@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   StyleSheet,
   View,
@@ -36,6 +36,9 @@ type Props = {
 /**
  * Branded pull-to-refresh — same behaviour as website `PullToRefresh`:
  * indicator sits in a slot above content (never overlays it).
+ *
+ * Pull distance + slot height stay on the UI thread so React does not
+ * re-layout the dashboard on every pan frame (avoids shake on refresh).
  */
 export function OrynoPullToRefresh({
   children,
@@ -46,30 +49,29 @@ export function OrynoPullToRefresh({
   keyboardShouldPersistTaps = 'handled',
   keyboardDismissMode,
   showsVerticalScrollIndicator = false,
-  removeClippedSubviews,
+  removeClippedSubviews = false,
 }: Props) {
   const [localRefreshing, setLocalRefreshing] = useState(false);
   const busyRef = useRef(false);
   const atTop = useSharedValue(true);
   const pull = useSharedValue(0);
-  const [pullUi, setPullUi] = useState(0);
+  const refreshingSV = useSharedValue(false);
 
   const refreshing = localRefreshing || refreshingProp;
 
-  const syncPullUi = useCallback((value: number) => {
-    setPullUi(value);
-  }, []);
+  useEffect(() => {
+    refreshingSV.value = refreshing;
+  }, [refreshing, refreshingSV]);
 
   const resetPull = useCallback(() => {
     pull.value = withTiming(0, { duration: 220 });
-    setPullUi(0);
   }, [pull]);
 
   const triggerRefresh = useCallback(() => {
     if (busyRef.current || !onRefresh) return;
     busyRef.current = true;
     pull.value = THRESHOLD;
-    setPullUi(THRESHOLD);
+    refreshingSV.value = true;
     setLocalRefreshing(true);
 
     void (async () => {
@@ -78,11 +80,12 @@ export function OrynoPullToRefresh({
         await new Promise((r) => setTimeout(r, 350));
       } finally {
         busyRef.current = false;
+        refreshingSV.value = false;
         setLocalRefreshing(false);
         resetPull();
       }
     })();
-  }, [onRefresh, pull, resetPull]);
+  }, [onRefresh, pull, refreshingSV, resetPull]);
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (e) => {
@@ -90,69 +93,74 @@ export function OrynoPullToRefresh({
     },
   });
 
-  const pan = Gesture.Pan()
-    .activeOffsetY(10)
-    .failOffsetX([-20, 20])
-    .enabled(Boolean(onRefresh) && !refreshing)
-    .onUpdate((e) => {
-      'worklet';
-      if (!atTop.value || e.translationY <= 0) {
-        if (pull.value !== 0) {
-          pull.value = 0;
-          runOnJS(syncPullUi)(0);
-        }
-        return;
-      }
-      const resisted = Math.min(MAX_PULL, e.translationY * 0.55);
-      pull.value = resisted;
-      runOnJS(syncPullUi)(resisted);
-    })
-    .onEnd(() => {
-      'worklet';
-      if (pull.value >= THRESHOLD) {
-        runOnJS(triggerRefresh)();
-        return;
-      }
-      pull.value = withTiming(0, { duration: 200 });
-      runOnJS(syncPullUi)(0);
-    });
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY(10)
+        .failOffsetX([-20, 20])
+        .enabled(Boolean(onRefresh) && !refreshing)
+        .onUpdate((e) => {
+          'worklet';
+          if (!atTop.value || e.translationY <= 0) {
+            if (pull.value !== 0) {
+              pull.value = 0;
+            }
+            return;
+          }
+          pull.value = Math.min(MAX_PULL, e.translationY * 0.55);
+        })
+        .onEnd(() => {
+          'worklet';
+          if (pull.value >= THRESHOLD) {
+            runOnJS(triggerRefresh)();
+            return;
+          }
+          pull.value = withTiming(0, { duration: 200 });
+        }),
+    [atTop, onRefresh, pull, refreshing, triggerRefresh],
+  );
 
-  const native = Gesture.Native();
-  const composed = Gesture.Simultaneous(pan, native);
+  const native = useMemo(() => Gesture.Native(), []);
+  const composed = useMemo(
+    () => Gesture.Simultaneous(pan, native),
+    [native, pan],
+  );
 
-  const progress = Math.min(1, (refreshing ? THRESHOLD : pullUi) / THRESHOLD);
-  const show = refreshing || pullUi > 4;
-  const slotHeight = refreshing
-    ? INDICATOR_SLOT
-    : show
-      ? Math.min(Math.max(pullUi * 0.85, 0), INDICATOR_SLOT + 16)
-      : 0;
+  const slotStyle = useAnimatedStyle(() => {
+    const active = refreshingSV.value;
+    const p = active ? THRESHOLD : pull.value;
+    const show = active || p > 4;
+    const height = active
+      ? INDICATOR_SLOT
+      : show
+        ? Math.min(Math.max(p * 0.85, 0), INDICATOR_SLOT + 16)
+        : 0;
+    return {
+      height,
+      opacity: show ? 1 : 0,
+    };
+  });
 
   const contentShift = useAnimatedStyle(() => ({
     transform: [
       {
-        translateY: refreshing ? 0 : Math.min(pull.value * 0.12, 10),
+        translateY: refreshingSV.value
+          ? 0
+          : Math.min(pull.value * 0.12, 10),
       },
     ],
   }));
 
   return (
     <View style={[styles.flex, style]}>
-      <View
-        style={[
-          styles.slot,
-          {
-            height: slotHeight,
-            opacity: show ? 1 : 0,
-          },
-        ]}
-        pointerEvents="none">
+      <Animated.View style={[styles.slot, slotStyle]} pointerEvents="none">
         <OrynoRefreshIcon
-          progress={progress}
+          pull={pull}
           refreshing={refreshing}
+          threshold={THRESHOLD}
           size={40}
         />
-      </View>
+      </Animated.View>
 
       <GestureDetector gesture={composed}>
         <Animated.ScrollView

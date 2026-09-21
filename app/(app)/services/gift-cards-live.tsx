@@ -14,6 +14,7 @@ import Animated from 'react-native-reanimated';
 import { cardEntering } from '@/lib/motion';
 
 import { GiftCardBrandLogo } from '@/components/app/gift-card-brand-logo';
+import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { Screen } from '@/components/ui/screen';
@@ -337,7 +338,6 @@ export default function GiftCardsLiveScreen() {
 
             {sellError ? (
               <View style={styles.errorBlock}>
-                <Text style={styles.errorText}>{sellError}</Text>
                 <Pressable onPress={() => void loadSell()}>
                   <Text style={styles.retry}>Retry</Text>
                 </Pressable>
@@ -468,7 +468,6 @@ export default function GiftCardsLiveScreen() {
 
             {buyError ? (
               <View style={styles.errorBlock}>
-                <Text style={styles.errorText}>{buyError}</Text>
                 <Pressable onPress={() => void loadBuy()}>
                   <Text style={styles.retry}>Retry</Text>
                 </Pressable>
@@ -539,6 +538,17 @@ export default function GiftCardsLiveScreen() {
         <Text style={styles.footerMuted}>Prefer the form directly? </Text>
         <Text style={styles.footerAction}>Open Gift Cards</Text>
       </Pressable>
+
+      <ErrorAlertModal
+        error={sellError}
+        onClose={() => setSellError(null)}
+        page="Gift Cards"
+      />
+      <ErrorAlertModal
+        error={buyError}
+        onClose={() => setBuyError(null)}
+        page="Gift Cards"
+      />
     </Screen>
   );
 }
@@ -685,7 +695,6 @@ function makeStyles(colors: ThemeColors) {
       borderBottomColor: colors.grayDivider,
       gap: 8,
     },
-    errorText: { fontSize: 13, fontWeight: '600', color: Brand.error },
     retry: { fontSize: 13, fontWeight: '700', color: Brand.orange },
     emptyText: {
       paddingHorizontal: 14,
