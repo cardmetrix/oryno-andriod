@@ -17,6 +17,7 @@ import { cardEntering } from '@/lib/motion';
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { PickerSheet } from '@/components/app/picker-sheet';
+import { ServiceInstructions } from '@/components/app/service-instructions';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
@@ -510,6 +511,7 @@ export default function VirtualNumbersScreen() {
             No countries in stock for this service. Try another service.
           </Text>
         ) : null}
+
       </Animated.View>
 
       <Animated.View
@@ -537,6 +539,8 @@ export default function VirtualNumbersScreen() {
           </View>
         </View>
       </Animated.View>
+
+      <ServiceInstructions service="virtual-numbers" />
 
       <PickerSheet
         visible={countryOpen}
