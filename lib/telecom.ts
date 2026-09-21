@@ -182,3 +182,34 @@ export function formatNaira(value: number | string) {
 export function estimateAirtimeCashback(amount: number) {
   return Math.max(5, Math.round(amount * 0.02));
 }
+
+/** Map UI / legacy network ids to the Pairgate provider slug used for fetch. */
+export function normalizeNgNetworkId(serviceID: string): string {
+  const key = serviceID.trim().toLowerCase();
+  if (
+    key === "9mobile" ||
+    key === "etisalat" ||
+    key === "etisalat-data" ||
+    key === "t2mobile" ||
+    key === "t2" ||
+    key === "t2-data"
+  ) {
+    return "9mobile";
+  }
+  return key.replace(/-data$/, "").replace(/-sme-data$/, "");
+}
+
+export function displayNgNetworkName(serviceID: string, fallback?: string): string {
+  const id = normalizeNgNetworkId(serviceID);
+  if (id === "9mobile") return "9mobile";
+  const fromList = networks.find((n) => n.id === id);
+  if (fromList) return fromList.name;
+  const cleaned = (fallback || serviceID)
+    .replace(/\bAirtime\b/gi, "")
+    .replace(/\bData\b/gi, "")
+    .replace(/\bVTU\b/gi, "")
+    .replace(/\bT2\b/gi, "9mobile")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || serviceID;
+}

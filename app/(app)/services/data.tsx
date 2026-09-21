@@ -50,6 +50,10 @@ import {
   intlDataVariationLabel,
   usesFlexibleIntlData,
 } from '@/lib/intl-data';
+import {
+  displayNgNetworkName,
+  normalizeNgNetworkId,
+} from '@/lib/telecom';
 
 type Variation = {
   variationCode: string;
@@ -114,7 +118,17 @@ export default function DataScreen() {
   );
 
   const networks: VtpassServiceOption[] = useMemo(() => {
-    if (isNigeria) return localNetworksQuery.data ?? [];
+    if (isNigeria) {
+      return (localNetworksQuery.data ?? []).map((s) => {
+        const serviceID = normalizeNgNetworkId(s.serviceID);
+        return {
+          ...s,
+          serviceID,
+          name: displayNgNetworkName(s.serviceID, s.name),
+          domain: s.domain || (serviceID === '9mobile' ? '9mobile.com.ng' : s.domain),
+        };
+      });
+    }
     return (operatorsQuery.data ?? []).map((op) => ({
       serviceID: String(op.operator_id),
       name: cleanNetworkName(op.name),
