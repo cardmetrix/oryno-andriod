@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Easing } from 'react-native';
 
 import { FloatingGlassTabBar } from '@/components/navigation/floating-glass-tab-bar';
 import { useAppTheme } from '@/context/theme-context';
@@ -15,11 +16,14 @@ export default function TabLayout() {
         animation: 'fade',
         transitionSpec: {
           animation: 'timing',
-          config: { duration: 160 },
+          config: {
+            duration: 240,
+            easing: Easing.out(Easing.cubic),
+          },
         },
         sceneStyle: { backgroundColor: colors.background },
         lazy: true,
-        freezeOnBlur: true,
+        freezeOnBlur: false,
         tabBarActiveTintColor: colors.tint,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarStyle: {

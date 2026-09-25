@@ -26,8 +26,8 @@ export function ServiceActionCard({
   children,
 }: Props) {
   const { colors } = useAppTheme();
-  const circle = size === 'md' ? 56 : 40;
-  const labelSize = size === 'md' ? 13 : 10;
+  const circle = size === 'md' ? 56 : 44;
+  const labelSize = size === 'md' ? 13 : 11;
 
   return (
     <Animated.View

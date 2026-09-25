@@ -356,6 +356,11 @@ export async function apiFetch<T>(path: string, init?: ApiFetchOptions): Promise
   }
 }
 
+/** Session token used by authenticated downloads (PDF, etc.). */
+export async function getApiAccessToken() {
+  return resolveToken(true);
+}
+
 export const api = {
   get: <T>(path: string, init?: ApiFetchOptions) => apiFetch<T>(path, init),
   post: <T>(path: string, body?: unknown, init?: ApiFetchOptions) =>

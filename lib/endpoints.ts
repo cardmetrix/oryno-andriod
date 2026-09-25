@@ -58,6 +58,7 @@ export const endpoints = {
     cards: '/api/wallet/cards',
     cardReveal: (id: string) => `/api/wallet/cards/${encodeURIComponent(id)}/reveal`,
     cardStatus: (id: string) => `/api/wallet/cards/${encodeURIComponent(id)}/status`,
+    cardPurchaseVerify: '/api/wallet/cards/purchase/verify',
     withdraw: '/api/wallet/withdraw',
     banks: '/api/wallet/banks',
     banksResolve: '/api/wallet/banks/resolve',
@@ -84,8 +85,12 @@ export const endpoints = {
   invoices: {
     list: '/api/invoices',
     detail: (id: string) => `/api/invoices/${encodeURIComponent(id)}`,
+    pdf: (id: string) => `/api/invoices/${encodeURIComponent(id)}/pdf`,
     paymentLink: (id: string) =>
       `/api/invoices/${encodeURIComponent(id)}/payment-link`,
+  },
+  paymentLinks: {
+    list: '/api/payment-links',
   },
   beneficiaries: '/api/beneficiaries',
   settings: {
@@ -100,6 +105,7 @@ export const endpoints = {
   },
   waitlist: {
     usdCard: '/api/waitlist/usd-card',
+    internationalGifting: '/api/waitlist/international-gifting',
   },
   /** Friendly service aliases (preferred) — backed by oryno-website /api/services/*. */
   services: {

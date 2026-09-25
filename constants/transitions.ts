@@ -5,20 +5,22 @@ import { Platform } from 'react-native';
  * Shared motion presets. Background comes from React Navigation theme
  * (`colors.background`) so light/dark mode applies — do not hardcode white.
  *
- * Prefer platform-native push on iOS (`default`) — it uses UINavigationController
- * and feels smoother than JS-timed `slide_from_right`. Android keeps an explicit
- * horizontal slide. `animationDuration` only applies to fade / simple_push /
- * slide_from_bottom on iOS (not slide_from_right).
+ * iOS uses the native edge-swipe push. A full-screen gesture falls back to
+ * `simple_push` on iOS 18 and below, which drops the parallax and feels stiff.
+ * Android uses the iOS-style slide so the previous screen moves with the new one.
  */
 export const stackScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,
   animation: Platform.select({
     ios: 'default',
-    android: 'slide_from_right',
-    default: 'slide_from_right',
+    android: 'ios_from_right',
+    default: 'ios_from_right',
   }),
   gestureEnabled: true,
-  fullScreenGestureEnabled: Platform.OS === 'ios',
+  fullScreenGestureEnabled: false,
+  animationMatchesGesture: true,
+  /** Forward replaces (invoice created → detail) should slide in, not pop. */
+  animationTypeForReplace: 'push',
   /** Freeze inactive screens so stack pushes stay smooth under load. */
   freezeOnBlur: true,
 };
@@ -44,15 +46,8 @@ export const adminStackScreenOptions: NativeStackNavigationOptions = {
 
 /** Snappy push for admin secondary screens (from More). */
 export const adminPushScreenOptions: NativeStackNavigationOptions = {
+  ...stackScreenOptions,
   headerShown: false,
-  animation: Platform.select({
-    ios: 'default',
-    android: 'slide_from_right',
-    default: 'slide_from_right',
-  }),
-  gestureEnabled: true,
-  fullScreenGestureEnabled: Platform.OS === 'ios',
-  freezeOnBlur: true,
 };
 
 /** Bottom sheet style for money / utility sheets. */

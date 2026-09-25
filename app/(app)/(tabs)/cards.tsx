@@ -2,31 +2,28 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  ImageBackground,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
 import { TransactionPinModal } from '@/components/app/transaction-pin-modal';
 import { Screen } from '@/components/ui/screen';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Brand, Radius, type ThemeColors } from '@/constants/theme';
+import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { useSettlePendingTransactions } from '@/hooks/use-settle-pending-transactions';
-import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { toast } from '@/lib/toast';
@@ -45,22 +42,22 @@ type VirtualCard = {
   createdAt: string;
 };
 
+type WaitlistStatus = {
+  joined: boolean;
+  joinedAt: string | null;
+  provider: string;
+};
+
 type CardsPayload = {
   issuer: string;
   issueFeeUsd: number;
   issueFeeFormatted: string;
   maxActiveCards: number;
+  comingSoon?: boolean;
   holderName: string;
-  usd: {
-    id: string;
-    balance: string;
-    balanceFormatted: string;
-    status: string;
-  };
+  waitlist?: WaitlistStatus;
   cards: VirtualCard[];
 };
-
-const VIRTUAL_CARD_BG = require('@/assets/images/usd-virtual-card-bg.png');
 
 type Revealed = {
   panFormatted: string;
@@ -69,11 +66,27 @@ type Revealed = {
   holderName?: string;
 };
 
+const VIRTUAL_CARD_BG = require('@/assets/images/usd-virtual-card-bg.png');
+
+const COMING_SOON_DETAILS = [
+  {
+    icon: 'globe-outline' as const,
+    title: 'Spend worldwide',
+    body: 'Pay for subscriptions, ads, and online stores that accept Visa.',
+  },
+  {
+    icon: 'shield-checkmark-outline' as const,
+    title: 'Secure by design',
+    body: 'Freeze anytime. Reveal PAN and CVV only with your transaction PIN.',
+  },
+];
+
 export default function CardsScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const params = useLocalSearchParams<{
     usd_fund?: string;
+    card_purchase?: string;
     tx_ref?: string;
     reference?: string;
     trxref?: string;
@@ -85,7 +98,7 @@ export default function CardsScreen() {
 
   const [data, setData] = useState<CardsPayload | null>(null);
   const [loading, setLoading] = useState(true);
-  const [issuing, setIssuing] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hidden, setHidden] = useState(true);
   const [revealed, setRevealed] = useState<Revealed | null>(null);
@@ -93,8 +106,6 @@ export default function CardsScreen() {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [busyStatus, setBusyStatus] = useState(false);
-  const [funding, setFunding] = useState(false);
-  const [fundAmount, setFundAmount] = useState('20');
   const verifyStarted = useRef<string | null>(null);
   const skipNextFocusRefresh = useRef(true);
 
@@ -135,33 +146,44 @@ export default function CardsScreen() {
   );
 
   useEffect(() => {
-    const usdFund = params.usd_fund;
-    const reference =
-      params.tx_ref || params.reference || params.trxref;
+    const reference = params.tx_ref || params.reference || params.trxref;
     const transactionId = params.transaction_id || params.transactionId;
-    if (!usdFund || (!reference && !transactionId)) return;
+    const cardPurchase = params.card_purchase;
+    const usdFund = params.usd_fund;
+    if ((!cardPurchase && !usdFund) || (!reference && !transactionId)) return;
 
-    const key = `${reference ?? ''}|${transactionId ?? ''}`;
+    const key = `${cardPurchase ?? ''}|${usdFund ?? ''}|${reference ?? ''}|${transactionId ?? ''}`;
     if (verifyStarted.current === key) return;
     verifyStarted.current = key;
 
     let cancelled = false;
     (async () => {
       try {
-        const json = await api.post<{
-          error?: string;
-          amountFormatted?: string;
-        }>(endpoints.wallet.usdVerify, { reference, transactionId });
-        if (cancelled) return;
-        toast.success('USD wallet funded', {
-          description: json.amountFormatted,
-        });
+        if (cardPurchase) {
+          await api.post(endpoints.wallet.cardPurchaseVerify, {
+            reference,
+            transactionId,
+          });
+          if (cancelled) return;
+          toast.success('Payment received', {
+            description: 'Your card purchase is awaiting admin review.',
+          });
+        } else {
+          const json = await api.post<{ amountFormatted?: string }>(
+            endpoints.wallet.usdVerify,
+            { reference, transactionId },
+          );
+          if (cancelled) return;
+          toast.success('USD wallet funded', {
+            description: json.amountFormatted,
+          });
+        }
         await softRefresh();
         router.replace('/(app)/(tabs)/cards');
       } catch (err) {
         if (cancelled) return;
         toast.error(
-          err instanceof Error ? err.message : 'USD payment verification failed',
+          err instanceof Error ? err.message : 'Could not verify payment',
         );
         router.replace('/(app)/(tabs)/cards');
       }
@@ -174,36 +196,55 @@ export default function CardsScreen() {
 
   const selected =
     data?.cards.find((c) => c.id === selectedId) ?? data?.cards[0] ?? null;
+  const waitlistJoined = Boolean(data?.waitlist?.joined);
 
-  async function onIssue() {
-    setIssuing(true);
+  const displayNumber =
+    !hidden && revealed
+      ? revealed.panFormatted
+      : (selected?.maskedNumber ?? '**** **** **** ****');
+  const displayExp =
+    !hidden && revealed ? revealed.expLabel : (selected?.expLabel ?? '**/**');
+  const displayCvv = !hidden && revealed ? revealed.cvv : '***';
+  const holder = revealed?.holderName || data?.holderName || 'ORYNO USER';
+
+  async function onJoinWaitlist() {
+    setJoining(true);
     try {
-      const json = await api.post<{
-        error?: string;
-        card?: VirtualCard;
-        feeFormatted?: string;
-      }>(endpoints.wallet.cards, {});
-      toast.success('USD card issued', {
-        description: json.feeFormatted ? `Fee ${json.feeFormatted}` : undefined,
-      });
-      setRevealed(null);
-      setHidden(true);
-      await softRefresh();
-      if (json.card) setSelectedId(json.card.id);
+      const json = await api.post<{ created?: boolean }>(endpoints.waitlist.usdCard);
+      toast.success(
+        json.created ? "You're on the waitlist" : "You're already on the waitlist",
+        {
+          description: "We'll notify you by email and push when cards launch.",
+        },
+      );
+      await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not issue card');
+      toast.error(err instanceof Error ? err.message : 'Could not join');
     } finally {
-      setIssuing(false);
+      setJoining(false);
+    }
+  }
+
+  async function onLeaveWaitlist() {
+    setJoining(true);
+    try {
+      await api.delete(endpoints.waitlist.usdCard);
+      toast.success('Removed from waitlist');
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not leave');
+    } finally {
+      setJoining(false);
     }
   }
 
   async function onRevealPin(pin: string) {
-    if (!selected) return;
+    if (!selectedId) return;
     setPinLoading(true);
     setPinError(null);
     try {
       const json = await api.post<Revealed & { error?: string }>(
-        endpoints.wallet.cardReveal(selected.id),
+        endpoints.wallet.cardReveal(selectedId),
         { pin },
       );
       setRevealed({
@@ -214,25 +255,25 @@ export default function CardsScreen() {
       });
       setHidden(false);
       setPinOpen(false);
-      toast.success('Card details unlocked');
+      toast.success('Card details revealed');
     } catch (err) {
-      setPinError(err instanceof Error ? err.message : 'Reveal failed');
+      setPinError(err instanceof Error ? err.message : 'Invalid PIN');
     } finally {
       setPinLoading(false);
     }
   }
 
   async function onStatus(status: 'active' | 'frozen' | 'terminated') {
-    if (!selected) return;
+    if (!selectedId) return;
     setBusyStatus(true);
     try {
-      await api.post(endpoints.wallet.cardStatus(selected.id), { status });
+      await api.post(endpoints.wallet.cardStatus(selectedId), { status });
       toast.success(
         status === 'frozen'
           ? 'Card frozen'
-          : status === 'terminated'
-            ? 'Card terminated'
-            : 'Card unfrozen',
+          : status === 'active'
+            ? 'Card unfrozen'
+            : 'Card terminated',
       );
       setRevealed(null);
       setHidden(true);
@@ -244,344 +285,259 @@ export default function CardsScreen() {
     }
   }
 
-  function confirmTerminate() {
-    alert.confirm('Terminate card', 'This card cannot be used again after termination.', {
-      confirmLabel: 'Terminate',
-      destructive: true,
-      onConfirm: () => void onStatus('terminated'),
-    });
-  }
-
-  async function onFundUsd() {
-    const amount = Number(fundAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error('Enter a valid USD amount');
-      return;
-    }
-    setFunding(true);
+  async function copyText(value: string, label: string) {
     try {
-      const callbackUrl = Linking.createURL('wallet', {
-        scheme: 'oryno',
-        queryParams: { usd_fund: '1' },
-      });
-      const json = await api.post<{
-        error?: string;
-        authorizationUrl?: string;
-      }>(endpoints.wallet.usdFund, {
-        amountUsd: amount,
-        method: 'checkout',
-        callbackUrl,
-      });
-      if (!json.authorizationUrl) {
-        throw new Error('Payment page unavailable');
-      }
-      await WebBrowser.openBrowserAsync(json.authorizationUrl);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Funding failed');
-    } finally {
-      setFunding(false);
+      await Clipboard.setStringAsync(value.replace(/\s/g, ''));
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error('Could not copy');
     }
   }
-
-  async function copyNumber() {
-    if (!revealed) return;
-    await Clipboard.setStringAsync(revealed.panFormatted.replace(/\s/g, ''));
-    toast.success('Card number copied');
-  }
-
-  const displayNumber =
-    !hidden && revealed
-      ? revealed.panFormatted
-      : selected?.maskedNumber ?? '•••• •••• •••• ••••';
-  const displayExp =
-    !hidden && revealed ? revealed.expLabel : selected?.expLabel ?? '••/••';
-  const displayCvv = !hidden && revealed ? revealed.cvv : '•••';
-  const holder =
-    revealed?.holderName || data?.holderName || 'ORYNO USER';
 
   const header = (
     <PageHeader
       title="Cards"
       subtitle="USD virtual cards for online payments"
       showBack={false}
-      right={
-        <Pressable
-          onPress={() => router.push('/(app)/(tabs)/history')}
-          hitSlop={8}
-          accessibilityLabel="Transaction history">
-          <Text style={styles.historyLink}>History</Text>
-        </Pressable>
-      }
     />
   );
 
-  if (loading && !data) {
-    return (
-      <Screen scroll header={header}>
-        <View style={{ gap: 12 }}>
-          <Skeleton width="100%" height={72} radius={18} />
-          <Skeleton width="100%" height={200} radius={22} />
-          <Skeleton width="100%" height={160} radius={22} />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!data) {
-    return (
-      <Screen scroll header={header}>
-        <View style={styles.errorCard}>
-          <Text style={styles.errorTitle}>Cards unavailable</Text>
-          <Pressable style={styles.retryBtn} onPress={() => void load()}>
-            <Text style={styles.retryText}>Retry</Text>
-          </Pressable>
-        </View>
-      </Screen>
-    );
-  }
-
   return (
     <Screen scroll refreshing={pulling} onRefresh={onRefresh} header={header}>
-      <Animated.View entering={FadeInDown.duration(200)} style={styles.balanceStrip}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.balanceEyebrow}>USD wallet · spendable</Text>
-          <Text style={styles.balanceValue}>{data.usd.balanceFormatted}</Text>
+      {loading || !data ? (
+        <View style={{ gap: 16 }}>
+          <Skeleton height={192} radius={22} />
+          <Skeleton height={128} radius={22} />
         </View>
-        <Pressable onPress={() => router.push('/(app)/convert')}>
-          <Text style={styles.convertLink}>Convert local → USD</Text>
-        </Pressable>
-      </Animated.View>
+      ) : (
+        <View style={{ gap: 16 }}>
+          {!selected ? (
+            <>
+              <CardSurface>
+                <View style={styles.soonTop}>
+                  <Text style={styles.soonBrand}>ORYNO</Text>
+                  <View style={styles.soonBadge}>
+                    <Text style={styles.soonBadgeText}>COMING SOON</Text>
+                  </View>
+                </View>
+                <Text style={styles.soonTitle}>USD Virtual Card</Text>
+                <Text style={styles.soonBody}>
+                  A secure virtual card designed for seamless online payments,
+                  including subscriptions and digital services such as Spotify,
+                  Netflix, Apple Music, and more.
+                </Text>
+              </CardSurface>
 
-      <Animated.View entering={FadeInDown.delay(40).duration(220)}>
-        <ImageBackground
-          source={VIRTUAL_CARD_BG}
-          resizeMode="cover"
-          imageStyle={styles.virtualCardImage}
-          style={styles.virtualCard}>
-        <LinearGradient
-          pointerEvents="none"
-          colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.18)', 'transparent']}
-          locations={[0, 0.42, 0.78]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={StyleSheet.absoluteFill}
-        />
-
-        <View style={styles.cardTop}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.cardIssuer}>
-              ORYNO · {data.issuer.toUpperCase()}
-            </Text>
-            <Text style={styles.cardLabel} numberOfLines={1}>
-              {selected?.label ?? 'USD Virtual Card'}
-            </Text>
-          </View>
-          <View style={styles.cardBadges}>
-            {selected ? (
-              <View
-                style={[
-                  styles.statusPill,
-                  selected.status === 'active' && styles.statusActive,
-                  selected.status === 'frozen' && styles.statusFrozen,
-                  selected.status === 'terminated' && styles.statusTerminated,
-                ]}>
-                <Text style={styles.statusPillText}>{selected.status}</Text>
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>What you will get</Text>
+                {COMING_SOON_DETAILS.map((item) => (
+                  <View key={item.title} style={styles.detailRow}>
+                    <View style={styles.iconBox}>
+                      <Ionicons name={item.icon} size={16} color={Brand.orange} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.detailTitle}>{item.title}</Text>
+                      <Text style={styles.detailBody}>{item.body}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
-            ) : null}
-            <View style={styles.visaPill}>
-              <Text style={styles.visaText}>VISA</Text>
+
+              <View style={styles.panel}>
+                {waitlistJoined ? (
+                  <View style={{ gap: 12 }}>
+                    <View style={styles.detailRow}>
+                      <View style={styles.joinedIcon}>
+                        <Ionicons name="checkmark" size={16} color="#059669" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailTitle}>You are on the waitlist</Text>
+                        <Text style={styles.detailBody}>
+                          {data.waitlist?.joinedAt
+                            ? `Joined ${new Date(data.waitlist.joinedAt).toLocaleDateString('en-NG', { dateStyle: 'medium' })}`
+                            : 'You will be notified at launch'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.detailBody}>
+                      We will email and push you when {data.issuer} cards go live.
+                    </Text>
+                    <Pressable
+                      disabled={joining}
+                      onPress={() => void onLeaveWaitlist()}
+                      style={[styles.leaveBtn, joining && styles.disabled]}>
+                      <Text style={styles.leaveText}>
+                        {joining ? 'Leaving...' : 'Leave waitlist'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={{ gap: 12 }}>
+                    <View>
+                      <Text style={styles.detailTitle}>Join the waitlist</Text>
+                      <Text style={[styles.detailBody, { marginTop: 2 }]}>
+                        Get notified the moment {data.issuer} USD virtual cards launch.
+                      </Text>
+                    </View>
+                    <Pressable
+                      disabled={joining}
+                      onPress={() => void onJoinWaitlist()}
+                      style={[styles.joinBtn, joining && styles.disabled]}>
+                      <Ionicons name="notifications-outline" size={16} color={Brand.white} />
+                      <Text style={styles.joinText}>
+                        {joining ? 'Joining...' : 'Join waitlist'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            </>
+          ) : (
+            <CardSurface>
+              <View style={styles.cardTop}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.cardIssuer}>
+                    ORYNO · {data.issuer.toUpperCase()}
+                  </Text>
+                  <Text style={styles.cardLabel} numberOfLines={1}>
+                    {selected.label ?? 'USD Virtual Card'}
+                  </Text>
+                </View>
+                <View style={styles.cardBadges}>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      selected.status === 'active' && styles.statusActive,
+                      selected.status === 'frozen' && styles.statusFrozen,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        selected.status === 'active' && { color: '#A7F3D0' },
+                        selected.status === 'frozen' && { color: '#BAE6FD' },
+                      ]}>
+                      {selected.status}
+                    </Text>
+                  </View>
+                  <View style={styles.visaPill}>
+                    <Text style={styles.visaText}>VISA</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.chip}>
+                <View style={styles.chipInner} />
+              </View>
+
+              <View style={styles.panRow}>
+                <Text style={styles.pan} numberOfLines={1}>
+                  {displayNumber}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    if (hidden) {
+                      setPinError(null);
+                      setPinOpen(true);
+                    } else {
+                      setHidden(true);
+                      setRevealed(null);
+                    }
+                  }}
+                  style={styles.eyeCircle}
+                  accessibilityLabel={hidden ? 'Reveal card' : 'Hide card'}>
+                  <Ionicons
+                    name={hidden ? 'eye-outline' : 'eye-off-outline'}
+                    size={16}
+                    color={Brand.white}
+                  />
+                </Pressable>
+              </View>
+
+              <View style={styles.metaRow}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.metaLabel}>Cardholder</Text>
+                  <Text style={styles.metaValue} numberOfLines={1}>
+                    {holder}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.metaLabel}>Exp</Text>
+                  <Text style={styles.metaMono}>{displayExp}</Text>
+                </View>
+                <View>
+                  <Text style={styles.metaLabel}>CVV</Text>
+                  <Text style={styles.metaMono}>{displayCvv}</Text>
+                </View>
+              </View>
+            </CardSurface>
+          )}
+
+          {data.cards.length > 1 ? (
+            <View style={styles.cardPicker}>
+              {data.cards.map((card) => (
+                <Pressable
+                  key={card.id}
+                  onPress={() => {
+                    setSelectedId(card.id);
+                    setRevealed(null);
+                    setHidden(true);
+                  }}
+                  style={[
+                    styles.cardPickerBtn,
+                    selected?.id === card.id && styles.cardPickerBtnActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.cardPickerText,
+                      selected?.id === card.id && styles.cardPickerTextActive,
+                    ]}>
+                    **** {card.last4}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-          </View>
+          ) : null}
+
+          {selected ? (
+            <View style={styles.panel}>
+              <View style={styles.actionGrid}>
+                <ActionTile
+                  icon="copy-outline"
+                  label="Copy number"
+                  disabled={hidden || !revealed}
+                  onPress={() =>
+                    revealed && void copyText(revealed.panFormatted, 'Card number')
+                  }
+                />
+                <ActionTile
+                  icon={selected.status === 'frozen' ? 'lock-open-outline' : 'snow-outline'}
+                  label={selected.status === 'frozen' ? 'Unfreeze' : 'Freeze'}
+                  disabled={busyStatus || selected.status === 'terminated'}
+                  onPress={() =>
+                    void onStatus(selected.status === 'frozen' ? 'active' : 'frozen')
+                  }
+                />
+                <ActionTile
+                  icon="lock-closed-outline"
+                  label="Reveal"
+                  disabled={selected.status === 'terminated'}
+                  onPress={() => {
+                    setPinError(null);
+                    setPinOpen(true);
+                  }}
+                />
+                <ActionTile
+                  icon="trash-outline"
+                  label="Terminate"
+                  danger
+                  disabled={busyStatus}
+                  onPress={() => void onStatus('terminated')}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
-
-        <View style={styles.chip} />
-
-        <View style={styles.panRow}>
-          <Text style={styles.pan} numberOfLines={1}>
-            {displayNumber}
-          </Text>
-          <Pressable
-            disabled={!selected}
-            onPress={() => {
-              if (hidden) {
-                setPinError(null);
-                setPinOpen(true);
-              } else {
-                setHidden(true);
-                setRevealed(null);
-              }
-            }}
-            style={[styles.eyeCircle, !selected && { opacity: 0.4 }]}>
-            <Ionicons
-              name={hidden ? 'eye-outline' : 'eye-off-outline'}
-              size={18}
-              color={Brand.white}
-            />
-          </Pressable>
-        </View>
-
-        <View style={styles.metaRow}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.metaLabel}>Cardholder</Text>
-            <Text style={styles.metaValue} numberOfLines={1}>
-              {holder}
-            </Text>
-          </View>
-          <View>
-            <Text style={styles.metaLabel}>Exp</Text>
-            <Text style={styles.metaMono}>{displayExp}</Text>
-          </View>
-          <View>
-            <Text style={styles.metaLabel}>CVV</Text>
-            <Text style={styles.metaMono}>{displayCvv}</Text>
-          </View>
-        </View>
-        </ImageBackground>
-      </Animated.View>
-
-      {data.cards.length > 1 ? (
-        <View style={styles.cardPicker}>
-          {data.cards.map((card) => (
-            <Pressable
-              key={card.id}
-              onPress={() => {
-                setSelectedId(card.id);
-                setRevealed(null);
-                setHidden(true);
-              }}
-              style={[
-                styles.cardPickerBtn,
-                selected?.id === card.id && styles.cardPickerBtnActive,
-              ]}>
-              <Text
-                style={[
-                  styles.cardPickerText,
-                  selected?.id === card.id && styles.cardPickerTextActive,
-                ]}>
-                •••• {card.last4}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      <Animated.View entering={FadeInDown.delay(80).duration(220)} style={styles.panel}>
-        {selected ? (
-          <View style={styles.actionGrid}>
-            <ActionTile
-              icon="copy-outline"
-              label="Copy number"
-              disabled={hidden || !revealed}
-              onPress={() => void copyNumber()}
-            />
-            <ActionTile
-              icon={selected.status === 'frozen' ? 'lock-open-outline' : 'snow-outline'}
-              label={selected.status === 'frozen' ? 'Unfreeze' : 'Freeze'}
-              disabled={busyStatus || selected.status === 'terminated'}
-              onPress={() =>
-                void onStatus(selected.status === 'frozen' ? 'active' : 'frozen')
-              }
-            />
-            <ActionTile
-              icon="lock-closed-outline"
-              label="Reveal"
-              disabled={selected.status === 'terminated'}
-              onPress={() => {
-                setPinError(null);
-                setPinOpen(true);
-              }}
-            />
-            <ActionTile
-              icon="trash-outline"
-              label="Terminate"
-              danger
-              disabled={busyStatus}
-              onPress={confirmTerminate}
-            />
-          </View>
-        ) : (
-          <Text style={styles.emptyHint}>
-            No USD virtual card yet. Issue one to pay online worldwide — spends from
-            your USD wallet balance.
-          </Text>
-        )}
-
-        <Pressable
-          disabled={issuing || data.cards.length >= data.maxActiveCards}
-          onPress={() => void onIssue()}
-          style={({ pressed }) => [
-            styles.issueBtn,
-            (issuing || data.cards.length >= data.maxActiveCards) && { opacity: 0.5 },
-            pressed && { opacity: 0.92 },
-          ]}>
-          {issuing ? (
-            <ActivityIndicator color={Brand.white} />
-          ) : (
-            <>
-              <Ionicons name="add" size={18} color={Brand.white} />
-              <Text style={styles.issueBtnText}>
-                {data.cards.length === 0
-                  ? `Issue USD card · ${data.issueFeeFormatted}`
-                  : `Issue another · ${data.issueFeeFormatted}`}
-              </Text>
-            </>
-          )}
-        </Pressable>
-        <Text style={styles.issueFoot}>
-          Fee is charged from your USD wallet. Max {data.maxActiveCards} active cards.
-        </Text>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(120).duration(220)} style={styles.panel}>
-        <View style={styles.fundHead}>
-          <Ionicons name="card-outline" size={18} color={Brand.orange} />
-          <Text style={styles.fundTitle}>Fund USD wallet</Text>
-        </View>
-        <View style={styles.amountPills}>
-          {['10', '20', '50', '100'].map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => setFundAmount(p)}
-              style={[
-                styles.amountPill,
-                fundAmount === p && styles.amountPillActive,
-              ]}>
-              <Text
-                style={[
-                  styles.amountPillText,
-                  fundAmount === p && styles.amountPillTextActive,
-                ]}>
-                ${p}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <TextInput
-          value={fundAmount}
-          onChangeText={(t) => setFundAmount(t.replace(/[^\d.]/g, ''))}
-          keyboardType="decimal-pad"
-          placeholder="Amount USD"
-          placeholderTextColor={colors.grayMedium}
-          style={styles.amountInput}
-        />
-        <Pressable
-          disabled={funding}
-          onPress={() => void onFundUsd()}
-          style={({ pressed }) => [
-            styles.fundBtn,
-            funding && { opacity: 0.6 },
-            pressed && { opacity: 0.92 },
-          ]}>
-          {funding ? (
-            <ActivityIndicator color={Brand.white} />
-          ) : (
-            <>
-              <Ionicons name="add" size={18} color={Brand.white} />
-              <Text style={styles.fundBtnText}>Pay with card / mobile money</Text>
-            </>
-          )}
-        </Pressable>
-      </Animated.View>
+      )}
 
       <TransactionPinModal
         visible={pinOpen}
@@ -595,6 +551,56 @@ export default function CardsScreen() {
         onConfirm={({ pin }) => void onRevealPin(pin)}
       />
     </Screen>
+  );
+}
+
+function CardSurface({ children }: { children: React.ReactNode }) {
+  const shine = useSharedValue(0);
+
+  useEffect(() => {
+    shine.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 5500, easing: Easing.inOut(Easing.ease) }),
+        withDelay(2000, withTiming(0, { duration: 0 })),
+      ),
+      -1,
+      false,
+    );
+  }, [shine]);
+
+  const shineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -160 + shine.value * 520 }, { skewX: '-18deg' }],
+  }));
+
+  return (
+    <ImageBackground
+      source={VIRTUAL_CARD_BG}
+      resizeMode="cover"
+      imageStyle={surfaceStyles.image}
+      style={surfaceStyles.card}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          'rgba(0,0,0,0.55)',
+          'rgba(0,0,0,0.28)',
+          'rgba(0,0,0,0.08)',
+          'rgba(0,0,0,0)',
+        ]}
+        locations={[0, 0.42, 0.72, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <Animated.View pointerEvents="none" style={[surfaceStyles.shine, shineStyle]}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+      <View style={surfaceStyles.content}>{children}</View>
+    </ImageBackground>
   );
 }
 
@@ -612,134 +618,178 @@ function ActionTile({
   danger?: boolean;
 }) {
   const { colors } = useAppTheme();
-  const styles = useMemo(() => makeActionStyles(colors, danger), [colors, danger]);
   return (
     <Pressable
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.tile,
+        stylesAction.tile,
+        {
+          borderColor: danger ? 'rgba(255,59,48,0.3)' : colors.border,
+          backgroundColor: colors.muted,
+        },
         disabled && { opacity: 0.4 },
-        pressed && !disabled && { opacity: 0.92 },
+        pressed && !disabled && { transform: [{ scale: 0.97 }] },
       ]}>
       <Ionicons
         name={icon}
-        size={18}
-        color={danger ? Brand.error : Brand.orange}
+        size={16}
+        color={danger ? Brand.error : colors.foreground}
       />
-      <Text style={styles.label}>{label}</Text>
+      <Text
+        style={[
+          stylesAction.label,
+          { color: danger ? Brand.error : colors.foreground },
+        ]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-function makeActionStyles(colors: ThemeColors, danger?: boolean) {
-  return StyleSheet.create({
-    tile: {
-      flex: 1,
-      minWidth: '46%',
-      alignItems: 'center',
-      gap: 6,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: danger ? 'rgba(239,68,68,0.25)' : colors.grayDivider,
-      backgroundColor: colors.muted,
-      paddingVertical: 12,
-      paddingHorizontal: 6,
-    },
-    label: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: danger ? Brand.error : colors.charcoal,
-      textAlign: 'center',
-    },
-  });
-}
+const surfaceStyles = StyleSheet.create({
+  card: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#0A0A0C',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  image: { borderRadius: 22 },
+  shine: { position: 'absolute', top: 0, bottom: 0, width: 120 },
+  content: { padding: 20, gap: 16 },
+});
+
+const stylesAction = StyleSheet.create({
+  tile: {
+    flex: 1,
+    minWidth: '46%',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  label: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+});
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    historyLink: { fontSize: 14, fontWeight: '700', color: Brand.orange },
-    errorCard: {
-      borderRadius: Radius.card,
-      backgroundColor: colors.card,
-      padding: 24,
-      alignItems: 'center',
-    },
-    errorTitle: { fontSize: 17, fontWeight: '800', color: colors.charcoal },
-    retryBtn: {
-      marginTop: 12,
-      backgroundColor: Brand.orange,
-      borderRadius: 14,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
-    retryText: { color: Brand.white, fontWeight: '700' },
-    balanceStrip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.muted,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      marginBottom: 12,
-    },
-    balanceEyebrow: {
-      fontSize: 10,
-      fontWeight: '700',
-      letterSpacing: 0.8,
-      color: colors.grayMedium,
-      textTransform: 'uppercase',
-    },
-    balanceValue: {
-      marginTop: 4,
-      fontSize: 20,
-      fontWeight: '800',
-      color: colors.charcoal,
-    },
-    convertLink: { fontSize: 12, fontWeight: '700', color: Brand.orange },
-    virtualCard: {
-      borderRadius: 22,
-      backgroundColor: '#0A0A0C',
-      padding: 18,
-      overflow: 'hidden',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.1)',
-      marginBottom: 12,
-    },
-    virtualCardImage: { borderRadius: 22 },
-    cardTop: {
+    soonTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
-      marginBottom: 16,
+      justifyContent: 'space-between',
+      gap: 8,
     },
-    cardIssuer: {
+    soonBrand: {
+      color: 'rgba(255,255,255,0.9)',
       fontSize: 10,
       fontWeight: '800',
       letterSpacing: 2,
-      color: 'rgba(255,255,255,0.7)',
+    },
+    soonBadge: {
+      borderRadius: 999,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.22)',
+      paddingHorizontal: 10,
+      paddingVertical: 2,
+    },
+    soonBadgeText: {
+      color: 'rgba(255,255,255,0.95)',
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.4,
+    },
+    soonTitle: {
+      color: Brand.white,
+      fontSize: 20,
+      fontWeight: '800',
+      letterSpacing: -0.4,
+    },
+    soonBody: {
+      color: 'rgba(255,255,255,0.68)',
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    panel: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.background,
+      padding: 16,
+      gap: 12,
+    },
+    panelTitle: { fontSize: 14, fontWeight: '700', color: colors.foreground },
+    detailRow: { flexDirection: 'row', gap: 12 },
+    iconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    joinedIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: 'rgba(16,185,129,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    detailTitle: { fontSize: 14, fontWeight: '700', color: colors.foreground },
+    detailBody: {
+      marginTop: 2,
+      fontSize: 12,
+      lineHeight: 18,
+      color: colors.mutedForeground,
+    },
+    joinBtn: {
+      height: 44,
+      borderRadius: 999,
+      backgroundColor: Brand.orange,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    joinText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
+    leaveBtn: {
+      height: 44,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    leaveText: { fontSize: 14, fontWeight: '700', color: colors.mutedForeground },
+    disabled: { opacity: 0.5 },
+    cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    cardIssuer: {
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 2,
+      color: 'rgba(255,255,255,0.5)',
     },
     cardLabel: {
       marginTop: 4,
       fontSize: 14,
       fontWeight: '700',
-      color: 'rgba(255,255,255,0.92)',
+      color: 'rgba(255,255,255,0.95)',
     },
-    cardBadges: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    cardBadges: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     statusPill: {
       borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       backgroundColor: 'rgba(255,255,255,0.1)',
     },
-    statusActive: { backgroundColor: 'rgba(16,185,129,0.25)' },
-    statusFrozen: { backgroundColor: 'rgba(56,189,248,0.25)' },
-    statusTerminated: { backgroundColor: 'rgba(255,255,255,0.08)' },
+    statusActive: { backgroundColor: 'rgba(16,185,129,0.2)' },
+    statusFrozen: { backgroundColor: 'rgba(14,165,233,0.2)' },
     statusPillText: {
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: '800',
       color: Brand.white,
       textTransform: 'uppercase',
@@ -748,181 +798,83 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 6,
       paddingHorizontal: 8,
       paddingVertical: 4,
-      backgroundColor: 'rgba(255,255,255,0.1)',
+      backgroundColor: 'rgba(255,255,255,0.14)',
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.15)',
+      borderColor: 'rgba(255,255,255,0.22)',
     },
     visaText: {
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: '800',
-      color: 'rgba(255,255,255,0.9)',
-      letterSpacing: 0.5,
+      color: 'rgba(255,255,255,0.95)',
+      letterSpacing: 0.4,
     },
     chip: {
       width: 44,
       height: 32,
       borderRadius: 6,
-      backgroundColor: 'rgba(251,191,36,0.85)',
-      marginBottom: 16,
-    },
-    panRow: {
-      flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      marginBottom: 16,
+      justifyContent: 'center',
+      backgroundColor: 'rgba(252,211,77,0.9)',
     },
+    chipInner: {
+      width: 28,
+      height: 20,
+      borderRadius: 3,
+      backgroundColor: 'rgba(254,243,199,0.4)',
+      borderWidth: 1,
+      borderColor: 'rgba(120,53,15,0.2)',
+    },
+    panRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
     pan: {
       flex: 1,
       fontSize: 20,
       fontWeight: '700',
       color: Brand.white,
       letterSpacing: 2,
-      fontVariant: ['tabular-nums'],
     },
     eyeCircle: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
+      padding: 8,
+      borderRadius: 999,
       backgroundColor: 'rgba(255,255,255,0.1)',
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.2)',
+      borderColor: 'rgba(255,255,255,0.15)',
     },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 12,
-    },
+    metaRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12 },
     metaLabel: {
-      fontSize: 9,
-      fontWeight: '600',
+      fontSize: 10,
       letterSpacing: 0.6,
       color: 'rgba(255,255,255,0.5)',
       textTransform: 'uppercase',
     },
     metaValue: {
       marginTop: 2,
-      fontSize: 12,
+      fontSize: 14,
       fontWeight: '700',
       color: Brand.white,
+      letterSpacing: 0.4,
       textTransform: 'uppercase',
     },
     metaMono: {
       marginTop: 2,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
       color: Brand.white,
-      fontVariant: ['tabular-nums'],
     },
-    cardPicker: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 12,
-    },
+    cardPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     cardPickerBtn: {
       borderRadius: 999,
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 6,
       borderWidth: 1,
-      borderColor: colors.grayDivider,
+      borderColor: colors.border,
       backgroundColor: colors.muted,
     },
     cardPickerBtnActive: {
       backgroundColor: Brand.orange,
       borderColor: Brand.orange,
     },
-    cardPickerText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.grayMedium,
-    },
+    cardPickerText: { fontSize: 12, fontWeight: '700', color: colors.mutedForeground },
     cardPickerTextActive: { color: Brand.white },
-    panel: {
-      borderRadius: Radius.card,
-      backgroundColor: colors.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.grayDivider,
-      padding: 14,
-      marginBottom: 12,
-    },
-    actionGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 12,
-    },
-    emptyHint: {
-      fontSize: 13,
-      lineHeight: 19,
-      color: colors.grayMedium,
-      marginBottom: 12,
-    },
-    issueBtn: {
-      height: 48,
-      borderRadius: 14,
-      backgroundColor: Brand.orange,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-    },
-    issueBtnText: { color: Brand.white, fontSize: 15, fontWeight: '800' },
-    issueFoot: {
-      marginTop: 8,
-      fontSize: 11,
-      color: colors.grayMedium,
-      textAlign: 'center',
-    },
-    fundHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 10,
-    },
-    fundTitle: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
-    amountPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    amountPill: {
-      borderRadius: 999,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.muted,
-    },
-    amountPillActive: {
-      backgroundColor: Brand.orange,
-      borderColor: Brand.orange,
-    },
-    amountPillText: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.grayMedium,
-    },
-    amountPillTextActive: { color: Brand.white },
-    amountInput: {
-      marginTop: 10,
-      height: 44,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.grayDivider,
-      backgroundColor: colors.background,
-      paddingHorizontal: 12,
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.charcoal,
-    },
-    fundBtn: {
-      marginTop: 10,
-      height: 44,
-      borderRadius: 14,
-      backgroundColor: Brand.orange,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-    },
-    fundBtnText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
+    actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   });
 }

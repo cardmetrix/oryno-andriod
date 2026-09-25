@@ -41,8 +41,11 @@ export default function AppLayout() {
       <Stack.Screen name="invoices/index" />
       <Stack.Screen name="invoices/new" />
       <Stack.Screen name="invoices/[id]" />
+      <Stack.Screen name="payment-links/index" />
+      <Stack.Screen name="payment-links/new" />
       <Stack.Screen name="history/[id]" />
       <Stack.Screen name="history/analytics" />
+      <Stack.Screen name="services/index" />
       <Stack.Screen name="services/airtime" />
       <Stack.Screen name="services/data" />
       <Stack.Screen name="services/bills" />
@@ -54,6 +57,7 @@ export default function AppLayout() {
       <Stack.Screen name="services/gift-cards-live" />
       <Stack.Screen name="services/virtual-numbers" />
       <Stack.Screen name="services/emails" />
+      <Stack.Screen name="services/international-gifting" />
       <Stack.Screen name="admin" options={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
     </Stack>
   );

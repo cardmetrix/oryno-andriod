@@ -12,6 +12,7 @@ import {
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { AdCarousel } from '@/components/app/ad-carousel';
+import { PageHeader } from '@/components/app/page-header';
 import { ServiceActionCard } from '@/components/app/service-action-card';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
@@ -29,7 +30,7 @@ function chunkRows<T>(items: T[], size: number) {
   return rows;
 }
 
-export default function ServicesScreen() {
+export function AllServicesScreen({ showBack = false }: { showBack?: boolean }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { countryCode } = useProfile();
@@ -51,10 +52,17 @@ export default function ServicesScreen() {
     <Screen
       scroll
       header={
-        <View>
-          <Text style={styles.title}>All Services</Text>
-          <Text style={styles.sub}>One app. Endless possibilities.</Text>
-        </View>
+        showBack ? (
+          <PageHeader
+            title="All Services"
+            subtitle="Your Digital World, Simplified."
+          />
+        ) : (
+          <View>
+            <Text style={styles.title}>All Services</Text>
+            <Text style={styles.sub}>Your Digital World, Simplified.</Text>
+          </View>
+        )
       }>
       <Animated.View entering={FadeInDown.duration(320)} style={styles.heroShell}>
         <LinearGradient
@@ -172,6 +180,10 @@ export default function ServicesScreen() {
   );
 }
 
+export default function ServicesTabScreen() {
+  return <AllServicesScreen />;
+}
+
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     title: {
@@ -266,8 +278,8 @@ function makeStyles(colors: ThemeColors) {
     chipText: { fontSize: 11, fontWeight: '600', color: colors.grayMedium },
     chipTextActive: { color: Brand.white },
     gridWrap: { marginTop: 12 },
-    grid: { gap: 4 },
-    gridRow: { flexDirection: 'row', gap: 4 },
+    grid: { gap: 12 },
+    gridRow: { flexDirection: 'row', gap: 12 },
     cardSpacer: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
     empty: {
       alignItems: 'center',
@@ -275,33 +287,36 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.grayDivider,
       backgroundColor: colors.card,
-      paddingHorizontal: 12,
-      paddingVertical: 20,
+      paddingHorizontal: 24,
+      paddingVertical: 48,
     },
     emptyIcon: {
-      width: 48,
-      height: 48,
+      width: 56,
+      height: 56,
       borderRadius: 16,
       backgroundColor: Brand.orangeMuted,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
+      marginBottom: 16,
     },
-    emptyTitle: { fontSize: 15, fontWeight: '800', color: colors.charcoal },
+    emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.charcoal },
     emptySub: {
-      marginTop: 4,
-      fontSize: 12,
-      lineHeight: 17,
+      marginTop: 6,
+      fontSize: 14,
+      lineHeight: 20,
       color: colors.grayMedium,
       textAlign: 'center',
+      maxWidth: 320,
     },
     clearBtn: {
-      marginTop: 10,
-      borderRadius: 12,
+      marginTop: 20,
+      height: 44,
+      borderRadius: 14,
       backgroundColor: colors.grayLight,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    clearText: { color: colors.charcoal, fontWeight: '700', fontSize: 12 },
+    clearText: { color: colors.charcoal, fontWeight: '700', fontSize: 14 },
   });
 }

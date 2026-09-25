@@ -5,9 +5,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { PageHeader } from '@/components/app/page-header';
-import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
-import { FormSkeleton } from '@/components/ui/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { api } from '@/lib/api';
@@ -29,7 +28,6 @@ export default function InvoicesListScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       const json = await api.get<{ invoices?: InvoiceRow[] }>(
@@ -37,7 +35,7 @@ export default function InvoicesListScreen() {
       );
       setRows(json.invoices ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load invoices');
+      setError(e instanceof Error ? e.message : 'Failed');
       setRows([]);
     } finally {
       setLoading(false);
@@ -51,39 +49,55 @@ export default function InvoicesListScreen() {
   return (
     <Screen
       scroll
-      refreshing={loading}
-      onRefresh={load}
-      footer={
-        !loading ? (
-          <Button
-            title="New invoice"
-            onPress={() => router.push('/(app)/invoices/new' as never)}
-          />
-        ) : null
-      }
+      refreshing={loading && rows.length > 0}
+      onRefresh={() => {
+        setLoading(true);
+        void load();
+      }}
       header={
         <PageHeader
-          title="Invoices"
-          subtitle="Create free professional invoices"
+          title="Invoice Generator"
+          subtitle="Create free professional invoices and download PDFs"
           showBack
+          right={
+            <Pressable
+              onPress={() => router.push('/(app)/invoices/new' as never)}
+              style={styles.newBtn}>
+              <Ionicons name="add" size={16} color={Brand.white} />
+              <Text style={styles.newBtnText}>New</Text>
+            </Pressable>
+          }
         />
       }>
       {loading && rows.length === 0 ? (
-        <FormSkeleton />
-      ) : error ? (
-        <View style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable onPress={() => void load()}>
-            <Text style={styles.retry}>Retry</Text>
-          </Pressable>
+        <View style={styles.list}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={i} style={styles.row}>
+              <View style={{ flex: 1, gap: 8 }}>
+                <Skeleton width={128} height={16} radius={999} />
+                <Skeleton width={160} height={12} radius={999} />
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 8 }}>
+                <Skeleton width={80} height={16} radius={999} />
+                <Skeleton width={56} height={12} radius={999} />
+              </View>
+            </View>
+          ))}
         </View>
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text>
       ) : rows.length === 0 ? (
         <Animated.View entering={FadeInDown.duration(280)} style={styles.empty}>
-          <Ionicons name="document-text-outline" size={40} color={colors.mutedForeground} />
+          <Ionicons name="document-text-outline" size={32} color={colors.mutedForeground} />
           <Text style={styles.emptyTitle}>No invoices yet</Text>
           <Text style={styles.emptySub}>
-            Create a free invoice and share a payment link with your customer.
+            Create a free invoice and share a payment link.
           </Text>
+          <Pressable
+            style={styles.createBtn}
+            onPress={() => router.push('/(app)/invoices/new' as never)}>
+            <Text style={styles.createText}>Create invoice</Text>
+          </Pressable>
         </Animated.View>
       ) : (
         <View style={styles.list}>
@@ -109,7 +123,6 @@ export default function InvoicesListScreen() {
                   <Text style={styles.rowAmount}>{row.totalFormatted}</Text>
                   <Text style={styles.rowStatus}>{row.status}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.mutedForeground} />
               </Pressable>
             </Animated.View>
           ))}
@@ -130,52 +143,61 @@ function makeStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.card,
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
       paddingVertical: 12,
     },
-    rowPressed: { backgroundColor: colors.muted },
-    rowNumber: { fontSize: 14, fontWeight: '800', color: colors.foreground },
+    rowPressed: { opacity: 0.9 },
+    rowNumber: { fontSize: 15, fontWeight: '700', color: colors.foreground },
     rowCustomer: {
       marginTop: 2,
-      fontSize: 12,
+      fontSize: 14,
       fontWeight: '500',
       color: colors.mutedForeground,
     },
     rowTrailing: { alignItems: 'flex-end' },
-    rowAmount: { fontSize: 13, fontWeight: '800', color: colors.foreground },
+    rowAmount: { fontSize: 15, fontWeight: '700', color: colors.foreground },
     rowStatus: {
       marginTop: 2,
-      fontSize: 11,
-      fontWeight: '600',
+      fontSize: 12,
+      fontWeight: '500',
       color: colors.mutedForeground,
       textTransform: 'capitalize',
     },
     empty: {
       alignItems: 'center',
-      borderRadius: Radius.card,
+      borderRadius: Radius.lg,
       borderWidth: 1,
       borderStyle: 'dashed',
       borderColor: colors.border,
-      padding: 28,
-      gap: 8,
+      padding: 32,
     },
-    emptyTitle: { fontSize: 16, fontWeight: '800', color: colors.foreground },
+    emptyTitle: { marginTop: 12, fontSize: 16, fontWeight: '700', color: colors.foreground },
     emptySub: {
-      fontSize: 13,
+      marginTop: 4,
+      fontSize: 14,
       fontWeight: '500',
       color: colors.mutedForeground,
       textAlign: 'center',
-      lineHeight: 18,
+      lineHeight: 20,
     },
-    errorCard: {
-      borderRadius: Radius.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 16,
+    createBtn: {
+      marginTop: 16,
+      borderRadius: 12,
+      backgroundColor: Brand.orange,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    createText: { color: Brand.white, fontWeight: '700', fontSize: 14 },
+    newBtn: {
+      flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 4,
+      borderRadius: 12,
+      backgroundColor: Brand.orange,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
     },
-    errorText: { fontSize: 13, fontWeight: '600', color: Brand.error, textAlign: 'center' },
-    retry: { fontSize: 14, fontWeight: '800', color: Brand.orange },
+    newBtnText: { color: Brand.white, fontWeight: '700', fontSize: 14 },
+    errorText: { fontSize: 14, fontWeight: '600', color: Brand.error },
   });
 }

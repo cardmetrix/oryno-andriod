@@ -1,7 +1,7 @@
 import { AdCarousel } from '@/components/app/ad-carousel';
+import { DashboardWalletCarousel } from '@/components/app/dashboard-wallet-carousel';
 import { ServiceActionCard } from '@/components/app/service-action-card';
 import { TransactionRow } from '@/components/app/transaction-row';
-import { DashboardWalletCarousel } from '@/components/app/dashboard-wallet-carousel';
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
 import { Screen } from '@/components/ui/screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
@@ -33,15 +33,15 @@ type QuickAction = {
 
 const quickActions: QuickAction[] = [
   {
-    label: 'Gift Cards',
+    label: 'Buy Gift Cards',
     href: '/(app)/services/gift-cards',
-                renderIcon: () => <GiftCardIcon size={18} color={Brand.white} strokeWidth={1.75} />,
+    renderIcon: () => <GiftCardIcon size={18} color={Brand.white} strokeWidth={1.75} />,
   },
   { label: 'Boosting', icon: 'trending-up-outline', href: '/(app)/services/social' },
   { label: 'Numbers', icon: 'call-outline', href: '/(app)/services/virtual-numbers' },
   { label: 'Airtime', icon: 'phone-portrait-outline', href: '/(app)/services/airtime' },
   { label: 'Data', icon: 'wifi-outline', href: '/(app)/services/data' },
-  { label: 'More', icon: 'ellipsis-horizontal', href: '/(app)/(tabs)/services' },
+  { label: 'More', icon: 'ellipsis-horizontal', href: '/(app)/services' },
 ];
 
 function chunkActions<T>(items: T[], size: number) {
@@ -123,16 +123,20 @@ export default function HomeScreen() {
             style={styles.headerIdentity}
             onPress={() => router.push('/(app)/(tabs)/profile')}
             accessibilityLabel="Open profile">
-            <View style={styles.logoWell}>
-              <Image
-                source={
-                  avatarUrl
-                    ? { uri: avatarUrl }
-                    : require('@/assets/images/oryno-logo.png')
-                }
-                style={[styles.logo, !avatarUrl && styles.logoFallback]}
-                contentFit="cover"
-              />
+            <View
+              style={[
+                styles.logoWell,
+                { backgroundColor: colors.orangeMuted, borderColor: 'rgba(255,106,0,0.18)' },
+              ]}>
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.logo}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
@@ -164,8 +168,10 @@ export default function HomeScreen() {
           </View>
         </View>
       }>
-      <DashboardWalletCarousel loading={loading && !data} />
-      <AdCarousel />
+      <View style={styles.walletBlock}>
+        <DashboardWalletCarousel loading={loading && !data} />
+        <AdCarousel />
+      </View>
 
       {error ? (
         <Pressable onPress={refresh} style={styles.errorBox}>
@@ -175,17 +181,17 @@ export default function HomeScreen() {
 
       <View
         style={[
-          styles.panel,
+          styles.qaPanel,
           {
             backgroundColor: colors.background,
             borderColor: colors.border,
           },
         ]}>
         <View style={styles.panelHead}>
-          <Text style={[styles.panelTitle, { color: colors.foreground }]}>Quick Actions</Text>
+          <Text style={[styles.qaTitle, { color: colors.foreground }]}>Quick Actions</Text>
           <Pressable
             style={styles.linkRow}
-            onPress={() => router.push('/(app)/(tabs)/services')}>
+            onPress={() => router.push('/(app)/services')}>
             <Text style={styles.link}>View all</Text>
             <Ionicons name="arrow-forward" size={14} color={Brand.orange} />
           </Pressable>
@@ -218,7 +224,6 @@ export default function HomeScreen() {
 
       <View
         style={[
-          styles.panel,
           styles.txPanel,
           {
             backgroundColor: colors.background,
@@ -226,7 +231,7 @@ export default function HomeScreen() {
           },
         ]}>
         <View style={styles.panelHead}>
-          <Text style={[styles.panelTitle, { color: colors.foreground }]}>
+          <Text style={[styles.txTitle, { color: colors.foreground }]}>
             Recent Transactions
           </Text>
           <Pressable
@@ -255,7 +260,7 @@ export default function HomeScreen() {
               </Pressable>
               <Pressable
                 style={styles.emptySecondary}
-                onPress={() => router.push('/(app)/(tabs)/services')}>
+                onPress={() => router.push('/(app)/services')}>
                 <Text style={styles.emptySecondaryText}>Explore services</Text>
               </Pressable>
             </View>
@@ -313,9 +318,9 @@ const styles = StyleSheet.create({
     color: Brand.orange,
   },
   pageTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   hello: {
     fontSize: 12,
@@ -360,56 +365,55 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,59,48,0.08)',
   },
   errorText: { color: Brand.error, fontSize: 13 },
-  panel: {
-    marginTop: 12,
+  walletBlock: { gap: 0 },
+  qaPanel: {
+    marginTop: 8,
     borderRadius: 20,
-    padding: 12,
+    padding: 14,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    shadowColor: '#0F0F12',
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   qaGrid: {
-    gap: 4,
+    gap: 8,
     width: '100%',
   },
   qaGridRow: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 8,
     width: '100%',
   },
   txPanel: {
+    marginTop: 8,
     marginBottom: 28,
+    borderRadius: 28,
+    padding: 20,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   logoWell: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
     borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: Brand.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.25)',
   },
   logo: {
     width: '100%',
     height: '100%',
     borderRadius: 999,
   },
-  logoFallback: {
-    transform: [{ scale: 1.22 }],
-  },
   panelHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  panelTitle: { fontSize: 15, fontWeight: '600' },
+  qaTitle: { fontSize: 14, fontWeight: '600' },
+  txTitle: { fontSize: 16, fontWeight: '600' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  link: { color: Brand.orange, fontWeight: '600', fontSize: 12 },
+  link: { color: Brand.orange, fontWeight: '600', fontSize: 11 },
   linkSeeAll: { fontSize: 14 },
   actionSpacer: {
     flexGrow: 1,

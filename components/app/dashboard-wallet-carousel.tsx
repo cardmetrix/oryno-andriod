@@ -13,28 +13,17 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
+import { WalletCardShine } from '@/components/app/wallet-card-shine';
 import { WalletCardSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useWallet } from '@/hooks/use-wallet';
 import { maskBalance } from '@/lib/format';
 
-const LOCAL_HINT: Record<string, string> = {
-  NG: 'Use your NGN balance for airtime, data, bills, betting and other Nigerian services.',
-  GH: 'Use your GHS balance for airtime, data, bills, betting and other Ghanaian services.',
-  KE: 'Use your KES balance for airtime, data, bills, betting and other Kenyan services.',
-  ZA: 'Use your ZAR balance for airtime, data, bills and other South African services.',
-};
-
-const GAP = 12;
+/** Matches website dashboard carousel `gap-1.5`. */
+const SLIDE_GAP = 6;
 const MD_BREAKPOINT = 768;
 const USD_WALLET_BG = require('@/assets/images/usd-wallet-card-bg.png');
 
@@ -42,44 +31,31 @@ type Props = {
   loading?: boolean;
 };
 
-function ActionButton({
+function PillButton({
   label,
   icon,
-  variant,
+  tone,
   onPress,
 }: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-  variant: 'solid' | 'ghost';
+  tone: 'glass' | 'dark' | 'usd' | 'usdAlt';
   onPress: () => void;
 }) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
-    <Animated.View style={[{ flex: 1 }, animStyle]}>
-      <Pressable
-        onPressIn={() => {
-          scale.value = withSpring(0.97, { damping: 18, stiffness: 320 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, { damping: 14, stiffness: 260 });
-        }}
-        onPress={onPress}
-        style={[
-          styles.actionBtn,
-          variant === 'solid' ? styles.actionSolid : styles.actionGhost,
-        ]}>
-        <Ionicons
-          name={icon}
-          size={15}
-          color={Brand.white}
-        />
-        <Text style={styles.actionText}>{label}</Text>
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.pillBtn,
+        tone === 'glass' && styles.pillGlass,
+        tone === 'dark' && styles.pillDarkBtn,
+        tone === 'usd' && styles.pillUsd,
+        tone === 'usdAlt' && styles.pillUsdAlt,
+        pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
+      ]}>
+      <Ionicons name={icon} size={12} color={Brand.white} />
+      <Text style={styles.pillBtnText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -94,10 +70,12 @@ function PagerFooter({
     <View style={styles.footer}>
       <View style={styles.dots}>
         <Pressable
+          accessibilityLabel="Local wallet"
           onPress={() => onGo('local')}
           style={[styles.dot, view === 'local' && styles.dotActive]}
         />
         <Pressable
+          accessibilityLabel="USD wallet"
           onPress={() => onGo('usd')}
           style={[styles.dot, view === 'usd' && styles.dotActive]}
         />
@@ -105,8 +83,8 @@ function PagerFooter({
       <Pressable onPress={() => onGo(view === 'local' ? 'usd' : 'local')}>
         <Animated.Text
           key={view}
-          entering={FadeIn.duration(160)}
-          exiting={FadeOut.duration(100)}
+          entering={FadeIn.duration(140)}
+          exiting={FadeOut.duration(80)}
           style={styles.swipeHint}>
           {view === 'local' ? 'Swipe for USD ›' : '‹ Local wallet'}
         </Animated.Text>
@@ -115,36 +93,31 @@ function PagerFooter({
   );
 }
 
-/** Dashboard wallets: one-at-a-time swipe; both side-by-side from md. */
+/** Dashboard wallets — matches website `DashboardWalletCarousel`. */
 export function DashboardWalletCarousel({ loading }: Props) {
   const { colors } = useAppTheme();
   const themeStyles = useMemo(() => makeThemeStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   const isMd = width >= MD_BREAKPOINT;
-  const cardWidth = width - 32; // Screen horizontal padding ~16 each side
-  const stride = cardWidth + GAP;
+  const cardWidth = width - 32;
+  const stride = cardWidth + SLIDE_GAP;
   const { data, loading: walletLoading } = useWallet();
   const [hidden, setHidden] = useState(false);
   const [view, setView] = useState<'local' | 'usd'>('local');
   const pagerRef = useRef<ScrollView>(null);
 
   if ((loading || walletLoading) && !data) {
-    return <WalletCardSkeleton />;
+    return <View style={styles.skeleton} />;
   }
 
-  const countryCode = data?.country?.code ?? data?.user?.countryCode ?? 'NG';
-  const flag = data?.country?.flagEmoji ?? '';
   const localCurrency = data?.primary.currency ?? data?.country?.currency ?? 'NGN';
   const localFormatted = data?.primary.balanceFormatted ?? `${localCurrency} 0.00`;
   const usdFormatted = data?.usd?.balanceFormatted ?? '$0.00';
-  const hint =
-    LOCAL_HINT[countryCode] ??
-    `Use your ${localCurrency} balance for local services.`;
 
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     if (isMd) return;
     const x = e.nativeEvent.contentOffset.x;
-    setView(x > stride * 0.4 ? 'usd' : 'local');
+    setView(x > stride * 0.45 ? 'usd' : 'local');
   }
 
   function scrollTo(target: 'local' | 'usd') {
@@ -161,56 +134,59 @@ export function DashboardWalletCarousel({ loading }: Props) {
       colors={['#FF8124', Brand.orange, '#E85D00']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={[styles.card, styles.localShadow, isMd && themeStyles.mdCard]}>
-      <View style={styles.topRow}>
-        <Text style={styles.brand}>ORYNO</Text>
-        <View style={styles.pill}>
-          <Text style={styles.pillText}>LOCAL WALLET</Text>
+      style={[styles.card, isMd && themeStyles.mdCard]}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(255,255,255,0.16)', 'transparent', 'rgba(180,60,0,0.18)']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <WalletCardShine intensity="bright" />
+
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.brand}>ORYNO</Text>
+            <Text style={styles.walletName}>{localCurrency} Wallet</Text>
+          </View>
+          <Pressable
+            onPress={() => setHidden((v) => !v)}
+            style={styles.eye}
+            hitSlop={8}
+            accessibilityLabel={hidden ? 'Show balance' : 'Hide balance'}>
+            <Ionicons
+              name={hidden ? 'eye-off' : 'eye'}
+              size={13}
+              color={Brand.white}
+            />
+          </Pressable>
         </View>
-      </View>
 
-      <Text style={styles.title}>
-        {localCurrency} Wallet {flag}
-      </Text>
-
-      <View style={styles.balanceRow}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.available}>AVAILABLE BALANCE</Text>
+        <View>
+          <Text style={styles.available}>Available balance</Text>
           <Text style={styles.balance} numberOfLines={1}>
             {maskBalance(hidden, localFormatted)}
           </Text>
         </View>
-        <Pressable
-          onPress={() => setHidden((v) => !v)}
-          style={styles.eye}
-          hitSlop={8}
-          accessibilityLabel={hidden ? 'Show balance' : 'Hide balance'}>
-          <Ionicons
-            name={hidden ? 'eye-off' : 'eye'}
-            size={16}
-            color={Brand.white}
+
+        <View style={styles.actions}>
+          <PillButton
+            label="Fund"
+            icon="add"
+            tone="glass"
+            onPress={() => router.push('/(app)/fund')}
           />
-        </Pressable>
+          <PillButton
+            label="Convert"
+            icon="swap-horizontal"
+            tone="dark"
+            onPress={() => router.push('/(app)/convert' as Href)}
+          />
+        </View>
+
+        {!isMd ? <PagerFooter view={view} onGo={scrollTo} /> : null}
       </View>
-
-      <Text style={styles.hint}>{hint}</Text>
-
-      <View style={styles.actions}>
-        <ActionButton
-          label="Fund Wallet"
-          icon="add"
-          variant="solid"
-          onPress={() => router.push('/(app)/fund')}
-        />
-        <ActionButton
-          label="Convert to USD"
-          icon="swap-horizontal"
-          variant="ghost"
-          onPress={() => router.push('/(app)/convert' as Href)}
-        />
-      </View>
-
-      {!isMd ? <PagerFooter view={view} onGo={scrollTo} /> : null}
     </LinearGradient>
   );
 
@@ -222,66 +198,64 @@ export function DashboardWalletCarousel({ loading }: Props) {
       style={[styles.card, styles.usdCard, isMd && themeStyles.mdCard]}>
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.18)', 'transparent']}
-        locations={[0, 0.42, 0.78]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0.08)', 'transparent']}
+        locations={[0, 0.42, 0.72, 1]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.topRow}>
-        <Text style={styles.brand}>ORYNO</Text>
-        <View style={[styles.pill, styles.pillDark]}>
-          <Text style={styles.pillText}>USD WALLET</Text>
+      <WalletCardShine intensity="soft" />
+
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.brand}>ORYNO</Text>
+            <Text style={styles.walletName}>USD Wallet</Text>
+          </View>
+          <Pressable
+            onPress={() => setHidden((v) => !v)}
+            style={[styles.eye, styles.eyeDark]}
+            hitSlop={8}
+            accessibilityLabel={hidden ? 'Show balance' : 'Hide balance'}>
+            <Ionicons
+              name={hidden ? 'eye-off' : 'eye'}
+              size={13}
+              color={Brand.white}
+            />
+          </Pressable>
         </View>
-      </View>
 
-      <Text style={styles.title}>USD Wallet 🌐</Text>
-
-      <View style={styles.balanceRow}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[styles.available, { opacity: 0.65 }]}>AVAILABLE BALANCE</Text>
+        <View>
+          <Text style={[styles.available, { color: 'rgba(255,255,255,0.5)' }]}>
+            Available balance
+          </Text>
           <Text style={styles.balance} numberOfLines={1}>
             {maskBalance(hidden, usdFormatted)}
           </Text>
         </View>
-        <Pressable
-          onPress={() => setHidden((v) => !v)}
-          style={[styles.eye, styles.eyeDark]}
-          hitSlop={8}
-          accessibilityLabel={hidden ? 'Show balance' : 'Hide balance'}>
-          <Ionicons
-            name={hidden ? 'eye-off' : 'eye'}
-            size={16}
-            color={Brand.white}
+
+        <View style={styles.actions}>
+          <PillButton
+            label="Fund"
+            icon="add"
+            tone="usd"
+            onPress={() => router.push('/(app)/(tabs)/cards')}
           />
-        </Pressable>
+          <PillButton
+            label="Convert"
+            icon="swap-horizontal"
+            tone="usdAlt"
+            onPress={() =>
+              router.push({
+                pathname: '/(app)/convert',
+                params: { direction: 'to_local' },
+              } as unknown as Href)
+            }
+          />
+        </View>
+
+        {!isMd ? <PagerFooter view={view} onGo={scrollTo} /> : null}
       </View>
-
-      <Text style={[styles.hint, { opacity: 0.75 }]}>
-        Use your USD balance for gift cards, international virtual numbers and more.
-      </Text>
-
-      <View style={styles.actions}>
-        <ActionButton
-          label="Cards"
-          icon="card-outline"
-          variant="solid"
-          onPress={() => router.push('/(app)/(tabs)/cards')}
-        />
-        <ActionButton
-          label="Convert"
-          icon="swap-horizontal"
-          variant="ghost"
-          onPress={() =>
-            router.push({
-              pathname: '/(app)/convert',
-              params: { direction: 'to_local' },
-            } as unknown as Href)
-          }
-        />
-      </View>
-
-      {!isMd ? <PagerFooter view={view} onGo={scrollTo} /> : null}
     </ImageBackground>
   );
 
@@ -295,105 +269,90 @@ export function DashboardWalletCarousel({ loading }: Props) {
   }
 
   return (
-    <View style={styles.wrap}>
-      <ScrollView
-        ref={pagerRef}
-        horizontal
-        decelerationRate="fast"
-        snapToInterval={stride}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        style={{ width: cardWidth }}
-        contentContainerStyle={{ width: stride * 2 - GAP, gap: GAP }}>
-        <View style={{ width: cardWidth }}>{localCard}</View>
-        <View style={{ width: cardWidth }}>{usdCard}</View>
-      </ScrollView>
-    </View>
+    <ScrollView
+      ref={pagerRef}
+      horizontal
+      decelerationRate="fast"
+      snapToInterval={stride}
+      snapToAlignment="start"
+      disableIntervalMomentum
+      bounces={false}
+      showsHorizontalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      style={{ width: cardWidth }}
+      contentContainerStyle={{ width: stride * 2 - SLIDE_GAP, gap: SLIDE_GAP }}>
+      <View style={{ width: cardWidth }}>{localCard}</View>
+      <View style={{ width: cardWidth }}>{usdCard}</View>
+    </ScrollView>
   );
 }
 
 function makeThemeStyles(_colors: ThemeColors) {
   return StyleSheet.create({
-    mdCard: { flex: 1, minHeight: 200 },
+    mdCard: { flex: 1 },
   });
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginBottom: 2 },
-  mdRow: { flexDirection: 'row', gap: 10, marginBottom: 2 },
+  skeleton: {
+    height: 148,
+    borderRadius: 20,
+    backgroundColor: 'rgba(142,142,147,0.18)',
+  },
+  mdRow: { flexDirection: 'row', gap: SLIDE_GAP },
   mdCol: { flex: 1, minWidth: 0 },
   card: {
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 20,
     overflow: 'hidden',
-    minHeight: 210,
-    gap: 8,
   },
-  localShadow: {},
   usdCard: {
     backgroundColor: '#0A0A0C',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
   },
-  usdImage: { borderRadius: 18 },
+  usdImage: { borderRadius: 20 },
+  body: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 6,
+  },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  brand: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 2,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  pill: {
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  pillDark: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  pillText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.95)',
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Brand.white,
-  },
-  balanceRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     gap: 8,
   },
-  available: {
+  brand: {
     fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.6,
+    color: 'rgba(255,255,255,0.9)',
+    textTransform: 'uppercase',
+  },
+  walletName: {
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 1.2,
+    color: Brand.white,
+    letterSpacing: 0.2,
+  },
+  available: {
+    fontSize: 8,
+    fontWeight: '500',
+    letterSpacing: 1.1,
     color: 'rgba(255,255,255,0.7)',
-    marginBottom: 2,
+    textTransform: 'uppercase',
   },
   balance: {
-    fontSize: 22,
-    fontWeight: '900',
+    marginTop: 1,
+    fontSize: 18,
+    fontWeight: '800',
     color: Brand.white,
     letterSpacing: -0.4,
   },
   eye: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
@@ -403,57 +362,61 @@ const styles = StyleSheet.create({
   },
   eyeDark: {
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.16)',
   },
-  hint: {
-    fontSize: 11,
-    lineHeight: 15,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  actions: { flexDirection: 'row', gap: 8 },
-  actionBtn: {
-    height: 40,
+  actions: { flexDirection: 'row', gap: 14 },
+  pillBtn: {
+    flex: 1,
+    height: 32,
     borderRadius: 999,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
   },
-  actionSolid: {
+  pillGlass: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  actionGhost: {
-    backgroundColor: 'rgba(0,0,0,0.22)',
+  pillDarkBtn: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.25)',
   },
-  actionText: {
-    fontSize: 12,
+  pillUsd: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  pillUsdAlt: {
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  pillBtnText: {
+    fontSize: 11,
     fontWeight: '800',
     color: Brand.white,
   },
-  actionTextDark: { color: Brand.white },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
   },
-  dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  dots: { flexDirection: 'row', gap: 4, alignItems: 'center' },
   dot: {
-    width: 6,
-    height: 6,
+    width: 4,
+    height: 4,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.35)',
   },
   dotActive: {
-    width: 18,
+    width: 16,
     backgroundColor: Brand.white,
   },
   swipeHint: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.75)',
   },

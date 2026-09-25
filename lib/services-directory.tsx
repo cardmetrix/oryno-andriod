@@ -139,20 +139,32 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
   {
     id: 'invoices',
     href: '/(app)/invoices',
-    label: 'Invoices',
-    shortDescription: 'Free invoices & payment links',
+    label: 'Invoice Generator',
+    shortDescription: 'Free professional invoices + PDF',
     category: 'Lifestyle',
-    tags: ['Invoice', 'Payment link', 'Free'],
+    tags: ['Free', 'PDF', 'Invoice'],
     accent: Brand.orange,
     popular: true,
     stats: 'Free',
     renderIcon: ion('document-text-outline'),
   },
   {
+    id: 'payment-links',
+    href: '/(app)/payment-links',
+    label: 'Payment Links',
+    shortDescription: 'Get paid without an invoice',
+    category: 'Lifestyle',
+    tags: ['Checkout', 'Flutterwave', 'Pay'],
+    accent: Brand.orange,
+    popular: true,
+    stats: 'Standalone checkout',
+    renderIcon: ion('link-outline'),
+  },
+  {
     id: 'gift-cards-live',
     href: '/(app)/services/gift-cards-live',
     label: 'Gift Card Live',
-    shortDescription: 'Live buy rates · USD wallet',
+    shortDescription: 'Browse cards to buy with USD',
     category: 'Lifestyle',
     tags: ['Live', 'Buy', 'USD'],
     accent: Brand.orange,
@@ -162,14 +174,27 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
   {
     id: 'gift-cards',
     href: '/(app)/services/gift-cards',
-    label: 'Gift Cards',
-    shortDescription: 'Buy digital gift cards with USD',
+    label: 'Buy Gift Cards',
+    shortDescription: 'Buy gift cards with USD',
     category: 'Lifestyle',
     tags: ['Amazon', 'Apple', 'Steam'],
     accent: Brand.orange,
     renderIcon: (color, size = 24) => (
       <GiftCardIcon size={size} color={color} strokeWidth={1.75} />
     ),
+  },
+  {
+    id: 'international-gifting',
+    href: '/(app)/services/international-gifting',
+    label: 'International Gifting',
+    shortDescription: 'Send gifts worldwide - coming soon',
+    category: 'Coming soon',
+    tags: ['Gifting', 'International', 'Waitlist', 'USD'],
+    accent: Brand.orange,
+    soon: true,
+    popular: true,
+    stats: 'Waitlist open',
+    renderIcon: ion('gift-outline'),
   },
 ];
 
@@ -267,6 +292,14 @@ export function getServicesDirectory(countryCode?: string | null) {
       }
     }
 
+    if (item.id === 'gift-cards') {
+      return {
+        ...item,
+        shortDescription: 'Buy digital gift cards with USD',
+        stats: '50+ brands',
+      };
+    }
+
     return item;
   });
 }
@@ -305,7 +338,8 @@ export function filterServices(
       (category === 'Free' &&
         ((item.stats ?? '').toLowerCase() === 'free' ||
           item.tags.some((t) => t.toLowerCase() === 'free'))) ||
-      (category === 'Coming soon' && item.soon) ||
+      (category === 'Coming soon' &&
+        (item.soon || item.category === 'Coming soon')) ||
       item.category === category;
 
     const haystack = [

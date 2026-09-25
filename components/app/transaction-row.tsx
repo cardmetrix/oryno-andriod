@@ -75,6 +75,9 @@ function iconTone(category: string | undefined, credit: boolean) {
   if (cat === 'fee') {
     return { bg: 'rgba(139,92,246,0.12)', fg: '#7C3AED' };
   }
+  if (cat === 'convert' || cat === 'usd') {
+    return { bg: Brand.orangeMuted, fg: Brand.orange };
+  }
   if (cat === 'withdraw' || cat === 'transfer') {
     return credit
       ? { bg: 'rgba(52,199,89,0.12)', fg: Brand.success }
