@@ -47,14 +47,14 @@ function LucideHome({
 }
 
 const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  wallet: 'wallet',
+  cards: 'card',
   services: 'grid',
   history: 'time',
   profile: 'person',
 };
 
 const OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
-  wallet: 'wallet-outline',
+  cards: 'card-outline',
   services: 'grid-outline',
   history: 'time-outline',
   profile: 'person-outline',

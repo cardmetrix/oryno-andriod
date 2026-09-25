@@ -402,17 +402,6 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <View style={styles.limitBar}>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.limitLabel}>Account Limit Status</Text>
-            <Text style={styles.limitValue}>
-              {enriching ? 'Updating limits…' : `${display.dailyLimitLabel} daily`}
-            </Text>
-          </View>
-          <Pressable onPress={() => router.push('/(app)/settings/levels')}>
-            <Text style={styles.limitLink}>View Levels</Text>
-          </Pressable>
-        </View>
       </Animated.View>
 
       {/* Actions */}
@@ -694,24 +683,6 @@ function makeStyles(colors: ThemeColors) {
     color: colors.mutedForeground,
     lineHeight: 17,
   },
-  limitBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.grayDivider,
-    backgroundColor: 'rgba(255,106,0,0.08)',
-  },
-  limitLabel: { fontSize: 12, fontWeight: '700', color: Brand.orange },
-  limitValue: {
-    marginTop: 2,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.charcoal,
-  },
-  limitLink: { fontSize: 12, fontWeight: '700', color: Brand.orange },
   actions: { marginTop: 12, gap: 10 },
   editBtn: {
     height: 44,

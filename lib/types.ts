@@ -108,7 +108,6 @@ export type ProfileDto = {
   kycStatus: string;
   kycLevel: number;
   kycLabel: string;
-  accountLevelName?: string;
   status: string;
   dailyLimitLabel: string;
   emailVerified: boolean;

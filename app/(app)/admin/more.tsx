@@ -12,8 +12,8 @@ import { adminNav } from '@/lib/admin/nav';
 const PRIMARY = new Set([
   '/(app)/admin',
   '/(app)/admin/users',
-  '/(app)/admin/kyc',
   '/(app)/admin/wallets',
+  '/(app)/admin/support',
   '/(app)/admin/more',
 ]);
 

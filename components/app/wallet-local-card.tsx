@@ -88,10 +88,10 @@ export function WalletLocalCard({
             <Text style={styles.fundText}>Fund</Text>
           </Pressable>
           <Pressable
-            style={({ pressed }) => [styles.withdrawBtn, pressed && { opacity: 0.92 }]}
-            onPress={() => router.push('/(app)/withdraw')}>
-            <Ionicons name="arrow-up" size={16} color={Brand.white} />
-            <Text style={styles.withdrawText}>Withdraw</Text>
+            style={({ pressed }) => [styles.cardsBtn, pressed && { opacity: 0.92 }]}
+            onPress={() => router.push('/(app)/(tabs)/cards')}>
+            <Ionicons name="card-outline" size={16} color={Brand.white} />
+            <Text style={styles.cardsText}>Cards</Text>
           </Pressable>
         </View>
       </LinearGradient>
@@ -183,7 +183,7 @@ function makeStyles(colors: { background: string }, isDark: boolean) {
       elevation: 3,
     },
     fundText: { color: '#111', fontSize: 14, fontWeight: '800' },
-    withdrawBtn: {
+    cardsBtn: {
       flex: 1,
       height: 42,
       borderRadius: 14,
@@ -195,6 +195,6 @@ function makeStyles(colors: { background: string }, isDark: boolean) {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: 'rgba(255,255,255,0.25)',
     },
-    withdrawText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
+    cardsText: { color: Brand.white, fontSize: 14, fontWeight: '800' },
   });
 }

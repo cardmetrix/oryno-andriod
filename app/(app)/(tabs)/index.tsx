@@ -1,7 +1,7 @@
 import { AdCarousel } from '@/components/app/ad-carousel';
 import { ServiceActionCard } from '@/components/app/service-action-card';
 import { TransactionRow } from '@/components/app/transaction-row';
-import { WalletCard } from '@/components/app/wallet-card';
+import { DashboardWalletCarousel } from '@/components/app/dashboard-wallet-carousel';
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
 import { Screen } from '@/components/ui/screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
@@ -35,7 +35,7 @@ const quickActions: QuickAction[] = [
   {
     label: 'Gift Cards',
     href: '/(app)/services/gift-cards',
-                renderIcon: () => <GiftCardIcon size={20} color={Brand.white} strokeWidth={1.75} />,
+                renderIcon: () => <GiftCardIcon size={18} color={Brand.white} strokeWidth={1.75} />,
   },
   { label: 'Boosting', icon: 'trending-up-outline', href: '/(app)/services/social' },
   { label: 'Numbers', icon: 'call-outline', href: '/(app)/services/virtual-numbers' },
@@ -89,7 +89,6 @@ export default function HomeScreen() {
         .join('') || 'OR'
     );
   }, [data?.user.fullName, user?.fullName, user?.firstName, firstName]);
-  const currency = data?.primary.currency ?? data?.country?.currency ?? 'NGN';
   const recent = (data?.recent ?? []).slice(0, 2);
 
   useFocusEffect(
@@ -165,11 +164,7 @@ export default function HomeScreen() {
           </View>
         </View>
       }>
-      <WalletCard
-        balanceFormatted={data?.primary.balanceFormatted}
-        label={`${currency} Wallet`}
-        loading={loading && !data}
-      />
+      <DashboardWalletCarousel loading={loading && !data} />
       <AdCarousel />
 
       {error ? (
@@ -207,7 +202,7 @@ export default function HomeScreen() {
                   {action.renderIcon ? (
                     action.renderIcon()
                   ) : (
-                    <Ionicons name={action.icon!} size={20} color={Brand.white} />
+                    <Ionicons name={action.icon!} size={18} color={Brand.white} />
                   )}
                 </ServiceActionCard>
               ))}
@@ -366,9 +361,9 @@ const styles = StyleSheet.create({
   },
   errorText: { color: Brand.error, fontSize: 13 },
   panel: {
-    marginTop: 16,
-    borderRadius: 28,
-    padding: 16,
+    marginTop: 12,
+    borderRadius: 20,
+    padding: 12,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#0F0F12',
@@ -378,12 +373,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   qaGrid: {
-    gap: 6,
+    gap: 4,
     width: '100%',
   },
   qaGridRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
     width: '100%',
   },
   txPanel: {
@@ -410,7 +405,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   panelTitle: { fontSize: 15, fontWeight: '600' },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

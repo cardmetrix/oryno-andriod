@@ -91,7 +91,6 @@ export default function AdminLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="login" options={fadeScreenOptions} />
       <Stack.Screen name="users" />
-      <Stack.Screen name="kyc" />
       <Stack.Screen name="wallets" />
       <Stack.Screen name="more" />
       <Stack.Screen name="gift-cards" options={adminPushScreenOptions} />

@@ -28,6 +28,7 @@ export default function AppLayout() {
       }}>
       <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: 200, gestureEnabled: false }} />
       <Stack.Screen name="fund" options={modalScreenOptions} />
+      <Stack.Screen name="convert" options={modalScreenOptions} />
       <Stack.Screen name="withdraw" options={modalScreenOptions} />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="wallet/add-bank" options={formSheetScreenOptions} />
@@ -37,8 +38,9 @@ export default function AppLayout() {
       <Stack.Screen name="privacy" />
       <Stack.Screen name="settings/index" />
       <Stack.Screen name="settings/security" />
-      <Stack.Screen name="settings/levels" />
-      <Stack.Screen name="settings/kyc" />
+      <Stack.Screen name="invoices/index" />
+      <Stack.Screen name="invoices/new" />
+      <Stack.Screen name="invoices/[id]" />
       <Stack.Screen name="history/[id]" />
       <Stack.Screen name="history/analytics" />
       <Stack.Screen name="services/airtime" />

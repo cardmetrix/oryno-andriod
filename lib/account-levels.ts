@@ -182,7 +182,7 @@ export function levelCta(input: {
   kycStatus: string;
 }): {
   label: string;
-  href: '/(app)/settings/kyc' | '/(app)/(tabs)/profile';
+  href: '/(app)/settings' | '/(app)/(tabs)/profile';
   disabled: boolean;
 } {
   const level = normalizeKycLevel(input.kycLevel);
@@ -198,7 +198,7 @@ export function levelCta(input: {
   if (status === 'pending') {
     return {
       label: 'View KYC status',
-      href: '/(app)/settings/kyc',
+      href: '/(app)/settings',
       disabled: false,
     };
   }
@@ -210,7 +210,7 @@ export function levelCta(input: {
         : next
           ? `Upgrade to Level ${next}`
           : 'Get verified',
-    href: '/(app)/settings/kyc',
+    href: '/(app)/settings',
     disabled: false,
   };
 }

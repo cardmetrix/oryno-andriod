@@ -34,10 +34,9 @@ import {
 } from '@/hooks/use-service-catalogs';
 import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
-import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { useProfile } from '@/hooks/use-profile';
-import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
+import { formatServiceMoney, formatUsd } from '@/lib/format';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 import { toast } from '@/lib/toast';
@@ -157,29 +156,23 @@ export default function GiftCardsScreen() {
     country?: string | string[];
   }>();
 
-  const modeParam = firstParam(params.mode);
   const slugParam = firstParam(params.slug);
   const productIdParam = firstParam(params.productId);
   const countryParam = firstParam(params.country);
 
   const invalidateWallet = useInvalidateWallet();
-  const { canAfford, canAffordUsd, frozen } = useWalletBalance();
+  const { canAffordUsd, frozen } = useWalletBalance();
   const { countryCode, displayFx, profile } = useProfile();
-  const walletCurrency = getCountryInfo(countryCode).currency;
   const moneySell = (n: number) =>
     formatServiceMoney(n, countryCode || 'NG', displayFx?.ngnToLocal ?? 1);
-  const moneyBuy = (quote: BuyQuote) =>
-    quote.currency === 'NGN'
-      ? moneySell(quote.local)
-      : formatCountryMoney(quote.local, countryCode || 'NG');
-  const [mode, setMode] = useState<Mode>(
-    modeParam === 'buy' ? 'buy' : 'sell',
-  );
+  const moneyBuy = (quote: BuyQuote) => formatUsd(quote.local);
+  const mode = 'buy' as Mode;
   const [error, setError] = useState<string | null>(null);
 
-  const sellCatalogQuery = useGiftCardSellCatalog();
+  const sellCatalogQuery = useGiftCardSellCatalog(false);
   const sellRatesQuery = useQuery({
     queryKey: queryKeys.catalogs.giftCardSellRates,
+    enabled: false,
     queryFn: async () => {
       return api.get<{
         simplified?: Array<{ slug?: string; ratePerUnit?: number }>;
@@ -292,9 +285,8 @@ export default function GiftCardsScreen() {
   }, [buyProducts, changeBuyQuery]);
 
   useEffect(() => {
-    if (modeParam === 'buy' || modeParam === 'sell') setMode(modeParam);
     if (countryParam) setBuyCountry(countryParam.toUpperCase());
-  }, [modeParam, countryParam]);
+  }, [countryParam]);
 
   useEffect(() => {
     const email = profile?.email?.trim();
@@ -644,76 +636,46 @@ export default function GiftCardsScreen() {
     }
   }
 
-  function switchMode(tab: Mode) {
-    if (tab === mode) return;
-    setMode(tab);
-    setSellSuccess(false);
-    setBuySuccess(false);
-    setError(null);
-  }
-
   async function copyText(value: string) {
     await Clipboard.setStringAsync(value);
     toast.success('Copied');
   }
 
-  // Reloadly quotes bill the USD card when priced in USD, otherwise the local wallet.
-  const buyAffordable = buyQuote
-    ? buyQuote.currency === 'USD'
-      ? canAffordUsd(buyQuote.local)
-      : canAfford(buyQuote.local)
-    : true;
+  const buyAffordable = buyQuote ? canAffordUsd(buyQuote.local) : true;
   const sellBlocked = sellDemo || sellUnavailable;
 
   const stickyFooter =
     sellSuccess || buySuccess
       ? null
-      : mode === 'sell'
-        ? sellLoading || !selectedSell
-          ? null
-          : (
-              <Button
-                title={
-                  sellSubmitting
-                    ? 'Submitting…'
-                    : sellBlocked
-                      ? 'Selling unavailable'
-                      : 'Sell gift card'
-                }
-                disabled={!sellQuote || sellSubmitting || sellBlocked}
-                loading={sellSubmitting}
-                onPress={() => void onSellSubmit()}
-              />
-            )
-        : buyLoading || !selectedBuy
-          ? null
-          : (
-              <Button
-                title={
-                  buySubmitting
-                    ? 'Buying…'
-                    : buyDemo
-                      ? 'Buying unavailable'
-                      : frozen
-                        ? 'Wallet unavailable'
-                        : buyQuote && !buyAffordable
-                          ? 'Insufficient balance'
-                          : buyQuote
-                            ? `Buy · ${moneyBuy(buyQuote)}`
-                            : 'Buy gift card'
-                }
-                disabled={
-                  !buyQuote ||
-                  buySubmitting ||
-                  !buyEmail.trim() ||
-                  frozen ||
-                  buyDemo ||
-                  !buyAffordable
-                }
-                loading={buySubmitting}
-                onPress={() => void onBuySubmit()}
-              />
-            );
+      : buyLoading || !selectedBuy
+        ? null
+        : (
+            <Button
+              title={
+                buySubmitting
+                  ? 'Buying…'
+                  : buyDemo
+                    ? 'Buying unavailable'
+                    : frozen
+                      ? 'Wallet unavailable'
+                      : buyQuote && !buyAffordable
+                        ? 'Insufficient USD balance'
+                        : buyQuote
+                          ? `Buy · ${moneyBuy(buyQuote)}`
+                          : 'Buy gift card'
+              }
+              disabled={
+                !buyQuote ||
+                buySubmitting ||
+                !buyEmail.trim() ||
+                frozen ||
+                buyDemo ||
+                !buyAffordable
+              }
+              loading={buySubmitting}
+              onPress={() => void onBuySubmit()}
+            />
+          );
 
   return (
     <Screen
@@ -722,29 +684,10 @@ export default function GiftCardsScreen() {
       header={
         <PageHeader
           title="Gift Cards"
-          subtitle={
-            mode === 'sell'
-              ? `Sell gift cards for ${walletCurrency} wallet credit`
-              : 'Buy digital gift cards with your wallet'
-          }
+          subtitle="Buy digital gift cards with your USD balance"
           showBack
         />
       }>
-      <View style={styles.modeTabs}>
-        {(['sell', 'buy'] as const).map((tab) => {
-          const active = mode === tab;
-          return (
-            <Pressable
-              key={tab}
-              onPress={() => switchMode(tab)}
-              style={[styles.modeTab, active && styles.modeTabActive]}>
-              <Text style={[styles.modeTabText, active && styles.modeTabTextActive]}>
-                {tab === 'sell' ? 'Sell' : 'Buy'}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
 
       <ErrorAlertModal
         error={error}
@@ -1249,6 +1192,7 @@ export default function GiftCardsScreen() {
                 </Text>
               </View>
             </View>
+            <Text style={styles.hint}>Charged to your USD wallet balance</Text>
           </Animated.View>
         </View>
         )}

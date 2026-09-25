@@ -13,7 +13,7 @@ type Props = {
   loading?: boolean;
 };
 
-/** Matches oryno-website WalletCard: orange panel + Fund/Withdraw below. */
+/** Matches oryno-website WalletCard: orange panel + Fund/Cards below. */
 export function WalletCard({
   balanceFormatted = '₦0.00',
   label = 'NGN Wallet',
@@ -81,13 +81,13 @@ export function WalletCard({
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.withdrawBtn, pressed && { opacity: 0.92, transform: [{ scale: 0.98 }] }]}
-          onPress={() => router.push('/(app)/withdraw')}>
-          <View style={styles.withdrawGlow} />
-          <View style={styles.withdrawIcon}>
-            <Ionicons name="arrow-up" size={16} color={Brand.white} />
+          style={({ pressed }) => [styles.cardsBtn, pressed && { opacity: 0.92, transform: [{ scale: 0.98 }] }]}
+          onPress={() => router.push('/(app)/(tabs)/cards')}>
+          <View style={styles.cardsGlow} />
+          <View style={styles.cardsIcon}>
+            <Ionicons name="card-outline" size={16} color={Brand.white} />
           </View>
-          <Text style={styles.withdrawText}>Withdraw</Text>
+          <Text style={styles.cardsText}>Cards</Text>
         </Pressable>
       </View>
     </View>
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fundText: { color: '#111', fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
-  withdrawBtn: {
+  cardsBtn: {
     flex: 1,
     height: 44,
     borderRadius: 14,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  withdrawGlow: {
+  cardsGlow: {
     position: 'absolute',
     right: -10,
     top: -20,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     backgroundColor: 'rgba(255,106,0,0.22)',
   },
-  withdrawIcon: {
+  cardsIcon: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -244,5 +244,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  withdrawText: { color: Brand.white, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
+  cardsText: { color: Brand.white, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
 });

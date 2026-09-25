@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -34,8 +33,6 @@ type UserRow = {
   statusLabel: string;
   role?: 'user' | 'admin';
   roleLabel?: string;
-  kyc: string;
-  kycLabel: string;
   balance: string;
   balances: Array<{
     balanceFormatted: string;
@@ -58,8 +55,6 @@ type UserDetail = {
     statusLabel: string;
     role?: 'user' | 'admin';
     roleLabel?: string;
-    kyc: string;
-    kycLabel: string;
     lastLoginAt: string | null;
     createdAt: string | null;
   };
@@ -71,17 +66,6 @@ type UserDetail = {
     statusLabel: string;
     isPrimary: boolean;
   }>;
-  kycSubmission: {
-    id: string;
-    status: string;
-    statusLabel: string;
-    idType: string | null;
-    idNumber: string | null;
-    idFrontUrl: string | null;
-    idBackUrl: string | null;
-    selfieUrl: string | null;
-    rejectionReason: string | null;
-  } | null;
   transactions: Array<{
     id: string;
     title: string;
@@ -99,13 +83,6 @@ const STATUS_FILTERS = [
   { key: 'deleted', label: 'Deleted' },
 ];
 
-const KYC_FILTERS = [
-  { key: '', label: 'All KYC' },
-  { key: 'unverified', label: 'Unverified' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'verified', label: 'Verified' },
-  { key: 'rejected', label: 'Rejected' },
-];
 
 const ROLE_FILTERS = [
   { key: '', label: 'All roles' },
@@ -119,7 +96,6 @@ export default function AdminUsersScreen() {
 
   const [q, setQ] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [kycFilter, setKycFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [manageId, setManageId] = useState<string | null>(null);
 
@@ -127,11 +103,10 @@ export default function AdminUsersScreen() {
     const params = new URLSearchParams();
     if (q.trim()) params.set('q', q.trim());
     if (statusFilter) params.set('status', statusFilter);
-    if (kycFilter) params.set('kyc', kycFilter);
     if (roleFilter) params.set('role', roleFilter);
     const qs = params.toString();
     return qs ? `${endpoints.admin.users}?${qs}` : endpoints.admin.users;
-  }, [q, statusFilter, kycFilter, roleFilter]);
+  }, [q, statusFilter, roleFilter]);
 
   const { data, loading, error, reload } = useAdminQuery<{ users: UserRow[] }>(path);
 
@@ -143,7 +118,7 @@ export default function AdminUsersScreen() {
       header={
         <AdminPageHeader
           title="Users"
-          subtitle="Balances, KYC, suspend / activate, and wallet controls"
+          subtitle="Balances, suspend / activate, and wallet controls"
         />
       }>
       <View style={styles.searchWrap}>
@@ -166,16 +141,6 @@ export default function AdminUsersScreen() {
             label={f.label}
             active={statusFilter === f.key}
             onPress={() => setStatusFilter(f.key)}
-          />
-        ))}
-      </View>
-      <View style={styles.filterRow}>
-        {KYC_FILTERS.map((f) => (
-          <Chip
-            key={`k-${f.key || 'all'}`}
-            label={f.label}
-            active={kycFilter === f.key}
-            onPress={() => setKycFilter(f.key)}
           />
         ))}
       </View>
@@ -215,7 +180,6 @@ export default function AdminUsersScreen() {
                   <View style={styles.badges}>
                     <StatusBadge status={u.statusLabel} />
                     <StatusBadge status={u.roleLabel || (u.role === 'admin' ? 'Admin' : 'User')} />
-                    <StatusBadge status={u.kycLabel} />
                   </View>
                 </View>
                 <Pressable
@@ -334,7 +298,7 @@ function UserManageSheet({
           <View style={styles.sheetHead}>
             <View style={{ flex: 1 }}>
               <Text style={styles.sheetTitle}>Manage user</Text>
-              <Text style={styles.sheetSub}>Full account, wallet, and KYC controls</Text>
+              <Text style={styles.sheetSub}>Full account and wallet controls</Text>
             </View>
             <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
               <Ionicons name="close" size={20} color={colors.foreground} />
@@ -360,7 +324,6 @@ function UserManageSheet({
                       (detail.user.role === 'admin' ? 'Admin' : 'User')
                     }
                   />
-                  <StatusBadge status={detail.user.kycLabel} />
                   <Text style={styles.meta}>{detail.user.country}</Text>
                 </View>
 
@@ -458,104 +421,11 @@ function UserManageSheet({
                   </View>
                 </Section>
 
-                <Section title="KYC">
-                  <View style={styles.actionGrid}>
-                    <ActionBtn
-                      label="Set Level 1"
-                      primary
-                      disabled={busy}
-                      onPress={() =>
-                        void patch(
-                          { kycStatus: 'verified', kycLevel: 1 },
-                          'Set Level 1 (ID)',
-                        )
-                      }
-                    />
-                    <ActionBtn
-                      label="Set Level 2"
-                      primary
-                      disabled={busy}
-                      onPress={() =>
-                        void patch(
-                          { kycStatus: 'verified', kycLevel: 2 },
-                          'Set Level 2 (BVN)',
-                        )
-                      }
-                    />
-                    <ActionBtn
-                      label="Set Level 3"
-                      primary
-                      disabled={busy}
-                      onPress={() =>
-                        void patch(
-                          { kycStatus: 'verified', kycLevel: 3 },
-                          'Set Level 3 (Address)',
-                        )
-                      }
-                    />
-                    <ActionBtn
-                      label="Reject KYC"
-                      danger
-                      disabled={busy || detail.user.kyc === 'rejected'}
-                      onPress={() =>
-                        void patch(
-                          { kycStatus: 'rejected', kycLevel: 0 },
-                          'KYC rejected',
-                        )
-                      }
-                    />
-                    <ActionBtn
-                      label="Mark pending"
-                      disabled={busy || detail.user.kyc === 'pending'}
-                      onPress={() =>
-                        void patch({ kycStatus: 'pending' }, 'KYC set to pending')
-                      }
-                    />
-                    <ActionBtn
-                      label="Reset KYC"
-                      disabled={busy || detail.user.kyc === 'unverified'}
-                      onPress={() =>
-                        void patch(
-                          { kycStatus: 'unverified', kycLevel: 0 },
-                          'KYC reset to unverified',
-                        )
-                      }
-                    />
-                  </View>
-
-                  {detail.kycSubmission ? (
-                    <View style={styles.kycBox}>
-                      <Text style={styles.sub}>
-                        Submission: {detail.kycSubmission.statusLabel}
-                        {detail.kycSubmission.idType
-                          ? ` · ${detail.kycSubmission.idType}`
-                          : ''}
-                      </Text>
-                      {detail.kycSubmission.idNumber ? (
-                        <Text style={[styles.sub, { marginTop: 4 }]}>
-                          ID: {detail.kycSubmission.idNumber}
-                        </Text>
-                      ) : null}
-                      <View style={styles.docLinks}>
-                        {detail.kycSubmission.idFrontUrl ? (
-                          <DocLink label="Front ID" url={detail.kycSubmission.idFrontUrl} />
-                        ) : null}
-                        {detail.kycSubmission.idBackUrl ? (
-                          <DocLink label="Back ID" url={detail.kycSubmission.idBackUrl} />
-                        ) : null}
-                        {detail.kycSubmission.selfieUrl ? (
-                          <DocLink label="Selfie" url={detail.kycSubmission.selfieUrl} />
-                        ) : null}
-                      </View>
-                    </View>
-                  ) : null}
-                </Section>
-
                 <Text style={styles.noteLabel}>Note / rejection reason</Text>
                 <TextInput
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Optional note sent with suspend / KYC reject…"
+                  placeholder="Optional note sent with suspend…"
                   placeholderTextColor={colors.mutedForeground}
                   style={styles.noteInput}
                   multiline
@@ -605,16 +475,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function DocLink({ label, url }: { label: string; url: string }) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-
-  return (
-    <Pressable onPress={() => void Linking.openURL(url)}>
-      <Text style={styles.docLink}>{label}</Text>
-    </Pressable>
-  );
-}
 
 function ActionBtn({
   label,
@@ -814,12 +674,6 @@ function makeStyles(colors: ThemeColors) {
     alignItems: 'center',
   },
   smallBtnText: { fontSize: 11, fontWeight: '700', color: colors.foreground },
-  kycBox: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 12,
-  },
   docLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
   docLink: { fontSize: 13, fontWeight: '700', color: Brand.orange },
   noteLabel: {

@@ -26,8 +26,8 @@ export function ServiceActionCard({
   children,
 }: Props) {
   const { colors } = useAppTheme();
-  const circle = size === 'md' ? 56 : 44;
-  const labelSize = size === 'md' ? 13 : 11;
+  const circle = size === 'md' ? 56 : 40;
+  const labelSize = size === 'md' ? 13 : 10;
 
   return (
     <Animated.View
@@ -65,8 +65,8 @@ const styles = StyleSheet.create({
   press: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 6,
+    gap: 6,
+    paddingVertical: 4,
     paddingHorizontal: 2,
   },
   pressed: {

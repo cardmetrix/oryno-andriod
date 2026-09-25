@@ -1,10 +1,10 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
   Pressable,
   StyleSheet,
   Switch,
@@ -40,10 +40,7 @@ type SettingsPayload = {
   };
 };
 
-const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Français' },
-] as const;
+const SETTINGS_HERO_BG = require('@/assets/images/settings-hero-bg.png');
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -145,10 +142,6 @@ export default function SettingsScreen() {
   if (!data) return null;
 
   const darkMode = preference === 'dark';
-  const language = data.preferences.language?.startsWith('fr') ? 'fr' : 'en';
-  const languageLabel = LANGUAGES.find((l) => l.code === language)?.label ?? 'English';
-  const verified = data.profile.kycStatus === 'verified';
-
   return (
     <Screen
       scroll
@@ -162,10 +155,10 @@ export default function SettingsScreen() {
         />
       }>
       <Animated.View entering={FadeInDown.duration(280)} style={styles.accountHeroWrap}>
-        <LinearGradient
-          colors={['#FF8124', Brand.orange, '#E85D00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <ImageBackground
+          source={SETTINGS_HERO_BG}
+          resizeMode="cover"
+          imageStyle={styles.accountHeroImage}
           style={styles.accountHero}>
           <View style={styles.accountTop}>
             <View style={{ flex: 1, minWidth: 0 }}>
@@ -177,14 +170,8 @@ export default function SettingsScreen() {
                 {data.profile.email}
               </Text>
             </View>
-            <View style={[styles.kycBadge, verified ? styles.kycVerified : styles.kycPending]}>
-              <Text style={[styles.kycText, !verified && { color: '#FFD29A' }]}>
-                {data.profile.kycLabel}
-              </Text>
-            </View>
           </View>
-          <Text style={styles.limitText}>Daily limit · {data.profile.dailyLimitLabel}</Text>
-        </LinearGradient>
+        </ImageBackground>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(40).duration(280)}>
@@ -200,28 +187,6 @@ export default function SettingsScreen() {
             label="Security & PIN"
             hint={data.security.hasPin ? 'PIN set' : 'Set PIN'}
             onPress={() => router.push('/(app)/settings/security')}
-          />
-          <Row
-            icon="speedometer-outline"
-            label="Account Levels"
-            hint={`${data.profile.dailyLimitLabel} daily`}
-            onPress={() => router.push('/(app)/settings/levels')}
-          />
-          <Row
-            icon="shield-checkmark-outline"
-            label="KYC Verification"
-            hint={data.profile.kycLabel}
-            onPress={() => router.push('/(app)/settings/kyc')}
-          />
-          <Row
-            icon="wallet-outline"
-            label="Wallet & Banks"
-            onPress={() => router.push('/(app)/(tabs)/wallet')}
-          />
-          <Row
-            icon="time-outline"
-            label="Transaction History"
-            onPress={() => router.push('/(app)/(tabs)/history')}
             last
           />
         </Section>
@@ -262,37 +227,12 @@ export default function SettingsScreen() {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.rowLabel, { color: colors.foreground }]}>Language</Text>
                 <Text style={[styles.rowHint, { color: colors.mutedForeground }]}>
-                  {languageLabel}
-                  {data.profile.countryName ? ` · ${data.profile.countryName}` : ''}
+                  English
                 </Text>
               </View>
-            </View>
-            <View style={styles.langChips}>
-              {LANGUAGES.map((lang) => {
-                const active = language === lang.code;
-                return (
-                  <Pressable
-                    key={lang.code}
-                    disabled={saving}
-                    onPress={() =>
-                      void patch({ language: lang.code }, 'Language updated')
-                    }
-                    style={[
-                      styles.langChip,
-                      { backgroundColor: colors.muted },
-                      active && { backgroundColor: Brand.orange },
-                    ]}>
-                    <Text
-                      style={[
-                        styles.langChipText,
-                        { color: colors.mutedForeground },
-                        active && { color: Brand.white },
-                      ]}>
-                      {lang.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              <View style={[styles.langChip, { backgroundColor: Brand.orange }]}>
+                <Text style={[styles.langChipText, { color: Brand.white }]}>English</Text>
+              </View>
             </View>
           </View>
           <ToggleRow
@@ -482,7 +422,10 @@ const styles = StyleSheet.create({
   },
   accountHero: {
     padding: 12,
+    backgroundColor: '#E85D00',
+    overflow: 'hidden',
   },
+  accountHeroImage: { borderRadius: 0 },
   accountTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   accountEyebrow: {
     color: 'rgba(255,255,255,0.75)',
@@ -502,20 +445,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     fontSize: 13,
     fontWeight: '500',
-  },
-  kycBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  kycVerified: { backgroundColor: 'rgba(255,255,255,0.2)' },
-  kycPending: { backgroundColor: 'rgba(0,0,0,0.2)' },
-  kycText: { color: Brand.white, fontSize: 11, fontWeight: '800' },
-  limitText: {
-    marginTop: 12,
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    fontWeight: '600',
   },
   sectionWrap: { marginBottom: 12 },
   sectionTitle: {

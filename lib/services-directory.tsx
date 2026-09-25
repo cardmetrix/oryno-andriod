@@ -22,6 +22,8 @@ export type ServiceDirectoryItem = {
   accent: string;
   popular?: boolean;
   soon?: boolean;
+  /** Highlight filter: "Most popular" | "Hot" | "Free" */
+  stats?: string;
   renderIcon: (color: string, size?: number) => ReactNode;
 };
 
@@ -117,9 +119,10 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     label: 'Social Boost',
     shortDescription: 'Followers, likes & views',
     category: 'Lifestyle',
-    tags: ['Instagram', 'TikTok', 'YouTube'],
+    tags: ['Instagram', 'TikTok', 'YouTube', 'Most popular'],
     accent: Brand.orange,
     popular: true,
+    stats: 'Most popular',
     renderIcon: ion('trending-up-outline'),
   },
   {
@@ -128,17 +131,30 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     label: 'Virtual Numbers',
     shortDescription: 'Get verification numbers worldwide',
     category: 'Lifestyle',
-    tags: ['Buy', 'Rent', 'SMS'],
+    tags: ['Buy', 'Rent', 'SMS', 'Hot'],
     accent: Brand.orange,
+    stats: 'Hot',
     renderIcon: ion('call-outline'),
+  },
+  {
+    id: 'invoices',
+    href: '/(app)/invoices',
+    label: 'Invoices',
+    shortDescription: 'Free invoices & payment links',
+    category: 'Lifestyle',
+    tags: ['Invoice', 'Payment link', 'Free'],
+    accent: Brand.orange,
+    popular: true,
+    stats: 'Free',
+    renderIcon: ion('document-text-outline'),
   },
   {
     id: 'gift-cards-live',
     href: '/(app)/services/gift-cards-live',
     label: 'Gift Card Live',
-    shortDescription: 'Live buy & sell rates',
+    shortDescription: 'Live buy rates · USD wallet',
     category: 'Lifestyle',
-    tags: ['Live', 'Rates', 'Trade'],
+    tags: ['Live', 'Buy', 'USD'],
     accent: Brand.orange,
     popular: true,
     renderIcon: ion('pulse-outline'),
@@ -147,7 +163,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     id: 'gift-cards',
     href: '/(app)/services/gift-cards',
     label: 'Gift Cards',
-    shortDescription: 'Buy & sell gift cards',
+    shortDescription: 'Buy digital gift cards with USD',
     category: 'Lifestyle',
     tags: ['Amazon', 'Apple', 'Steam'],
     accent: Brand.orange,
@@ -255,14 +271,19 @@ export function getServicesDirectory(countryCode?: string | null) {
   });
 }
 
-export const serviceCategories: Array<ServiceCategory | 'All'> = [
+export const serviceCategories = [
   'All',
   'Popular',
+  'Most popular',
+  'Hot',
+  'Free',
   'Telecom',
   'Lifestyle',
   'Utilities',
   'Coming soon',
-];
+] as const;
+
+export type ServiceFilterCategory = (typeof serviceCategories)[number];
 
 export function filterServices(
   items: ServiceDirectoryItem[],
@@ -275,10 +296,25 @@ export function filterServices(
     const matchesCategory =
       category === 'All' ||
       (category === 'Popular' && item.popular) ||
+      (category === 'Most popular' &&
+        ((item.stats ?? '').toLowerCase() === 'most popular' ||
+          item.tags.some((t) => t.toLowerCase() === 'most popular'))) ||
+      (category === 'Hot' &&
+        ((item.stats ?? '').toLowerCase() === 'hot' ||
+          item.tags.some((t) => t.toLowerCase() === 'hot'))) ||
+      (category === 'Free' &&
+        ((item.stats ?? '').toLowerCase() === 'free' ||
+          item.tags.some((t) => t.toLowerCase() === 'free'))) ||
       (category === 'Coming soon' && item.soon) ||
       item.category === category;
 
-    const haystack = [item.label, item.shortDescription, item.category, ...item.tags]
+    const haystack = [
+      item.label,
+      item.shortDescription,
+      item.category,
+      item.stats ?? '',
+      ...item.tags,
+    ]
       .join(' ')
       .toLowerCase();
 

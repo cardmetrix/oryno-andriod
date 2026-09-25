@@ -23,7 +23,6 @@ export const adminNav: AdminNavItem[] = [
     label: 'Transaction PINs',
     icon: 'key-outline',
   },
-  { href: '/(app)/admin/kyc', label: 'KYC', icon: 'shield-checkmark-outline' },
   { href: '/(app)/admin/wallets', label: 'Wallets', icon: 'wallet-outline' },
   { href: '/(app)/admin/gift-cards', label: 'Gift Cards', icon: 'gift-outline' },
   {
@@ -93,11 +92,11 @@ export const adminBottomTabs: AdminBottomTab[] = [
     iconFocused: 'people',
   },
   {
-    href: '/(app)/admin/kyc',
-    match: '/admin/kyc',
-    label: 'KYC',
-    icon: 'shield-checkmark-outline',
-    iconFocused: 'shield-checkmark',
+    href: '/(app)/admin/support',
+    match: '/admin/support',
+    label: 'Support',
+    icon: 'headset-outline',
+    iconFocused: 'headset',
   },
   {
     href: '/(app)/admin/wallets',

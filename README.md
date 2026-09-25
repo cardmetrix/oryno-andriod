@@ -53,7 +53,7 @@ Docs: `oryno-website/docs/EXTERNAL_API.md`.
 | Social Boost | `/services/social` or `/jap/*` |
 | Gift Cards | `/services/gift-cards/*` or Reloadly/Sogo |
 | Virtual Numbers / Emails | `/services/numbers/*`, `/services/emails/*` |
-| Profile / Settings / KYC | `/profile`, `/settings`, `/settings/kyc` |
+| Profile / Settings | `/profile`, `/settings` |
 | Notifications | `/notifications` |
 
 ## Security
