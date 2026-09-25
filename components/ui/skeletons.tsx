@@ -355,31 +355,29 @@ export function ProfileSkeleton() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
-    <View style={{ gap: 12, paddingTop: 4 }}>
-      <Skeleton width={100} height={28} />
-      <Skeleton width={180} height={13} />
+    <View style={{ gap: 20 }}>
       <View style={styles.profileHeroModern}>
-        <Skeleton width="100%" height={104} radius={0} />
-        <View style={{ alignItems: 'center', marginTop: -48, paddingBottom: 14 }}>
+        <View style={{ alignItems: 'center', paddingVertical: 20 }}>
           <Skeleton width={96} height={96} radius={48} />
-          <Skeleton width={160} height={22} style={{ marginTop: 10 }} />
-          <Skeleton width={100} height={14} style={{ marginTop: 8 }} />
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-            <Skeleton width={90} height={28} radius={999} />
-            <Skeleton width={44} height={28} radius={999} />
-          </View>
+          <Skeleton width={160} height={24} radius={999} style={{ marginTop: 16 }} />
+          <Skeleton width={112} height={16} radius={999} style={{ marginTop: 8 }} />
+          <Skeleton width={128} height={28} radius={999} style={{ marginTop: 12 }} />
         </View>
       </View>
       <View style={styles.card}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <View key={i} style={[styles.row, { paddingVertical: 12 }]}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <View key={i} style={[styles.row, { paddingVertical: 14 }]}>
             <Skeleton width={40} height={40} radius={16} />
             <View style={{ flex: 1, gap: 8 }}>
-              <Skeleton width={80} height={11} />
-              <Skeleton width="60%" height={14} />
+              <Skeleton width={80} height={12} radius={999} />
+              <Skeleton width="70%" height={16} radius={999} />
             </View>
           </View>
         ))}
+      </View>
+      <View style={{ gap: 12 }}>
+        <Skeleton width="100%" height={48} radius={14} />
+        <Skeleton width="100%" height={48} radius={16} />
       </View>
     </View>
   );

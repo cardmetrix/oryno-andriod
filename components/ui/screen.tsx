@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { useRef } from 'react';
 import { useSegments } from 'expo-router';
-import { StyleSheet, View, type ViewProps } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { OrynoPullToRefresh } from '@/components/app/oryno-pull-to-refresh';
+import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 
 type Props = ViewProps & {
@@ -91,16 +91,21 @@ export function Screen({
   };
 
   const body = scroll ? (
-    onRefresh ? (
-      <OrynoPullToRefresh
-        {...scrollProps}
-        refreshing={Boolean(refreshing)}
-        onRefresh={onRefresh}>
-        {content}
-      </OrynoPullToRefresh>
-    ) : (
-      <Animated.ScrollView {...scrollProps}>{content}</Animated.ScrollView>
-    )
+    <ScrollView
+      {...scrollProps}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={Boolean(refreshing)}
+            onRefresh={onRefresh}
+            tintColor={Brand.orange}
+            colors={[Brand.orange]}
+            progressBackgroundColor={colors.card}
+          />
+        ) : undefined
+      }>
+      {content}
+    </ScrollView>
   ) : (
     <View style={[styles.flex, header ? styles.bodyAfterHeader : null]}>{content}</View>
   );

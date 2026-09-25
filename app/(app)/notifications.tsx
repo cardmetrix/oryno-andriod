@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PageHeader } from '@/components/app/page-header';
-import { NotificationListSkeleton } from '@/components/ui/skeletons';
 import { Screen } from '@/components/ui/screen';
+import { NotificationListSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import {
@@ -26,6 +27,14 @@ export default function NotificationsScreen() {
   const { items, unreadCount, loading, refresh } = useNotificationsQuery();
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const openingRef = useRef<string | null>(null);
+  const pressY = useRef(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      openingRef.current = null;
+    }, []),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -55,13 +64,17 @@ export default function NotificationsScreen() {
     }
   };
 
-  const openNotification = async (n: AppNotificationDto) => {
-    if (n.unread) await markOne(n.id);
+  const openNotification = (n: AppNotificationDto, releaseY: number) => {
+    if (refreshing) return;
+    if (Math.abs(releaseY - pressY.current) > 12) return;
+    if (openingRef.current) return;
+    openingRef.current = n.id;
+    if (n.unread) void markOne(n.id);
     const route = hrefToAppRoute(n.href);
     try {
       router.push(route as never);
     } catch {
-      // stay on inbox
+      openingRef.current = null;
     }
   };
 
@@ -90,14 +103,17 @@ export default function NotificationsScreen() {
           }
           showBack
           right={
-            unreadCount > 0 ? (
-              <Pressable
-                onPress={() => void markAll()}
-                style={({ pressed }) => [styles.markAllBtn, pressed && { opacity: 0.7 }]}
-                hitSlop={6}>
-                <Text style={styles.markAll}>Mark all</Text>
-              </Pressable>
-            ) : undefined
+            <Pressable
+              onPress={() => void markAll()}
+              disabled={unreadCount === 0}
+              style={({ pressed }) => [
+                styles.markAllBtn,
+                unreadCount === 0 && styles.markAllDisabled,
+                pressed && unreadCount > 0 && { opacity: 0.7 },
+              ]}
+              hitSlop={6}>
+              <Text style={styles.markAll}>Mark all</Text>
+            </Pressable>
           }
         />
       }>
@@ -129,7 +145,10 @@ export default function NotificationsScreen() {
               index === items.length - 1 && styles.rowLast,
               pressed && { opacity: 0.65 },
             ]}
-            onPress={() => void openNotification(n)}>
+            onPressIn={(event) => {
+              pressY.current = event.nativeEvent.pageY;
+            }}
+            onPress={(event) => openNotification(n, event.nativeEvent.pageY)}>
             <View style={[styles.dot, !n.unread && styles.dotRead]} />
             <View style={styles.rowCopy}>
               <View style={styles.rowTop}>
@@ -156,10 +175,10 @@ function makeStyles(colors: ThemeColors) {
     markAllBtn: {
       paddingHorizontal: 10,
       paddingVertical: 8,
-      borderRadius: 12,
-      backgroundColor: Brand.orangeMuted,
+       
     },
     markAll: { color: Brand.orange, fontWeight: '700', fontSize: 12 },
+    markAllDisabled: { opacity: 0.4 },
     row: {
       flexDirection: 'row',
       alignItems: 'flex-start',

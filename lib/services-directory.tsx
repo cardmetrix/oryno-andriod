@@ -1,7 +1,19 @@
-import type { ComponentProps, ReactNode } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 
 import { GiftCardIcon } from '@/components/icons/gift-card-icon';
+import {
+  ActivityIcon,
+  FileTextIcon,
+  GiftServiceIcon,
+  Link2Icon,
+  PhoneIcon,
+  SmartphoneIcon,
+  TrophyIcon,
+  TrendingUpIcon,
+  TvIcon,
+  WifiIcon,
+  ZapIcon,
+} from '@/components/icons/lucide-service-icons';
 import { Brand } from '@/constants/theme';
 import { getCountryInfo, type SupportedCountryCode } from '@/lib/country';
 
@@ -27,12 +39,10 @@ export type ServiceDirectoryItem = {
   renderIcon: (color: string, size?: number) => ReactNode;
 };
 
-type IoniconName = ComponentProps<typeof Ionicons>['name'];
-
-function ion(name: IoniconName) {
-  return (color: string, size = 24) => (
-    <Ionicons name={name} size={size} color={color} />
-  );
+function glyph(
+  Icon: (props: { size?: number; color?: string; strokeWidth?: number }) => ReactNode,
+) {
+  return (color: string, size = 24) => <Icon size={size} color={color} strokeWidth={1.75} />;
 }
 
 const BETTING_COPY: Record<
@@ -67,7 +77,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['MTN', 'Airtel', 'Glo', '9mobile', 'International'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: ion('phone-portrait-outline'),
+    renderIcon: glyph(SmartphoneIcon),
   },
   {
     id: 'data',
@@ -78,7 +88,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['MTN', 'Airtel', 'Glo', 'Smile', 'SME'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: ion('wifi-outline'),
+    renderIcon: glyph(WifiIcon),
   },
   {
     id: 'electricity',
@@ -89,7 +99,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['IKEDC', 'EKEDC', 'AEDC', 'Prepaid'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: ion('flash-outline'),
+    renderIcon: glyph(ZapIcon),
   },
   {
     id: 'bills',
@@ -100,7 +110,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['DStv', 'GOtv', 'StarTimes'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: ion('tv-outline'),
+    renderIcon: glyph(TvIcon),
   },
   {
     id: 'betting',
@@ -111,7 +121,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['Bet9ja', 'SportyBet', '1xBet', 'BetKing', 'MelBet'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: ion('trophy-outline'),
+    renderIcon: glyph(TrophyIcon),
   },
   {
     id: 'social',
@@ -123,7 +133,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     accent: Brand.orange,
     popular: true,
     stats: 'Most popular',
-    renderIcon: ion('trending-up-outline'),
+    renderIcon: glyph(TrendingUpIcon),
   },
   {
     id: 'virtual-numbers',
@@ -134,31 +144,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['Buy', 'Rent', 'SMS', 'Hot'],
     accent: Brand.orange,
     stats: 'Hot',
-    renderIcon: ion('call-outline'),
-  },
-  {
-    id: 'invoices',
-    href: '/(app)/invoices',
-    label: 'Invoice Generator',
-    shortDescription: 'Free professional invoices + PDF',
-    category: 'Lifestyle',
-    tags: ['Free', 'PDF', 'Invoice'],
-    accent: Brand.orange,
-    popular: true,
-    stats: 'Free',
-    renderIcon: ion('document-text-outline'),
-  },
-  {
-    id: 'payment-links',
-    href: '/(app)/payment-links',
-    label: 'Payment Links',
-    shortDescription: 'Get paid without an invoice',
-    category: 'Lifestyle',
-    tags: ['Checkout', 'Flutterwave', 'Pay'],
-    accent: Brand.orange,
-    popular: true,
-    stats: 'Standalone checkout',
-    renderIcon: ion('link-outline'),
+    renderIcon: glyph(PhoneIcon),
   },
   {
     id: 'gift-cards-live',
@@ -169,7 +155,8 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     tags: ['Live', 'Buy', 'USD'],
     accent: Brand.orange,
     popular: true,
-    renderIcon: ion('pulse-outline'),
+    stats: 'Live board',
+    renderIcon: glyph(ActivityIcon),
   },
   {
     id: 'gift-cards',
@@ -179,9 +166,7 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     category: 'Lifestyle',
     tags: ['Amazon', 'Apple', 'Steam'],
     accent: Brand.orange,
-    renderIcon: (color, size = 24) => (
-      <GiftCardIcon size={size} color={color} strokeWidth={1.75} />
-    ),
+    renderIcon: glyph(GiftCardIcon),
   },
   {
     id: 'international-gifting',
@@ -194,7 +179,31 @@ export const servicesDirectory: ServiceDirectoryItem[] = [
     soon: true,
     popular: true,
     stats: 'Waitlist open',
-    renderIcon: ion('gift-outline'),
+    renderIcon: glyph(GiftServiceIcon),
+  },
+  {
+    id: 'invoices',
+    href: '/(app)/invoices',
+    label: 'Invoice Generator',
+    shortDescription: 'Free professional invoices + PDF',
+    category: 'Lifestyle',
+    tags: ['Free', 'PDF', 'Invoice'],
+    accent: Brand.orange,
+    popular: true,
+    stats: 'Free',
+    renderIcon: glyph(FileTextIcon),
+  },
+  {
+    id: 'payment-links',
+    href: '/(app)/payment-links',
+    label: 'Payment Links',
+    shortDescription: 'Get paid without an invoice',
+    category: 'Lifestyle',
+    tags: ['Checkout', 'Flutterwave', 'Pay'],
+    accent: Brand.orange,
+    popular: true,
+    stats: 'Standalone checkout',
+    renderIcon: glyph(Link2Icon),
   },
 ];
 

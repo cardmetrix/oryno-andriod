@@ -21,7 +21,7 @@ async function withRetries<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
     } catch (error) {
       lastError = error;
       if (i < attempts - 1) {
-        await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+        await new Promise((r) => setTimeout(r, 350 * (i + 1)));
       }
     }
   }
@@ -45,7 +45,7 @@ export async function bootstrapSignedInSession(options: {
 
   let token = await getToken(warm ? undefined : { skipCache: true });
   if (!token) {
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 100));
     token = await getToken({ skipCache: true });
   }
   if (!token) {

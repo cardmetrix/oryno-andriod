@@ -72,7 +72,7 @@ export async function syncSessionToDatabase(options?: {
         // Don't block boot on slow geo — server can still detect by IP.
         const detected = await Promise.race([
           detectUserCountry(),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 400)),
         ]);
         if (detected?.countryCode) {
           countryCode = detected.countryCode;

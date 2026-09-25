@@ -50,12 +50,12 @@ function ProgressBlock({ showStatus }: { showStatus: boolean }) {
 
   useEffect(() => {
     progress.value = withTiming(0.92, {
-      duration: 2600,
+      duration: 1300,
       easing: Easing.out(Easing.cubic),
     });
     const start = Date.now();
     const id = setInterval(() => {
-      const t = Math.min(1, (Date.now() - start) / 2600);
+      const t = Math.min(1, (Date.now() - start) / 1300);
       const eased = 1 - Math.pow(1 - t, 3);
       setPct(Math.round(8 + eased * 84));
     }, 80);
@@ -69,7 +69,7 @@ function ProgressBlock({ showStatus }: { showStatus: boolean }) {
   if (!showStatus) return null;
 
   return (
-    <Animated.View entering={FadeIn.delay(900).duration(420)} style={styles.progressBlock}>
+    <Animated.View entering={FadeIn.delay(450).duration(210)} style={styles.progressBlock}>
       <Text style={styles.preparing}>Preparing your experience…</Text>
       <View style={styles.progressRow}>
         <View
@@ -103,9 +103,9 @@ export function SplashLoading({ showStatus = true }: Props) {
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.content}>
           <Animated.View
-            entering={FadeInLeft.duration(520).springify().damping(16)}
+            entering={FadeInLeft.duration(260).springify().damping(16)}
             style={styles.brandRow}>
-            <Animated.View entering={ZoomIn.delay(80).duration(420).springify().damping(14)}>
+            <Animated.View entering={ZoomIn.delay(40).duration(210).springify().damping(14)}>
               <View style={styles.brandMark}>
                 <Image
                   source={require('@/assets/images/oryno-icon.png')}
@@ -115,7 +115,7 @@ export function SplashLoading({ showStatus = true }: Props) {
               </View>
             </Animated.View>
             <Animated.Text
-              entering={FadeInLeft.delay(120).duration(480)}
+              entering={FadeInLeft.delay(60).duration(240)}
               style={styles.brandName}>
               ORYNO
             </Animated.Text>
@@ -123,17 +123,17 @@ export function SplashLoading({ showStatus = true }: Props) {
 
           <View style={styles.headlineBlock}>
             <Animated.Text
-              entering={FadeInDown.delay(200).duration(520).springify().damping(17)}
+              entering={FadeInDown.delay(100).duration(260).springify().damping(17)}
               style={styles.headlineDark}>
               Your Digital World, 
             </Animated.Text>
             <Animated.Text
-              entering={FadeInDown.delay(340).duration(560).springify().damping(17)}
+              entering={FadeInDown.delay(170).duration(280).springify().damping(17)}
               style={styles.headlineOrange}>
               Simplified.
             </Animated.Text>
             <Animated.Text
-              entering={FadeInUp.delay(480).duration(500)}
+              entering={FadeInUp.delay(240).duration(250)}
               style={styles.subcopy}>
               Pay, top up, sell gift cards and more.{'\n'}
               All in one secure platform.
@@ -145,26 +145,26 @@ export function SplashLoading({ showStatus = true }: Props) {
               {FEATURES.map((item, index) => (
                 <Animated.View
                   key={item.key}
-                  entering={FadeInUp.delay(620 + index * 110)
-                    .duration(520)
+                  entering={FadeInUp.delay(310 + index * 55)
+                    .duration(260)
                     .springify()
                     .damping(16)}
                   style={styles.featureCard}>
                   <Animated.View
-                    entering={ZoomIn.delay(700 + index * 110)
-                      .duration(420)
+                    entering={ZoomIn.delay(350 + index * 55)
+                      .duration(210)
                       .springify()
                       .damping(12)}
                     style={styles.featureIcon}>
                     <Ionicons name={item.icon} size={18} color={Brand.orange} />
                   </Animated.View>
                   <Animated.Text
-                    entering={FadeIn.delay(760 + index * 110).duration(360)}
+                    entering={FadeIn.delay(380 + index * 55).duration(180)}
                     style={styles.featureTitle}>
                     {item.title}
                   </Animated.Text>
                   <Animated.Text
-                    entering={FadeIn.delay(820 + index * 110).duration(360)}
+                    entering={FadeIn.delay(410 + index * 55).duration(180)}
                     style={styles.featureBody}>
                     {item.body}
                   </Animated.Text>
