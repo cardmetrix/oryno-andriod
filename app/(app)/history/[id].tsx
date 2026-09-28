@@ -449,7 +449,7 @@ function SocialBoostStatusPanel({ tx }: { tx: TransactionReceipt }) {
         data?: { status?: string; remains?: string; start_count?: string };
         status?: string;
         remains?: string;
-      }>(endpoints.services.socialStatus(orderId));
+      }>(endpoints.jap.status(orderId));
       const nextStatus = data.data?.status ?? data.status;
       const nextRemains = data.data?.remains ?? data.remains;
       if (nextStatus) setStatus(String(nextStatus));

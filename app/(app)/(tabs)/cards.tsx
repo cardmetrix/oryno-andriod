@@ -48,6 +48,19 @@ type WaitlistStatus = {
   provider: string;
 };
 
+type PendingOrder = {
+  id: string;
+  status:
+    | 'pending_payment'
+    | 'paid_pending_review'
+    | 'approved'
+    | 'rejected'
+    | 'issued';
+  feeFormatted: string;
+  localFormatted: string;
+  localCurrency: string;
+};
+
 type CardsPayload = {
   issuer: string;
   issueFeeUsd: number;
@@ -55,6 +68,7 @@ type CardsPayload = {
   maxActiveCards: number;
   comingSoon?: boolean;
   holderName: string;
+  pendingOrder?: PendingOrder | null;
   waitlist?: WaitlistStatus;
   cards: VirtualCard[];
 };
@@ -197,6 +211,8 @@ export default function CardsScreen() {
   const selected =
     data?.cards.find((c) => c.id === selectedId) ?? data?.cards[0] ?? null;
   const waitlistJoined = Boolean(data?.waitlist?.joined);
+  const pendingOrder = data?.pendingOrder ?? null;
+  const pendingReview = pendingOrder?.status === 'paid_pending_review';
 
   const displayNumber =
     !hidden && revealed
@@ -311,6 +327,18 @@ export default function CardsScreen() {
         </View>
       ) : (
         <View style={{ gap: 16 }}>
+          {pendingReview ? (
+            <View style={styles.pendingBanner}>
+              <Ionicons name="time-outline" size={18} color={Brand.orange} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingTitle}>Card purchase under review</Text>
+                <Text style={styles.pendingBody}>
+                  We received {pendingOrder?.localFormatted ?? 'your payment'}. An admin will
+                  issue your virtual card shortly.
+                </Text>
+              </View>
+            </View>
+          ) : null}
           {!selected ? (
             <>
               <CardSurface>
@@ -676,6 +704,23 @@ const stylesAction = StyleSheet.create({
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    pendingBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: 'rgba(255,106,0,0.25)',
+      backgroundColor: Brand.orangeMuted,
+      padding: 14,
+    },
+    pendingTitle: { fontSize: 14, fontWeight: '800', color: colors.foreground },
+    pendingBody: {
+      marginTop: 4,
+      fontSize: 12,
+      lineHeight: 17,
+      color: colors.mutedForeground,
+    },
     soonTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',

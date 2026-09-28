@@ -297,13 +297,11 @@ function makeThemeStyles(_colors: ThemeColors) {
 const styles = StyleSheet.create({
   skeleton: {
     height: 148,
-    borderRadius: 20,
     backgroundColor: 'rgba(142,142,147,0.18)',
   },
   mdRow: { flexDirection: 'row', gap: SLIDE_GAP },
   mdCol: { flex: 1, minWidth: 0 },
   card: {
-    borderRadius: 20,
     overflow: 'hidden',
   },
   usdCard: {
@@ -311,7 +309,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
   },
-  usdImage: { borderRadius: 20 },
+  usdImage: {},
   body: {
     paddingHorizontal: 10,
     paddingVertical: 10,

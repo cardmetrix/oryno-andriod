@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -26,42 +26,21 @@ import { useWalletBalance } from '@/hooks/use-wallet-balance';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { formatUsd } from '@/lib/format';
+import {
+  formatConversionRate,
+  formatLocalMoney,
+  isCustomCommentsService,
+  priceFor,
+  QUANTITY_FLOOR,
+  type BoostConversion,
+  type JapServiceRow,
+} from '@/lib/social-boost';
 
-type JapServiceRow = {
-  service: number;
-  name: string;
-  type: string;
-  category: string;
-  platform: string;
-  metric: string;
-  quality: string;
-  rate: number;
-  min: number;
-  max: number;
-  refill?: boolean;
-  cancel?: boolean;
-  currency: string;
-  priceUsdPerThousand?: number;
-  priceLocalPerThousand: number;
-  sampleQuantity: number;
-  samplePriceUsd?: number;
-  samplePriceLocal: number;
-};
-
-const QUANTITY_FLOOR = 100;
 const QUALITY_ORDER = ['Premium', 'High Quality', 'Instant', 'Standard', 'Economy'];
 
 function clampQty(n: number, min: number, max: number) {
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, Math.round(n)));
-}
-
-function usdPerThousand(service: JapServiceRow) {
-  return service.priceUsdPerThousand || service.priceLocalPerThousand;
-}
-
-function priceFor(service: JapServiceRow, quantity: number) {
-  return (usdPerThousand(service) * quantity) / 1000;
 }
 
 function parseQuantityInput(raw: string): number | null {
@@ -70,17 +49,6 @@ function parseQuantityInput(raw: string): number | null {
   const n = Number(cleaned);
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.round(n);
-}
-
-function isCustomCommentsService(service: {
-  type?: string | null;
-  quality?: string | null;
-  name?: string | null;
-}) {
-  const hay = `${service.type || ''} ${service.quality || ''} ${service.name || ''}`
-    .toLowerCase()
-    .replace(/[_-]+/g, ' ');
-  return /\bcustom\s*comments?\b/.test(hay);
 }
 
 const EMPTY_COMMENTS_DRAFT = '1. ';
@@ -146,7 +114,8 @@ export default function SocialScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const invalidateWallet = useInvalidateWallet();
-  const { canAffordUsd, frozen } = useWalletBalance();
+  const { canAffordUsd, usdBalance, loading: walletLoading, frozen } =
+    useWalletBalance();
   const catalogQuery = useSocialCatalog();
   const [platform, setPlatform] = useState('');
   const [metric, setMetric] = useState('');
@@ -168,14 +137,11 @@ export default function SocialScreen() {
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
 
-  const catalogData = catalogQuery.data as
-    | {
-        demo?: boolean;
-        fallback?: boolean;
-        platforms?: string[];
-        services?: JapServiceRow[];
-      }
-    | undefined;
+  const catalogData = catalogQuery.data;
+  const conversion: BoostConversion | null = useMemo(() => {
+    const c = catalogData?.conversion;
+    return c && c.perUsd > 0 ? c : null;
+  }, [catalogData?.conversion]);
   const liveMode =
     catalogData?.demo === false && catalogData?.fallback !== true;
   const platforms = useMemo(
@@ -205,7 +171,7 @@ export default function SocialScreen() {
 
     if (catalogData?.demo) {
       setError(
-        'Social boosting is not live yet. Set JAP_API_KEY and JAP_DEMO=false on the server.',
+        'Social boosting is not available right now. Please try again later.',
       );
     } else if (catalogData?.fallback) {
       setError(
@@ -408,9 +374,10 @@ export default function SocialScreen() {
     }
     setCommentsDraft(EMPTY_COMMENTS_DRAFT);
     setQuantityText((prev) => {
+      const floor = Math.max(QUANTITY_FLOOR, selected.min);
       const n = parseQuantityInput(prev);
-      if (n == null) return prev;
-      if (n < Math.max(QUANTITY_FLOOR, selected.min) || n > selected.max) return '';
+      if (n == null) return String(Math.min(selected.max, floor));
+      if (n < floor || n > selected.max) return String(Math.min(selected.max, floor));
       return prev;
     });
   }, [selected]);
@@ -437,14 +404,14 @@ export default function SocialScreen() {
       setPolling(true);
       try {
         const data = await api.get<{ data?: { status?: string } }>(
-          endpoints.services.socialStatus(orderId),
+          endpoints.jap.status(orderId),
         );
         if (data.data?.status) {
-          setStatusLabel(String(data.data.status));
-          const done = /completed|partial|canceled|cancelled|refunded/i.test(
-            String(data.data.status),
-          );
-          if (done) {
+          const label = String(data.data.status);
+          setStatusLabel(label);
+          const done = /^(completed|success|done|finished)$/i.test(label.trim());
+          const failed = /cancel|refund|fail|reject/i.test(label);
+          if (done || failed) {
             setPolling(false);
             return;
           }
@@ -573,6 +540,8 @@ export default function SocialScreen() {
     if (!canSubmit || !selected || quantity == null || !quantityValid) return;
     setSubmitting(true);
     setError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55_000);
     try {
       const data = await api.post<{
         orderId?: string;
@@ -580,17 +549,21 @@ export default function SocialScreen() {
         amountFormatted?: string;
         simulated?: boolean;
         message?: string;
-      }>(endpoints.services.socialPurchase, {
-        serviceId: selected.service,
-        serviceName: selected.name,
-        platform: selected.platform,
-        metric: selected.metric,
-        link: profileUrl.trim(),
-        quantity,
-        rateUsd: selected.rate,
-        priceLocal: amount,
-        ...(isCustomComments ? { comments: filledComments } : {}),
-      });
+      }>(
+        endpoints.jap.purchase,
+        {
+          serviceId: selected.service,
+          serviceName: selected.name,
+          platform: selected.platform,
+          metric: selected.metric,
+          link: profileUrl.trim(),
+          quantity,
+          rateUsd: selected.rate,
+          priceLocal: amount,
+          ...(isCustomComments ? { comments: filledComments } : {}),
+        },
+        { signal: controller.signal },
+      );
       setOrderId(data.orderId || '');
       setTransactionId(data.transactionId || '');
       setReceipt(data.amountFormatted || money(amount));
@@ -598,8 +571,16 @@ export default function SocialScreen() {
       invalidateWallet();
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Purchase failed');
+      const timedOut = err instanceof Error && err.name === 'AbortError';
+      setError(
+        timedOut
+          ? 'Boost order timed out. Check your history or try again.'
+          : err instanceof Error
+            ? err.message
+            : 'Purchase failed',
+      );
     } finally {
+      clearTimeout(timeout);
       setSubmitting(false);
     }
   }
@@ -610,7 +591,10 @@ export default function SocialScreen() {
       ? 'Boosting unavailable'
       : frozen
         ? 'Wallet unavailable'
-        : amount > 0 && !canAffordUsd(amount)
+        : !walletLoading &&
+            usdBalance != null &&
+            amount > 0 &&
+            !canAffordUsd(amount)
           ? 'Insufficient USD balance'
           : selected && quantityValid && quantity != null
             ? `Boost now · ${money(amount)}`
@@ -619,26 +603,32 @@ export default function SocialScreen() {
               : 'Enter quantity to continue';
 
   const successVariant =
-    statusLabel && /completed|partial/i.test(statusLabel)
+    statusLabel && /^(completed|success|done|finished)$/i.test(statusLabel.trim())
       ? 'success'
-      : polling
-        ? 'pending'
-        : 'success';
+      : 'pending';
+
+  const onPullRefresh = useCallback(async () => {
+    await catalogQuery.refetch();
+  }, [catalogQuery]);
 
   return (
     <Screen
       scroll
+      refreshing={catalogQuery.isFetching && !catalogQuery.isLoading}
+      onRefresh={() => void onPullRefresh()}
       footer={
-        <Pressable
-          disabled={!canSubmit}
-          onPress={() => void onSubmit()}
-          style={({ pressed }) => [
-            styles.submitBtn,
-            !canSubmit && styles.submitDisabled,
-            pressed && canSubmit && { opacity: 0.92 },
-          ]}>
-          <Text style={styles.submitText}>{submitLabel}</Text>
-        </Pressable>
+        success ? null : (
+          <Pressable
+            disabled={!canSubmit}
+            onPress={() => void onSubmit()}
+            style={({ pressed }) => [
+              styles.submitBtn,
+              !canSubmit && styles.submitDisabled,
+              pressed && canSubmit && { opacity: 0.92 },
+            ]}>
+            <Text style={styles.submitText}>{submitLabel}</Text>
+          </Pressable>
+        )
       }
       header={
         <PageHeader
@@ -670,6 +660,11 @@ export default function SocialScreen() {
                 }
               : undefined
           }
+          secondaryAction={{
+            label: 'Back to Home',
+            onPress: () => router.replace('/(app)/(tabs)'),
+            icon: 'home',
+          }}
           tertiaryAction={{
             label: 'Boost again',
             onPress: () => {
@@ -691,8 +686,8 @@ export default function SocialScreen() {
             </View>
           ) : null}
         </ServiceSuccess>
-      ) : null}
-
+      ) : (
+        <>
       <ErrorAlertModal
         error={error}
         onClose={() => setError(null)}
@@ -775,7 +770,7 @@ export default function SocialScreen() {
             options={packagesForType.map((item) => ({
               id: String(item.service),
               title: item.name,
-              trailing: `${money(item.samplePriceUsd || item.samplePriceLocal)}/${item.sampleQuantity.toLocaleString()}`,
+              trailing: `${money(item.samplePriceUsd ?? 0)}/${item.sampleQuantity.toLocaleString()}`,
             }))}
             emptyText="No packages for this filter"
           />
@@ -917,6 +912,32 @@ export default function SocialScreen() {
             value={selected && quantityValid && quantity != null ? money(amount) : '—'}
             accent
           />
+          <SummaryRow
+            label="Conversion rate"
+            value={
+              conversion
+                ? formatConversionRate(conversion.panelCurrency, conversion.panelPerUsd)
+                : '—'
+            }
+          />
+          {conversion &&
+          conversion.currency !== conversion.panelCurrency &&
+          conversion.currency !== 'USD' ? (
+            <SummaryRow
+              label={`${conversion.currency} rate`}
+              value={formatConversionRate(conversion.currency, conversion.perUsd)}
+            />
+          ) : null}
+          {conversion &&
+          selected &&
+          quantityValid &&
+          quantity != null &&
+          conversion.currency !== 'USD' ? (
+            <SummaryRow
+              label={`In ${conversion.currency}`}
+              value={formatLocalMoney(amount * conversion.perUsd, conversion.currency)}
+            />
+          ) : null}
           <View style={styles.payRow}>
             <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
             <Text style={styles.payText}>Pay from USD card</Text>
@@ -927,6 +948,8 @@ export default function SocialScreen() {
       <Animated.View entering={cardEntering(120)}>
         <ServiceInstructions service="social" />
       </Animated.View>
+        </>
+      )}
     </Screen>
   );
 }
@@ -955,10 +978,12 @@ function SummaryRow({
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     card: {
-      marginBottom: 8,
+      marginBottom: 12,
       borderRadius: Radius.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
       backgroundColor: colors.card,
-      padding: 10,
+      padding: 16,
     },
     cardHeader: {
       flexDirection: 'row',
@@ -1063,9 +1088,11 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'flex-start',
       gap: 12,
       borderRadius: 16,
-      backgroundColor: colors.grayLight,
-      paddingHorizontal: 10,
-      paddingVertical: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
     },
     previewName: { fontSize: 14, fontWeight: '700', color: colors.charcoal },
     previewMeta: { marginTop: 4, fontSize: 12, fontWeight: '500', color: colors.grayMedium },
@@ -1095,9 +1122,11 @@ function makeStyles(colors: ThemeColors) {
     },
     summary: { marginTop: 12, gap: 10 },
     summaryCard: {
-      marginBottom: 8,
-      borderRadius: 16,
-      backgroundColor: colors.muted,
+      marginBottom: 12,
+      borderRadius: Radius.card,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
       paddingHorizontal: 16,
       paddingVertical: 16,
     },

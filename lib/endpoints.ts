@@ -38,6 +38,9 @@ export const endpoints = {
     settings: '/api/admin/settings',
     support: '/api/admin/support',
     waitlistUsdCard: '/api/admin/waitlist/usd-card',
+    waitlistInternationalGifting: '/api/admin/waitlist/international-gifting',
+    virtualCards: '/api/admin/virtual-cards',
+    invoices: '/api/admin/invoices',
     transactionPins: '/api/admin/transaction-pins',
     revenue: '/api/admin/revenue',
     betting: '/api/admin/betting',
@@ -58,6 +61,7 @@ export const endpoints = {
     cards: '/api/wallet/cards',
     cardReveal: (id: string) => `/api/wallet/cards/${encodeURIComponent(id)}/reveal`,
     cardStatus: (id: string) => `/api/wallet/cards/${encodeURIComponent(id)}/status`,
+    cardPurchase: '/api/wallet/cards/purchase',
     cardPurchaseVerify: '/api/wallet/cards/purchase/verify',
     withdraw: '/api/wallet/withdraw',
     banks: '/api/wallet/banks',
@@ -124,6 +128,7 @@ export const endpoints = {
     internationalCountries: '/api/services/international/countries',
     internationalProductTypes: '/api/services/international/product-types',
     internationalOperators: '/api/services/international/operators',
+    /** @deprecated Use `endpoints.jap.*` — same handlers, website uses `/api/jap/*` directly. */
     social: '/api/services/social',
     socialPurchase: '/api/services/social/purchase',
     socialStatus: (id: string) =>
@@ -158,9 +163,11 @@ export const endpoints = {
     internationalProductTypes: '/api/vtpass/international/product-types',
     internationalOperators: '/api/vtpass/international/operators',
   },
+  /** Social boost (Famsup/JAP) — matches website `/api/jap/*`. */
   jap: {
     services: '/api/jap/services',
     purchase: '/api/jap/purchase',
+    status: (id: string) => `/api/jap/status/${encodeURIComponent(id)}`,
   },
   reloadly: {
     countries: '/api/reloadly/countries',

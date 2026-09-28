@@ -410,7 +410,6 @@ export { SplashLoading as FullScreenSkeleton } from '@/components/ui/splash-load
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
   walletCard: {
-    borderRadius: 20,
     padding: 12,
     minHeight: 112,
   },

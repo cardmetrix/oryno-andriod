@@ -268,7 +268,7 @@ export default function SettingsScreen() {
           <Row
             icon="information-circle-outline"
             label="About ORYNO"
-            onPress={() => router.push('/(app)/support')}
+            onPress={() => router.push('/(app)/about')}
             last
           />
         </Section>

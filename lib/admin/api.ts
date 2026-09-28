@@ -31,8 +31,12 @@ export const adminApi = {
       method: 'PATCH',
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
-  delete: <T>(path: string, init?: ApiFetchOptions) =>
-    adminFetch<T>(path, { ...init, method: 'DELETE' }),
+  delete: <T>(path: string, body?: unknown, init?: ApiFetchOptions) =>
+    adminFetch<T>(path, {
+      ...init,
+      method: 'DELETE',
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
 };
 
 export async function fetchAdminMe(): Promise<AdminMeResponse> {

@@ -96,6 +96,9 @@ export default function AdminLayout() {
       <Stack.Screen name="gift-cards" options={adminPushScreenOptions} />
       <Stack.Screen name="support" options={adminPushScreenOptions} />
       <Stack.Screen name="waitlist" options={adminPushScreenOptions} />
+      <Stack.Screen name="gifting-waitlist" options={adminPushScreenOptions} />
+      <Stack.Screen name="virtual-cards" options={adminPushScreenOptions} />
+      <Stack.Screen name="invoices" options={adminPushScreenOptions} />
       <Stack.Screen name="transaction-pins" options={adminPushScreenOptions} />
       <Stack.Screen name="virtual-numbers" options={adminPushScreenOptions} />
       <Stack.Screen name="providers" options={adminPushScreenOptions} />

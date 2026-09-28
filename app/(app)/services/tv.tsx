@@ -30,6 +30,8 @@ import { getCountryInfo } from '@/lib/country';
 import { endpoints } from '@/lib/endpoints';
 import { formatCountryMoney, formatServiceMoney } from '@/lib/format';
 
+type BillCategory = 'tv' | 'water';
+
 type Variation = {
   variationCode: string;
   name: string;
@@ -57,8 +59,10 @@ export default function TvBillsScreen() {
   const isKenya = countryCode === 'KE';
   const isSouthAfrica = countryCode === 'ZA';
   const live = isNigeria || isGhana || isKenya || isSouthAfrica;
+  const hasWaterTab = isGhana || isKenya || isSouthAfrica;
   const currencyPrefix = getCountryInfo(countryCode).currencySymbol;
 
+  const [category, setCategory] = useState<BillCategory>('tv');
   const [serviceID, setServiceID] = useState('');
   const [variations, setVariations] = useState<Variation[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
@@ -78,8 +82,10 @@ export default function TvBillsScreen() {
 
   const minBillAmount = isSouthAfrica ? 10 : isKenya ? 50 : isGhana ? 1 : 100;
 
+  const billIdentifier = category === 'water' ? 'water-bill' : 'tv-subscription';
+
   const servicesQuery = useVtpassServices(
-    'tv-subscription',
+    billIdentifier,
     !countryLoading && live,
   );
   const services = servicesQuery.data ?? [];
@@ -118,15 +124,19 @@ export default function TvBillsScreen() {
         : NG_PRESETS;
 
   const subtitle = isSouthAfrica
-    ? 'DStv, GOtv & StarTimes'
+    ? 'DStv, GOtv, StarTimes & water'
     : isKenya
-      ? 'DStv, GOtv & StarTimes'
+      ? 'DStv, GOtv, StarTimes & water'
       : isGhana
-        ? 'DStv, GOtv & StarTimes'
+        ? 'DStv, GOtv, StarTimes & water'
         : 'DStv, GOtv & StarTimes';
 
+  const pageTitle = category === 'water' ? 'Water Bills' : 'TV Bills';
+
   const customerLabel =
-    selectedService?.customerLabel || 'Smartcard / IUC';
+    category === 'water'
+      ? 'Account number'
+      : selectedService?.customerLabel || 'Smartcard / IUC';
 
   const canSubmit = useMemo(() => {
     const verifiedOk = !isNigeria || Boolean(customerName);
@@ -156,11 +166,18 @@ export default function TvBillsScreen() {
   ]);
 
   useEffect(() => {
+    if (!hasWaterTab && category === 'water') setCategory('tv');
+  }, [hasWaterTab, category]);
+
+  useEffect(() => {
     if (isSouthAfrica) setAmount('100');
     else if (isKenya) setAmount('500');
     else if (isGhana) setAmount('50');
     else setAmount('2000');
-  }, [isSouthAfrica, isKenya, isGhana, countryCode]);
+    setServiceID('');
+    setCustomerRef('');
+    setCustomerName(null);
+  }, [isSouthAfrica, isKenya, isGhana, countryCode, category]);
 
   useEffect(() => {
     if (!services.length) {
@@ -201,7 +218,7 @@ export default function TvBillsScreen() {
             fixedPrice?: boolean;
           }[];
         }>(
-          `${endpoints.services.variations}?serviceID=${encodeURIComponent(serviceID)}&identifier=tv-subscription`,
+          `${endpoints.services.variations}?serviceID=${encodeURIComponent(serviceID)}&identifier=${encodeURIComponent(billIdentifier)}`,
         );
         if (cancelled) return;
         const next: Variation[] = (data.variations ?? []).map((v) => ({
@@ -224,7 +241,7 @@ export default function TvBillsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [serviceID]);
+  }, [serviceID, billIdentifier]);
 
   // Auto-verify smartcard when digits are long enough.
   useEffect(() => {
@@ -247,7 +264,7 @@ export default function TvBillsScreen() {
           }>(endpoints.services.billsVerify, {
             billersCode: customerRef.trim(),
             serviceID,
-            category: 'tv',
+            category: category === 'water' ? 'water' : 'tv',
             type: variationCode || undefined,
           });
           if (cancelled) return;
@@ -272,7 +289,7 @@ export default function TvBillsScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [live, serviceID, customerRef, variationCode]);
+  }, [live, serviceID, customerRef, variationCode, category]);
 
   async function onSubmit() {
     if (!canSubmit || !selectedService) return;
@@ -285,7 +302,7 @@ export default function TvBillsScreen() {
       }>(endpoints.services.billsPurchase, {
         serviceID,
         serviceName: selectedService.name,
-        category: 'tv',
+        category: category === 'water' ? 'water' : 'tv',
         customerRef: customerRef.trim(),
         amount: amountNumber,
         variationCode,
@@ -366,11 +383,35 @@ export default function TvBillsScreen() {
           </Text>
         </Pressable>
       }
-      header={<PageHeader title="TV Bills" subtitle={subtitle} showBack />}>
+      header={<PageHeader title={pageTitle} subtitle={subtitle} showBack />}>
+      {hasWaterTab ? (
+        <Animated.View entering={cardEntering(0)} style={styles.tabRow}>
+          {(
+            [
+              { id: 'tv' as const, label: 'TV', icon: 'tv-outline' as const },
+              { id: 'water' as const, label: 'Water', icon: 'water-outline' as const },
+            ] as const
+          ).map((tab) => (
+            <Pressable
+              key={tab.id}
+              onPress={() => setCategory(tab.id)}
+              style={[styles.tabChip, category === tab.id && styles.tabChipActive]}>
+              <Ionicons
+                name={tab.icon}
+                size={16}
+                color={category === tab.id ? Brand.white : colors.mutedForeground}
+              />
+              <Text style={[styles.tabText, category === tab.id && styles.tabTextActive]}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
+        </Animated.View>
+      ) : null}
       {success ? (
         <ServiceSuccess
           title="Bill paid!"
-          subtitle={`${selectedService?.name || 'TV'} paid successfully.`}
+          subtitle={`${selectedService?.name || pageTitle} paid successfully.`}
           amountLabel="Amount charged"
           amount={receipt || money(amountNumber)}
           reference={transactionId}
@@ -491,7 +532,10 @@ export default function TvBillsScreen() {
 
       <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
         <SummaryRow label="Provider" value={selectedService?.name ?? '—'} />
-        <SummaryRow label="Smartcard" value={customerRef || '—'} />
+        <SummaryRow
+          label={category === 'water' ? 'Account' : 'Smartcard'}
+          value={customerRef || '—'}
+        />
         <SummaryRow label="Plan" value={selectedVariation?.name ?? '—'} />
         <SummaryRow label="Amount" value={money(amountNumber)} accent />
         <View style={styles.payRow}>
@@ -528,6 +572,29 @@ function SummaryRow({
 
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    tabRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginBottom: 16,
+    },
+    tabChip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      height: 44,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+    },
+    tabChipActive: {
+      backgroundColor: Brand.orange,
+      borderColor: Brand.orange,
+    },
+    tabText: { fontSize: 14, fontWeight: '700', color: colors.mutedForeground },
+    tabTextActive: { color: Brand.white },
     section: {
       marginBottom: 20,
       gap: 12,

@@ -157,14 +157,14 @@ export function AdCarousel({
 const styles = StyleSheet.create({
   wrap: {
     height: CAROUSEL_HEIGHT,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: 6,
   },
   placeholder: {
     height: CAROUSEL_HEIGHT,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: 6,
   },

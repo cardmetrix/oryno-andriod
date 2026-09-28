@@ -19,12 +19,23 @@ export const adminNav: AdminNavItem[] = [
     icon: 'card-outline',
   },
   {
+    href: '/(app)/admin/gifting-waitlist',
+    label: 'Gifting Waitlist',
+    icon: 'gift-outline',
+  },
+  {
+    href: '/(app)/admin/virtual-cards',
+    label: 'Virtual Cards',
+    icon: 'card-outline',
+  },
+  {
     href: '/(app)/admin/transaction-pins',
     label: 'Transaction PINs',
     icon: 'key-outline',
   },
   { href: '/(app)/admin/wallets', label: 'Wallets', icon: 'wallet-outline' },
   { href: '/(app)/admin/gift-cards', label: 'Gift Cards', icon: 'gift-outline' },
+  { href: '/(app)/admin/invoices', label: 'Invoices', icon: 'document-text-outline' },
   {
     href: '/(app)/admin/virtual-numbers',
     label: 'Virtual Numbers',

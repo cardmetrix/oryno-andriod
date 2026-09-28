@@ -32,6 +32,7 @@ export default function AppLayout() {
       <Stack.Screen name="withdraw" options={modalScreenOptions} />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="wallet/add-bank" options={formSheetScreenOptions} />
+      <Stack.Screen name="about" />
       <Stack.Screen name="support" />
       <Stack.Screen name="referrals" />
       <Stack.Screen name="terms" />

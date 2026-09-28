@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { VtpassServiceOption } from '@/components/app/vtpass-service-picker';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
+import type { SocialCatalogPayload } from '@/lib/social-boost';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -104,12 +105,7 @@ export function useSocialCatalog(enabled = true) {
   return useQuery({
     queryKey: queryKeys.catalogs.social,
     queryFn: async () => {
-      const data = await api.get<{
-        services?: Array<Record<string, unknown>>;
-        platforms?: string[];
-        demo?: boolean;
-        fallback?: boolean;
-      }>(endpoints.services.social);
+      const data = await api.get<SocialCatalogPayload>(endpoints.jap.services);
       return data;
     },
     enabled,
