@@ -180,7 +180,7 @@ export default function CardsScreen() {
           });
           if (cancelled) return;
           toast.success('Payment received', {
-            description: 'Your card purchase is awaiting admin review.',
+            description: 'Your card purchase is being reviewed.',
           });
         } else {
           const json = await api.post<{ amountFormatted?: string }>(
@@ -333,7 +333,7 @@ export default function CardsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.pendingTitle}>Card purchase under review</Text>
                 <Text style={styles.pendingBody}>
-                  We received {pendingOrder?.localFormatted ?? 'your payment'}. An admin will
+                  We received {pendingOrder?.localFormatted ?? 'your payment'}. Our team will
                   issue your virtual card shortly.
                 </Text>
               </View>

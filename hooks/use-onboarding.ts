@@ -21,7 +21,7 @@ export type OnboardingSlide = {
 
 const DEFAULT_ACCENT = '#FF6A00';
 
-/** Offline / first-paint fallback matching the seeded admin slides. */
+/** Offline / first-paint fallback when the onboarding API is unavailable. */
 export const LOCAL_ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: 'local-wallet',

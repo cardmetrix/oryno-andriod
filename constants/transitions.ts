@@ -34,22 +34,6 @@ export const fadeScreenOptions: NativeStackNavigationOptions = {
   freezeOnBlur: true,
 };
 
-/** Fast fade for admin primary tabs (Overview / Users / KYC / Wallets / More). */
-export const adminStackScreenOptions: NativeStackNavigationOptions = {
-  headerShown: false,
-  animation: 'fade',
-  animationDuration: 160,
-  gestureEnabled: true,
-  fullScreenGestureEnabled: Platform.OS === 'ios',
-  freezeOnBlur: true,
-};
-
-/** Snappy push for admin secondary screens (from More). */
-export const adminPushScreenOptions: NativeStackNavigationOptions = {
-  ...stackScreenOptions,
-  headerShown: false,
-};
-
 /** Bottom sheet style for money / utility sheets. */
 export const modalScreenOptions: NativeStackNavigationOptions = {
   headerShown: false,

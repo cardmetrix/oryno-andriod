@@ -33,7 +33,6 @@ export function hrefToAppRoute(href?: string | null): string {
     '/services/gift-cards-live': '/(app)/services/gift-cards-live',
     '/services/virtual-numbers': '/(app)/services/virtual-numbers',
     '/services/emails': '/(app)/services/emails',
-    '/admin': '/(app)/admin',
     '/login': '/(auth)/login',
   };
 
@@ -41,7 +40,7 @@ export function hrefToAppRoute(href?: string | null): string {
   if (normalized.startsWith('/history/')) {
     return `/(app)/history/${normalized.slice('/history/'.length)}`;
   }
-  if (normalized.startsWith('/admin')) return `/(app)${normalized}`;
+  if (normalized.startsWith('/admin')) return '/(app)/notifications';
   if (normalized.startsWith('/services/')) return `/(app)${normalized}`;
   if (normalized.startsWith('/settings/')) return `/(app)${normalized}`;
   return '/(app)/notifications';

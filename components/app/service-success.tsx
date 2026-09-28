@@ -11,16 +11,21 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { StatusMarkIcon } from '@/components/app/status-mark-icon';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
+import { hrefToAppRoute } from '@/lib/push-notifications/navigation';
 import { toast } from '@/lib/toast';
 
 export type ServiceSuccessAction = {
   label: string;
-  onPress: () => void;
+  href?: string;
+  onClick?: () => void;
+  /** Mobile callers; runs after `onClick` when both are set. */
+  onPress?: () => void;
   icon?: 'receipt' | 'share' | 'plus' | 'home' | 'again';
 };
 
@@ -63,9 +68,17 @@ function ActionRow({
             ? 'home-outline'
             : 'refresh-outline';
 
+  const handlePress = () => {
+    action.onClick?.();
+    action.onPress?.();
+    if (action.href) {
+      router.push(hrefToAppRoute(action.href) as never);
+    }
+  };
+
   return (
     <Pressable
-      onPress={action.onPress}
+      onPress={handlePress}
       style={({ pressed }) => [
         styles.actionBtn,
         variant === 'primary' ? styles.actionPrimary : styles.actionSecondary,
@@ -187,33 +200,10 @@ export function ServiceSuccess({
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.body}
               keyboardShouldPersistTaps="handled">
-              <View style={styles.iconWrap}>
-                <View
-                  style={[
-                    styles.iconHalo,
-                    {
-                      backgroundColor: isSuccess
-                        ? 'rgba(52,199,89,0.18)'
-                        : 'rgba(245,158,11,0.16)',
-                    },
-                  ]}
-                />
-                <Animated.View
-                  entering={ZoomIn.springify().damping(14)}
-                  style={[
-                    styles.iconCircle,
-                    {
-                      backgroundColor: isSuccess ? Brand.success : '#F59E0B',
-                      shadowColor: isSuccess ? Brand.success : '#F59E0B',
-                    },
-                  ]}>
-                  <Ionicons
-                    name={isSuccess ? 'checkmark' : 'time'}
-                    size={32}
-                    color={Brand.white}
-                  />
-                </Animated.View>
-              </View>
+              <StatusMarkIcon
+                status={isSuccess ? 'Successful' : 'Pending'}
+                style={styles.statusMark}
+              />
 
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
@@ -239,10 +229,8 @@ export function ServiceSuccess({
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={styles.amountLabel}>
-                          {(
-                            amountLabel ||
-                            (isSuccess ? 'Amount credited' : 'Expected amount')
-                          ).toUpperCase()}
+                          {amountLabel ||
+                            (isSuccess ? 'Amount credited' : 'Expected amount')}
                         </Text>
                         <Text style={styles.amountValue} numberOfLines={1}>
                           {amount}
@@ -388,27 +376,9 @@ function makeStyles(colors: ThemeColors) {
       paddingTop: 28,
       paddingBottom: 22,
     },
-    iconWrap: {
-      width: 80,
-      height: 80,
-      alignItems: 'center',
-      justifyContent: 'center',
+    statusMark: {
+      marginTop: -4,
       marginBottom: 4,
-    },
-    iconHalo: {
-      ...StyleSheet.absoluteFillObject,
-      borderRadius: 40,
-    },
-    iconCircle: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowOpacity: 0.35,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 6,
     },
     title: {
       marginTop: 12,
@@ -429,8 +399,8 @@ function makeStyles(colors: ThemeColors) {
     },
     detailCard: {
       width: '100%',
-      marginTop: 20,
-      borderRadius: 18,
+      marginTop: 24,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.muted,
@@ -453,7 +423,8 @@ function makeStyles(colors: ThemeColors) {
     amountLabel: {
       fontSize: 10,
       fontWeight: '800',
-      letterSpacing: 0.8,
+      letterSpacing: 1.4,
+      textTransform: 'uppercase',
       color: colors.mutedForeground,
     },
     amountValue: {
@@ -495,9 +466,9 @@ function makeStyles(colors: ThemeColors) {
     },
     copyText: { fontSize: 12, fontWeight: '700', color: Brand.success },
     children: { width: '100%', marginTop: 14 },
-    actions: { width: '100%', marginTop: 18, gap: 10 },
+    actions: { width: '100%', marginTop: 24, gap: 10 },
     actionBtn: {
-      height: 52,
+      height: 48,
       borderRadius: 16,
       paddingHorizontal: 14,
       flexDirection: 'row',
@@ -536,7 +507,7 @@ function makeStyles(colors: ThemeColors) {
     },
     footer: {
       width: '100%',
-      marginTop: 20,
+      marginTop: 28,
       paddingTop: 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,

@@ -46,8 +46,7 @@ export const API_BASE_URL =
     : configuredApiUrl;
 
 /**
- * Production APKs use `/api/external/v1` (Clerk Bearer → website handlers).
- * Admin routes stay on first-party `/api/admin` via `resolveApiPath`.
+ * Production builds use `/api/external/v1` (Clerk Bearer → website handlers).
  * Local dev can keep `/api` against a LAN Next server.
  */
 export const API_PREFIX =

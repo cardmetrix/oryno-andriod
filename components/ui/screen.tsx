@@ -14,7 +14,7 @@ type Props = ViewProps & {
   refreshing?: boolean;
   onRefresh?: () => void;
   /**
-   * Soft content enter motion. Default: only on tab / admin root screens.
+   * Soft content enter motion. Default: only on tab root screens.
    * Stack pushes rely on native transitions — JS enter animations fight them.
    */
   animate?: boolean;
@@ -40,15 +40,13 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const inTabs = segments.includes('(tabs)');
-  const inAdmin =
-    segments.includes('admin') && !segments.includes('login');
   /** Let native stack own motion on pushed screens. */
-  const shouldAnimate = animate ?? (inTabs || inAdmin);
+  const shouldAnimate = animate ?? inTabs;
   /** Enter once — remounting FadeIn on data refresh causes dashboard shake. */
   const enteredRef = useRef(false);
   const entering =
     shouldAnimate && !enteredRef.current
-      ? FadeIn.duration(inAdmin ? 140 : 180)
+      ? FadeIn.duration(180)
       : undefined;
   if (shouldAnimate && !enteredRef.current) {
     enteredRef.current = true;
@@ -65,7 +63,7 @@ export function Screen({
 
   const scrollBottomPad = footer
     ? 20
-    : inTabs || inAdmin
+    : inTabs
       ? 108
       : 28;
 
@@ -145,7 +143,7 @@ export function Screen({
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: colors.background }]}
-      edges={inAdmin ? ['left', 'right'] : ['top', 'left', 'right']}>
+      edges={['top', 'left', 'right']}>
       {header || footer ? shell : body}
     </SafeAreaView>
   );

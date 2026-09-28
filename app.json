@@ -2,7 +2,7 @@
   "expo": {
     "name": "ORYNO",
     "slug": "oryno",
-    "version": "0.2.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/oryno-app-icon.png",
     "scheme": "oryno",
@@ -30,18 +30,20 @@
       "edgeToEdgeEnabled": true,
       "package": "com.oryno.africa",
       "googleServicesFile": "./google-services.json",
-      "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -70,16 +72,6 @@
         }
       ],
       [
-        "expo-media-library",
-        {
-          "photosPermission": "Allow ORYNO to access your photos to save receipts.",
-          "savePhotosPermission": "Allow ORYNO to save receipts to your photos.",
-          "granularPermissions": [
-            "photo"
-          ]
-        }
-      ],
-      [
         "expo-contacts",
         {
           "contactsPermission": "Allow ORYNO to access your contacts so you can pick a phone number for airtime and data."
@@ -89,7 +81,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow ORYNO to access your photos to upload gift card images.",
-          "cameraPermission": "Allow ORYNO to use your camera for your KYC selfie."
+          "cameraPermission": "Allow ORYNO to use your camera for your KYC selfie.",
+          "microphonePermission": false
         }
       ],
       [

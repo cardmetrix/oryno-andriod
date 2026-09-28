@@ -59,7 +59,6 @@ export default function AppLayout() {
       <Stack.Screen name="services/virtual-numbers" />
       <Stack.Screen name="services/emails" />
       <Stack.Screen name="services/international-gifting" />
-      <Stack.Screen name="admin" options={{ headerShown: false, animation: 'fade', animationDuration: 220 }} />
     </Stack>
   );
 }

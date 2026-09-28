@@ -103,7 +103,7 @@ export type ProfileDto = {
   avatarUrl: string | null;
   countryCode: string | null;
   countryName: string;
-  /** App role: user (default) or admin */
+  /** Server role (mobile app is end-user only). */
   role: 'user' | 'admin';
   kycStatus: string;
   kycLevel: number;

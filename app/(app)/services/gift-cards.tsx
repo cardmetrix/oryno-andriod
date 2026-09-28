@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
+import {
+  ensurePhotoLibraryAccessForPicker,
+  launchImageLibraryAsync,
+} from '@/lib/pick-from-library';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -471,13 +474,13 @@ export default function GiftCardsScreen() {
   }, [selectedBuy, buyAmount, buyCountry]);
 
   async function pickImages() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    const allowed = await ensurePhotoLibraryAccessForPicker();
+    if (!allowed) {
       setError('Allow photo library access to upload card images.');
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: MAX_CARD_IMAGES - images.length,

@@ -121,17 +121,11 @@ export function toLegacyApiPath(path: string): string {
 /**
  * Resolve a logical API path for the configured prefix.
  * Accepts `/api/wallet`, `/wallet`, or full `/api/external/v1/wallet`.
- * Admin is always first-party `/api/admin` (not exposed on external API).
  */
 export function resolveApiPath(path: string, prefix = API_PREFIX): string {
   if (/^https?:\/\//i.test(path)) return path;
 
   let p = path.startsWith('/') ? path : `/${path}`;
-
-  // Admin console — never route through /api/external (blocked server-side).
-  if (p.includes('/admin')) {
-    return toLegacyApiPath(p.startsWith('/api') ? p : `/api${p}`);
-  }
 
   // Already absolute for chosen prefix
   if (prefix.startsWith('/api/external') && p.startsWith('/api/external/')) {

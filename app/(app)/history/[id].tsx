@@ -3,7 +3,6 @@ import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -21,12 +20,17 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { captureRef } from 'react-native-view-shot';
 
 import { PageHeader } from '@/components/app/page-header';
+import {
+  StatusMarkIcon,
+  normalizeStatusMark,
+} from '@/components/app/status-mark-icon';
 import { Screen } from '@/components/ui/screen';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { alert } from '@/lib/alert';
 import { api } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
+import { toast } from '@/lib/toast';
 import type { AppTransaction } from '@/lib/types';
 
 type TransactionReceipt = AppTransaction & {
@@ -64,15 +68,20 @@ function isSocialBoostTx(tx: TransactionReceipt) {
   );
 }
 
-function normalizeStatus(
-  status: string,
-): 'Successful' | 'Pending' | 'Failed' | 'Reversed' {
-  const s = status.toLowerCase();
-  if (s === 'reversed') return 'Reversed';
-  if (s === 'failed') return 'Failed';
-  if (s === 'pending' || s === 'processing') return 'Pending';
-  if (s === 'completed' || s === 'successful' || s === 'success') return 'Successful';
-  return 'Successful';
+/** Receipts that render a live status panel (boost or number SMS). */
+function hasLiveStatusSection(tx: TransactionReceipt) {
+  if (isSocialBoostTx(tx)) {
+    return Boolean(metaString(tx.metadata, 'japOrderId') || tx.externalRef);
+  }
+  if (isVirtualNumberTx(tx)) {
+    return Boolean(
+      metaString(tx.metadata, 'activationId') ||
+        tx.externalRef ||
+        metaString(tx.metadata, 'phoneNumber') ||
+        metaString(tx.metadata, 'smsCode'),
+    );
+  }
+  return false;
 }
 
 export default function HistoryDetailScreen() {
@@ -85,6 +94,7 @@ export default function HistoryDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) {
@@ -111,6 +121,10 @@ export default function HistoryDetailScreen() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    setReceiptOpen(false);
+  }, [id]);
+
   function receiptText(receipt: TransactionReceipt) {
     const credit = receipt.type === 'credit';
     return [
@@ -118,7 +132,7 @@ export default function HistoryDetailScreen() {
       '',
       receipt.title,
       receipt.amount,
-      `Status: ${normalizeStatus(receipt.status)}`,
+      `Status: ${normalizeStatusMark(receipt.status)}`,
       '',
       `Category: ${receipt.categoryLabel}`,
       `Details: ${receipt.subtitle}`,
@@ -151,7 +165,7 @@ export default function HistoryDetailScreen() {
     if (!uri) throw new Error('Could not capture receipt');
     if (!uri.startsWith('file://')) uri = `file://${uri}`;
 
-    // MediaLibrary on Android requires a local file:// URI with an extension.
+    // Share/save flows need a local file:// URI with an extension.
     const safeRef = (tx?.reference || 'receipt').replace(/[^\w.-]+/g, '_');
     const dest = `${FileSystem.cacheDirectory}oryno-receipt-${safeRef}.png`;
     try {
@@ -201,31 +215,7 @@ export default function HistoryDetailScreen() {
     try {
       const uri = await captureReceiptUri();
 
-      // writeOnly=true → iOS add-only (NSPhotoLibraryAddUsageDescription) / Android write.
-      const permission = await MediaLibrary.requestPermissionsAsync(true);
-      const canSave =
-        permission.granted ||
-        permission.status === 'granted' ||
-        permission.accessPrivileges === 'limited';
-
-      if (canSave) {
-        try {
-          // createAssetAsync is more reliable than saveToLibraryAsync on Android 11+.
-          await MediaLibrary.createAssetAsync(uri);
-          alert.success('Saved', 'Receipt saved to your photos.');
-          return;
-        } catch {
-          try {
-            await MediaLibrary.saveToLibraryAsync(uri);
-            alert.success('Saved', 'Receipt saved to your photos.');
-            return;
-          } catch {
-            // Fall through to share sheet.
-          }
-        }
-      }
-
-      // Fallback: system share sheet (Save image / Files / Drive).
+      // System share sheet (Save image / Photos / Files) — no broad storage permissions.
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
@@ -235,11 +225,7 @@ export default function HistoryDetailScreen() {
         return;
       }
 
-      throw new Error(
-        canSave
-          ? 'Couldn’t save the receipt image.'
-          : 'Photo library permission is required to save receipts.',
-      );
+      throw new Error('Couldn’t save the receipt image.');
     } catch (e) {
       if (e instanceof Error && /user did not share|share.*cancel|abort/i.test(e.message)) {
         return;
@@ -280,117 +266,149 @@ export default function HistoryDetailScreen() {
   }
 
   const credit = tx.type === 'credit';
-  const token =
-    metaString(tx.metadata, 'token') || metaString(tx.metadata, 'tokenOrReceipt');
+  const hasStatusSection = hasLiveStatusSection(tx);
+  const showReceipt = !hasStatusSection || receiptOpen;
 
   return (
     <Screen
       scroll
       header={<PageHeader title="Receipt" subtitle="Transaction details" showBack />}>
-      <Animated.View entering={FadeInDown.duration(280)}>
-        <View ref={receiptRef} collapsable={false} style={styles.receiptCard}>
-          <LinearGradient
-            colors={['#FF8124', Brand.orange, '#E85D00']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.receiptHero}>
-            <View style={styles.brandRow}>
-              <View style={styles.logoWell}>
-                <Image
-                  source={require('@/assets/images/oryno-logo.png')}
-                  style={styles.logo}
-                  contentFit="cover"
-                />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.brandEyebrow}>ORYNO</Text>
-                <Text style={styles.brandTitle}>Transaction receipt</Text>
-              </View>
-            </View>
-
-            <View style={styles.heroCenter}>
-              <StatusHeroIcon status={tx.status} />
-              <Text style={styles.txTitle}>{tx.title}</Text>
-              <Text style={styles.txAmount}>{tx.amount}</Text>
-              <StatusPill status={tx.status} />
-            </View>
-          </LinearGradient>
-
-          <View style={styles.details}>
-            <ReceiptWatermark />
-            <View style={styles.detailsContent}>
-              <DetailRow label="Category" value={tx.categoryLabel} />
-              <DetailRow label="Details" value={tx.subtitle} />
-              {tx.category === 'refund' && credit ? (
-                <View style={styles.refundNote}>
-                  <Text style={styles.refundText}>
-                    This credit was added back to your{' '}
-                    <Text style={styles.refundEmph}>ORYNO wallet balance</Text>
-                    . It is not a refund to your bank account. Check Wallet for your
-                    current balance.
-                  </Text>
-                </View>
-              ) : null}
-              <DetailRow label="Type" value={credit ? 'Credit' : 'Debit'} />
-              <DetailRow label="Date" value={tx.createdAtFormatted} />
-              <DetailRow label="Reference" value={tx.reference} mono />
-              <DetailRow label="Currency" value={tx.currency ?? 'NGN'} />
-              {token ? <DetailRow label="Token" value={token} mono /> : null}
-              {isVirtualNumberTx(tx) ? (
-                <VirtualNumberDetails meta={tx.metadata} />
-              ) : null}
-              {isSocialBoostTx(tx) ? <SocialBoostDetails meta={tx.metadata} /> : null}
-            </View>
-          </View>
-
-          <Text style={styles.footer}>
-            Powered by ORYNO · Keep this receipt for your records
-          </Text>
-        </View>
-      </Animated.View>
-
       {isVirtualNumberTx(tx) ? (
-        <Animated.View entering={FadeInDown.delay(40).duration(280)} style={{ marginTop: 16 }}>
+        <Animated.View entering={FadeInDown.duration(280)}>
           <VirtualNumberCodePanel tx={tx} />
         </Animated.View>
       ) : null}
 
       {isSocialBoostTx(tx) ? (
-        <Animated.View entering={FadeInDown.delay(40).duration(280)} style={{ marginTop: 16 }}>
+        <Animated.View
+          entering={FadeInDown.delay(isVirtualNumberTx(tx) ? 40 : 0).duration(280)}
+          style={isVirtualNumberTx(tx) ? { marginTop: 16 } : undefined}>
           <SocialBoostStatusPanel tx={tx} />
         </Animated.View>
       ) : null}
 
-      <Animated.View entering={FadeInDown.delay(60).duration(280)} style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.shareBtn,
-            (sharing || pressed) && { opacity: sharing ? 0.55 : 0.9 },
-          ]}
-          disabled={sharing || downloading}
-          onPress={() => void onShare()}>
-          {sharing ? (
-            <ActivityIndicator size="small" color={Brand.orange} />
-          ) : (
-            <Ionicons name="share-outline" size={18} color={Brand.orange} />
-          )}
-          <Text style={styles.shareText}>Share</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.downloadBtn,
-            (downloading || pressed) && { opacity: downloading ? 0.55 : 0.92 },
-          ]}
-          disabled={sharing || downloading}
-          onPress={() => void onDownload()}>
-          {downloading ? (
-            <ActivityIndicator size="small" color={Brand.white} />
-          ) : (
-            <Ionicons name="download-outline" size={18} color={Brand.white} />
-          )}
-          <Text style={styles.downloadText}>Download</Text>
-        </Pressable>
-      </Animated.View>
+      {hasStatusSection && !receiptOpen ? (
+        <Animated.View entering={FadeInDown.delay(40).duration(280)} style={{ marginTop: 20 }}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.viewReceiptBtn,
+              pressed && { opacity: 0.92 },
+            ]}
+            onPress={() => setReceiptOpen(true)}>
+            <Text style={styles.viewReceiptText}>View receipt</Text>
+          </Pressable>
+        </Animated.View>
+      ) : null}
+
+      {showReceipt ? (
+        <>
+          <Animated.View
+            entering={FadeInDown.duration(280)}
+            style={hasStatusSection ? { marginTop: 20 } : undefined}>
+            <View ref={receiptRef} collapsable={false} style={styles.receiptCard}>
+              <LinearGradient
+                colors={['#FF8124', Brand.orange, '#E85D00']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.receiptHero}>
+                <View style={styles.brandRow}>
+                  <View style={styles.logoWell}>
+                    <Image
+                      source={require('@/assets/images/oryno-logo.png')}
+                      style={styles.logo}
+                      contentFit="cover"
+                    />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.brandEyebrow}>ORYNO</Text>
+                    <Text style={styles.brandTitle}>Transaction receipt</Text>
+                  </View>
+                </View>
+
+                <View style={styles.heroCenter}>
+                  <StatusHeroIcon status={tx.status} />
+                  <Text style={styles.txTitle}>{tx.title}</Text>
+                  <Text style={styles.txAmount}>{tx.amount}</Text>
+                  <StatusPill status={tx.status} />
+                </View>
+              </LinearGradient>
+
+              <View style={styles.details}>
+                <ReceiptWatermark />
+                <View style={styles.detailsContent}>
+                  <DetailRow label="Category" value={tx.categoryLabel} />
+                  <DetailRow label="Details" value={tx.subtitle} />
+                  {tx.category === 'refund' && credit ? (
+                    <View style={styles.refundNote}>
+                      <Text style={styles.refundText}>
+                        This credit was added back to your{' '}
+                        <Text style={styles.refundEmph}>ORYNO wallet balance</Text>
+                        . It is not a refund to your bank account. Check Wallet for your
+                        current balance.
+                      </Text>
+                    </View>
+                  ) : null}
+                  <DetailRow label="Type" value={credit ? 'Credit' : 'Debit'} />
+                  <DetailRow label="Date" value={tx.createdAtFormatted} />
+                  <DetailRow label="Reference" value={tx.reference} mono />
+                  <DetailRow
+                    label="Currency"
+                    value={
+                      isSocialBoostTx(tx)
+                        ? tx.currency ?? 'USD'
+                        : tx.currency ?? 'NGN'
+                    }
+                  />
+                  {isVirtualNumberTx(tx) ? (
+                    <VirtualNumberDetails meta={tx.metadata} />
+                  ) : null}
+                  {isSocialBoostTx(tx) ? (
+                    <>
+                      <DetailRow label="Paid from" value="USD wallet" />
+                      <SocialBoostDetails meta={tx.metadata} />
+                    </>
+                  ) : null}
+                </View>
+              </View>
+
+              <Text style={styles.footer}>
+                Powered by ORYNO · Keep this receipt for your records
+              </Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View entering={FadeInDown.delay(60).duration(280)} style={styles.actions}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.shareBtn,
+                (sharing || pressed) && { opacity: sharing ? 0.55 : 0.9 },
+              ]}
+              disabled={sharing || downloading}
+              onPress={() => void onShare()}>
+              {sharing ? (
+                <ActivityIndicator size="small" color={Brand.orange} />
+              ) : (
+                <Ionicons name="share-outline" size={18} color={Brand.orange} />
+              )}
+              <Text style={styles.shareText}>Share</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.downloadBtn,
+                (downloading || pressed) && { opacity: downloading ? 0.55 : 0.92 },
+              ]}
+              disabled={sharing || downloading}
+              onPress={() => void onDownload()}>
+              {downloading ? (
+                <ActivityIndicator size="small" color={Brand.white} />
+              ) : (
+                <Ionicons name="download-outline" size={18} color={Brand.white} />
+              )}
+              <Text style={styles.downloadText}>Download</Text>
+            </Pressable>
+          </Animated.View>
+        </>
+      ) : null}
     </Screen>
   );
 }
@@ -447,13 +465,10 @@ function SocialBoostStatusPanel({ tx }: { tx: TransactionReceipt }) {
       const data = await api.get<{
         error?: string;
         data?: { status?: string; remains?: string; start_count?: string };
-        status?: string;
-        remains?: string;
       }>(endpoints.jap.status(orderId));
-      const nextStatus = data.data?.status ?? data.status;
-      const nextRemains = data.data?.remains ?? data.remains;
-      if (nextStatus) setStatus(String(nextStatus));
-      if (nextRemains != null) setRemains(String(nextRemains));
+      if (data.error) throw new Error(data.error);
+      if (data.data?.status) setStatus(String(data.data.status));
+      if (data.data?.remains != null) setRemains(String(data.data.remains));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not get status');
     } finally {
@@ -595,9 +610,9 @@ function VirtualNumberCodePanel({ tx }: { tx: TransactionReceipt }) {
   async function onCopy(value: string, label: string) {
     try {
       await Clipboard.setStringAsync(value);
-      alert.success('Copied', `${label} copied`);
+      toast.success(`${label} copied`);
     } catch {
-      alert.error('Error', 'Could not copy');
+      toast.error('Could not copy');
     }
   }
 
@@ -682,29 +697,13 @@ function VirtualNumberCodePanel({ tx }: { tx: TransactionReceipt }) {
 }
 
 function StatusHeroIcon({ status }: { status: string }) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const label = normalizeStatus(status);
-  const icon =
-    label === 'Failed'
-      ? ('close-circle' as const)
-      : label === 'Reversed'
-        ? ('refresh-circle' as const)
-        : label === 'Pending'
-          ? ('time' as const)
-          : ('checkmark-circle' as const);
-
-  return (
-    <View style={styles.typeIcon}>
-      <Ionicons name={icon} size={56} color={Brand.white} />
-    </View>
-  );
+  return <StatusMarkIcon status={status} color={Brand.white} />;
 }
 
 function ReceiptWatermark() {
   const { colors, isDark } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const marks = useMemo(() => Array.from({ length: 30 }, (_, i) => i), []);
+  const marks = useMemo(() => Array.from({ length: 36 }, (_, i) => i), []);
   const ink = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(28,28,30,0.055)';
   const logoOpacity = isDark ? 0.035 : 0.025;
 
@@ -730,15 +729,15 @@ function ReceiptWatermark() {
 function StatusPill({ status }: { status: string }) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const label = normalizeStatus(status);
+  const label = normalizeStatusMark(status);
   const icon =
     label === 'Failed'
-      ? ('close-circle' as const)
+      ? ('close-circle-outline' as const)
       : label === 'Reversed'
-        ? ('refresh-circle' as const)
+        ? ('refresh-circle-outline' as const)
         : label === 'Pending'
           ? ('time-outline' as const)
-          : ('checkmark-circle' as const);
+          : ('checkmark-circle-outline' as const);
 
   return (
     <View style={styles.statusPill}>
@@ -996,8 +995,20 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '500',
       color: colors.mutedForeground,
     },
+    viewReceiptBtn: {
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: Brand.orange,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    viewReceiptText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: Brand.white,
+    },
     actions: {
-      marginTop: 16,
+      marginTop: 20,
       flexDirection: 'row',
       gap: 12,
     },

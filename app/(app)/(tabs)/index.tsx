@@ -7,7 +7,6 @@ import { Screen } from '@/components/ui/screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { Brand } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
-import { useAdminAccess } from '@/hooks/use-admin-access';
 import { useNotificationsQuery } from '@/hooks/use-notifications-query';
 import { useProfile } from '@/hooks/use-profile';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -62,7 +61,6 @@ export default function HomeScreen() {
     refresh: refreshNotifications,
     refreshIfStale: refreshNotificationsIfStale,
   } = useNotificationsQuery();
-  const { canAccessAdmin, hasSession } = useAdminAccess();
   useSettlePendingTransactions(true);
   const firstName =
     data?.user.fullName?.split(' ')[0] ||

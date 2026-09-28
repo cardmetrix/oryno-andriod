@@ -2,7 +2,10 @@ import { useReverification, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
+import {
+  ensurePhotoLibraryAccessForPicker,
+  launchImageLibraryAsync,
+} from '@/lib/pick-from-library';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
@@ -320,13 +323,13 @@ export default function ProfileScreen() {
 
   async function onPickPhoto() {
     if (uploadingAvatar) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
+    const allowed = await ensurePhotoLibraryAccessForPicker();
+    if (!allowed) {
       toast.error('Allow photo library access to upload a profile photo.');
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
