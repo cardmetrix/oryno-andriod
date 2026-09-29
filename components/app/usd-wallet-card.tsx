@@ -17,7 +17,7 @@ import { WalletCardShine } from '@/components/app/wallet-card-shine';
 import { WalletCardUsdGlow } from '@/components/app/wallet-card-usd-glow';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
-import { api } from '@/lib/api';
+import { api, publicProviderMessage } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { maskBalance } from '@/lib/format';
 import { toast } from '@/lib/toast';
@@ -275,7 +275,7 @@ export function UsdWalletActionsPanel({
         return;
       }
 
-      toast.success('USD wallet funded', {
+      toast.success('Wallet funded successfully', {
         description: json.usdFormatted ?? `$${amount} credited`,
       });
       onPanelChange('fund');
@@ -284,7 +284,9 @@ export function UsdWalletActionsPanel({
         router.push(`/(app)/history/${json.transactionId}`);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Funding failed');
+      setError(
+        publicProviderMessage(err instanceof Error ? err.message : 'Funding failed'),
+      );
     } finally {
       setBusy(false);
     }

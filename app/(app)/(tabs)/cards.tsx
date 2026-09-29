@@ -188,7 +188,7 @@ export default function CardsScreen() {
             { reference, transactionId },
           );
           if (cancelled) return;
-          toast.success('USD wallet funded', {
+          toast.success('Wallet funded successfully', {
             description: json.amountFormatted,
           });
         }

@@ -13,6 +13,25 @@ function devWarn(...args: unknown[]) {
   if (__DEV__) console.warn(...args);
 }
 
+/** Hide raw Flutterwave / proxy text from the UI. */
+export function publicProviderMessage(message?: string | null) {
+  const text = (message || '').trim();
+  if (!text) return '';
+  const value = text.toLowerCase();
+  if (
+    value.includes('flutterwave') ||
+    value.includes('flw_') ||
+    value.includes('ip whitelist') ||
+    value.includes('whitelisting') ||
+    value.includes('proxy request failed') ||
+    value.includes('secret key') ||
+    value.includes('fixie')
+  ) {
+    return 'Service unavailable';
+  }
+  return text;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -233,10 +252,11 @@ async function rawFetchOnce<T>(
     const ms = Date.now() - started;
 
     if (!res.ok) {
-      const message =
+      const rawMessage =
         typeof json === 'object' && json && 'error' in json
           ? String((json as { error?: string }).error ?? res.statusText)
           : res.statusText;
+      const message = publicProviderMessage(rawMessage);
       devWarn(`${LOG_PREFIX} ← ${method} ${url} ${res.status} (${ms}ms)`, {
         error: message,
         body: json,

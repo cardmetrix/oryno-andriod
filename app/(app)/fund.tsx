@@ -26,7 +26,7 @@ import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
 import { useWallet, fetchWallet } from '@/hooks/use-wallet';
 import { alert } from '@/lib/alert';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, publicProviderMessage } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
 import { toast } from '@/lib/toast';
 import type { DepositAccount } from '@/lib/types';
@@ -165,7 +165,10 @@ export default function FundScreen() {
   const applyOptions = useCallback((json: FundOptions) => {
     setDeposit(json.account ?? null);
     setIdentityRequired(json.identityRequired ?? null);
-    setSetupHint(json.setupHint ?? null);
+    const hint = json.setupHint?.trim() || null;
+    setSetupHint(
+      hint && publicProviderMessage(hint) === 'Service unavailable' ? null : hint,
+    );
     setCheckoutAvailable(Boolean(json.checkoutAvailable));
     if (json.currency) setCurrency(json.currency);
     if (json.presets?.length) {
@@ -188,7 +191,7 @@ export default function FundScreen() {
           Boolean(json.identityRequired) ||
           Boolean(json.checkoutAvailable);
         if (!hasPath && json.error) {
-          setError(json.error);
+          setError(publicProviderMessage(json.error));
         }
       } catch (e) {
         if (e instanceof ApiError && e.body && typeof e.body === 'object') {
@@ -202,12 +205,16 @@ export default function FundScreen() {
             setError(null);
             return;
           }
-          setError(body.error || e.message);
+          setError(publicProviderMessage(body.error || e.message));
           return;
         }
         setDeposit(null);
         setIdentityRequired(null);
-        setError(e instanceof Error ? e.message : 'Could not load funding options');
+        setError(
+          publicProviderMessage(
+            e instanceof Error ? e.message : 'Could not load funding options',
+          ),
+        );
       } finally {
         setLoading(false);
       }
@@ -239,7 +246,7 @@ export default function FundScreen() {
     setError(null);
     alert.info(
       'Checking for your transfer',
-      'We’re matching your bank payment with Flutterwave. This can take a few minutes.',
+      'We’re matching your bank payment. This can take a few minutes.',
     );
     try {
       const json = await api.post<{
@@ -261,7 +268,9 @@ export default function FundScreen() {
         await refreshWallet();
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not check for your deposit';
+      const msg = publicProviderMessage(
+        e instanceof Error ? e.message : 'Could not check for your deposit',
+      );
       setError(msg);
     } finally {
       setChecking(false);
@@ -288,9 +297,13 @@ export default function FundScreen() {
         alert.success('Account ready', 'Your fund account is ready.');
         return;
       }
-      setError(json.error || 'Could not create your fund account. Try again.');
+      setError(publicProviderMessage(json.error || 'Could not create your fund account. Try again.'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your details. Try again.');
+      setError(
+        publicProviderMessage(
+          e instanceof Error ? e.message : 'Could not save your details. Try again.',
+        ),
+      );
     } finally {
       setSubmittingIdentity(false);
     }
@@ -345,7 +358,7 @@ export default function FundScreen() {
             transactionId?: string;
             amountFormatted?: string;
           }>(endpoints.wallet.fundVerify, { reference: json.reference });
-          toast.success('Wallet funded', {
+          toast.success('Wallet funded successfully', {
             description: verified.amountFormatted,
           });
           invalidateWallet();
@@ -363,7 +376,11 @@ export default function FundScreen() {
         await refreshWallet();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start payment');
+      setError(
+        publicProviderMessage(
+          err instanceof Error ? err.message : 'Could not start payment',
+        ),
+      );
       setConfirming(false);
     } finally {
       setPaying(false);
@@ -504,7 +521,7 @@ export default function FundScreen() {
                 />
               ) : null}
               <Text style={styles.instructions}>
-                You’ll complete payment securely on Flutterwave. Funds land in your
+                You’ll complete payment securely. Funds land in your
                 local ({currency}) wallet 1:1 after confirmation.
               </Text>
             </View>
