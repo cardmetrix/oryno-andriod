@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Easing } from 'react-native';
 
 import { FloatingGlassTabBar } from '@/components/navigation/floating-glass-tab-bar';
 import { useAppTheme } from '@/context/theme-context';
@@ -13,14 +12,8 @@ export default function TabLayout() {
       tabBar={(props) => <FloatingGlassTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
-        transitionSpec: {
-          animation: 'timing',
-          config: {
-            duration: 240,
-            easing: Easing.out(Easing.cubic),
-          },
-        },
+        /** Instant tab swap — fade left pressed state / skeleton remounts visible. */
+        animation: 'none',
         sceneStyle: { backgroundColor: colors.background },
         lazy: true,
         freezeOnBlur: false,
@@ -30,7 +23,18 @@ export default function TabLayout() {
           position: 'absolute',
           backgroundColor: 'transparent',
           borderTopWidth: 0,
+          borderBottomWidth: 0,
+          borderTopColor: 'transparent',
+          borderBottomColor: 'transparent',
+          borderWidth: 0,
           elevation: 0,
+          shadowOpacity: 0,
+          shadowColor: 'transparent',
+        },
+        tabBarBackground: () => null,
+        tabBarItemStyle: {
+          borderTopWidth: 0,
+          borderBottomWidth: 0,
         },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Home' }} />

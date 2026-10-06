@@ -8,9 +8,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
-
-import { cardEntering } from '@/lib/motion';
 
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
@@ -18,6 +15,7 @@ import { PickerSheet } from '@/components/app/picker-sheet';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -254,10 +252,13 @@ export default function EmailsScreen() {
     );
   }
 
+  const showFormSkeleton = loading;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Button
           title={
             submitting
@@ -270,6 +271,7 @@ export default function EmailsScreen() {
           loading={submitting}
           onPress={() => void onSubmit()}
         />
+        )
       }
       header={
         <PageHeader
@@ -284,7 +286,11 @@ export default function EmailsScreen() {
         page="Email Services"
       />
 
-      <Animated.View entering={cardEntering(0)} style={styles.card}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : (
+        <>
+      <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconBubble}>
             <Ionicons name="mail-outline" size={20} color={Brand.orange} />
@@ -322,62 +328,54 @@ export default function EmailsScreen() {
             style={styles.customSiteInput}
           />
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View
-        entering={cardEntering(40)}
-        style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Email domain</Text>
         <Text style={styles.sectionSub}>
           Search and pick a domain for {siteValue || 'your site'}
         </Text>
 
-        {loading ? (
-          <View style={styles.triggerSkel} />
-        ) : (
-          <Pressable
-            disabled={!domains.length}
-            onPress={() => {
-              setDomainQuery('');
-              setDomainOpen(true);
-            }}
-            style={({ pressed }) => [
-              styles.domainTrigger,
-              !domains.length && styles.triggerDisabled,
-              pressed && domains.length ? { opacity: 0.92 } : null,
-            ]}>
-            <Ionicons name="mail-open-outline" size={18} color={Brand.orange} />
-            <Text
-              style={[
-                styles.domainTriggerText,
-                !selected && styles.domainTriggerPlaceholder,
-              ]}
-              numberOfLines={1}>
-              {selected
-                ? `@${selected.name}`
-                : domains.length
-                  ? 'Select a domain'
-                  : siteValue
-                    ? 'No domains in stock'
-                    : 'Enter a site first'}
-            </Text>
-            {selected ? (
-              <Text style={styles.price}>{money(selected.costLocal)}</Text>
-            ) : null}
-            <Ionicons name="chevron-down" size={18} color={colors.mutedForeground} />
-          </Pressable>
-        )}
+        <Pressable
+          disabled={!domains.length}
+          onPress={() => {
+            setDomainQuery('');
+            setDomainOpen(true);
+          }}
+          style={({ pressed }) => [
+            styles.domainTrigger,
+            !domains.length && styles.triggerDisabled,
+            pressed && domains.length ? { opacity: 0.92 } : null,
+          ]}>
+          <Ionicons name="mail-open-outline" size={18} color={Brand.orange} />
+          <Text
+            style={[
+              styles.domainTriggerText,
+              !selected && styles.domainTriggerPlaceholder,
+            ]}
+            numberOfLines={1}>
+            {selected
+              ? `@${selected.name}`
+              : domains.length
+                ? 'Select a domain'
+                : siteValue
+                  ? 'No domains in stock'
+                  : 'Enter a site first'}
+          </Text>
+          {selected ? (
+            <Text style={styles.price}>{money(selected.costLocal)}</Text>
+          ) : null}
+          <Ionicons name="chevron-down" size={18} color={colors.mutedForeground} />
+        </Pressable>
 
-        {!loading && !domains.length && siteValue ? (
+        {!domains.length && siteValue ? (
           <Text style={styles.hint}>
             No domains in stock for {siteValue}. Try another site.
           </Text>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View
-        entering={cardEntering(70)}
-        style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
           <SummaryRow label="Site" value={siteValue || '—'} />
@@ -392,7 +390,7 @@ export default function EmailsScreen() {
             <Text style={styles.walletText}>Pay from wallet</Text>
           </View>
         </View>
-      </Animated.View>
+      </View>
 
       <PickerSheet
         visible={domainOpen}
@@ -472,6 +470,8 @@ export default function EmailsScreen() {
           </View>
         )}
       </PickerSheet>
+        </>
+      )}
     </Screen>
   );
 }

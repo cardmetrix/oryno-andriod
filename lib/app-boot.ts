@@ -4,8 +4,9 @@ import { fetchAds } from '@/hooks/use-ads';
 import { fetchNotifications } from '@/hooks/use-notifications-query';
 import { fetchProfile } from '@/hooks/use-profile';
 import { fetchWallet } from '@/hooks/use-wallet';
-import { waitForApiAuth } from '@/lib/api';
+import { ApiError, api, waitForApiAuth } from '@/lib/api';
 import { syncSessionToDatabase } from '@/lib/auth-sync';
+import { endpoints } from '@/lib/endpoints';
 import { STALE } from '@/lib/query-client';
 import { queryKeys } from '@/lib/query-keys';
 
@@ -13,26 +14,22 @@ export function hasWarmAppCache(queryClient: QueryClient) {
   return Boolean(queryClient.getQueryData(queryKeys.wallet));
 }
 
-async function withRetries<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
-  let lastError: unknown;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (i < attempts - 1) {
-        await new Promise((r) => setTimeout(r, 350 * (i + 1)));
-      }
-    }
-  }
-  throw lastError;
-}
-
 type GetToken = (opts?: { skipCache?: boolean }) => Promise<string | null | undefined>;
 
+async function fetchDepositAccount() {
+  try {
+    return await api.get(endpoints.wallet.depositAccount);
+  } catch (e) {
+    if (e instanceof ApiError && e.body && typeof e.body === 'object') {
+      return e.body;
+    }
+    throw e;
+  }
+}
+
 /**
- * Cold start: wait for auth sync + wallet before entering the app.
- * Warm start: enter immediately from disk cache; refresh in background.
+ * Warm up auth + critical queries in the background.
+ * Never blocks first paint — screens show skeletons until data arrives.
  */
 export async function bootstrapSignedInSession(options: {
   queryClient: QueryClient;
@@ -41,70 +38,29 @@ export async function bootstrapSignedInSession(options: {
 }) {
   const { queryClient, getToken, warm } = options;
 
-  await waitForApiAuth(10_000);
+  await waitForApiAuth(4_000);
 
   let token = await getToken(warm ? undefined : { skipCache: true });
   if (!token) {
-    await new Promise((r) => setTimeout(r, 100));
     token = await getToken({ skipCache: true });
   }
   if (!token) {
     throw new Error('Missing Clerk session token');
   }
 
-  if (warm) {
-    // Background: sync + soft revalidate. Don't block UI.
-    void syncSessionToDatabase().catch(() => undefined);
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.wallet,
-      queryFn: fetchWallet,
-      staleTime: STALE.wallet,
-    });
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.profile,
-      queryFn: fetchProfile,
-      staleTime: STALE.profile,
-    });
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.notifications,
-      queryFn: fetchNotifications,
-      staleTime: STALE.notifications,
-    });
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.ads('home_carousel'),
-      queryFn: () => fetchAds('home_carousel'),
-      staleTime: STALE.ads,
-    });
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.ads('services_carousel'),
-      queryFn: () => fetchAds('services_carousel'),
-      staleTime: STALE.ads,
-    });
-    return;
-  }
+  // Session sync is best-effort and never blocks wallet/home.
+  void syncSessionToDatabase().catch(() => undefined);
 
-  // Cold first load — normal path: sync, then fetch critical APIs.
-  await withRetries(() => syncSessionToDatabase(), 3);
-
-  await withRetries(
-    () =>
-      queryClient.fetchQuery({
-        queryKey: queryKeys.wallet,
-        queryFn: fetchWallet,
-        staleTime: STALE.wallet,
-      }),
-    3,
-  );
-
-  // Profile next; secondary endpoints after UI is allowed to open.
-  void queryClient
-    .fetchQuery({
-      queryKey: queryKeys.profile,
-      queryFn: fetchProfile,
-      staleTime: STALE.profile,
-    })
-    .catch(() => undefined);
-
+  void queryClient.prefetchQuery({
+    queryKey: queryKeys.wallet,
+    queryFn: fetchWallet,
+    staleTime: STALE.wallet,
+  });
+  void queryClient.prefetchQuery({
+    queryKey: queryKeys.profile,
+    queryFn: fetchProfile,
+    staleTime: STALE.profile,
+  });
   void queryClient.prefetchQuery({
     queryKey: queryKeys.notifications,
     queryFn: fetchNotifications,
@@ -119,5 +75,11 @@ export async function bootstrapSignedInSession(options: {
     queryKey: queryKeys.ads('services_carousel'),
     queryFn: () => fetchAds('services_carousel'),
     staleTime: STALE.ads,
+  });
+  // Warm fund options so Fund opens without a skeleton wait.
+  void queryClient.prefetchQuery({
+    queryKey: queryKeys.depositAccount,
+    queryFn: fetchDepositAccount,
+    staleTime: STALE.wallet,
   });
 }

@@ -1,7 +1,13 @@
-import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 
 import { logNotificationContent, pushDebug } from './debug';
+import { getNotificationsModule, type NotificationsModule } from './module';
+
+type NotificationResponse = Parameters<
+  NotificationsModule['addNotificationResponseReceivedListener']
+>[0] extends (response: infer R) => void
+  ? R
+  : never;
 
 /** Map website hrefs (e.g. /wallet) to Expo Router paths. */
 export function hrefToAppRoute(href?: string | null): string {
@@ -67,9 +73,7 @@ export function navigateFromNotificationData(
   }
 }
 
-export function handleNotificationResponse(
-  response: Notifications.NotificationResponse,
-): void {
+export function handleNotificationResponse(response: NotificationResponse): void {
   logNotificationContent('tap', response.notification);
   navigateFromNotificationData(
     response.notification.request.content.data as Record<string, unknown>,
@@ -77,6 +81,9 @@ export function handleNotificationResponse(
 }
 
 export async function handleInitialNotificationResponse(): Promise<void> {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return;
+
   const response = await Notifications.getLastNotificationResponseAsync();
   if (response) handleNotificationResponse(response);
 }

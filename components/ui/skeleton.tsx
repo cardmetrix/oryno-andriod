@@ -93,7 +93,7 @@ export function Skeleton({
 const styles = StyleSheet.create({
   bone: {},
   shimmer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '70%',
   },
 });

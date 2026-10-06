@@ -298,7 +298,7 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
       backgroundColor: isDark ? 'rgba(23,23,27,0.88)' : 'rgba(255,255,255,0.72)',
     },
     glassTint: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: isDark ? 'rgba(15,15,18,0.35)' : 'rgba(255,255,255,0.35)',
     },
     glassContent: {

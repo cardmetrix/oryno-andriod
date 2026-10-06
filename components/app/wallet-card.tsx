@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     minHeight: 112,
   },
   overlayA: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   overlayB: {

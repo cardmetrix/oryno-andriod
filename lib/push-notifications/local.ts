@@ -1,8 +1,8 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { ANDROID_ALERTS_CHANNEL_ID, ANDROID_DEFAULT_CHANNEL_ID } from './constants';
 import { pushDebug } from './debug';
+import { getNotificationsModule } from './module';
 import { ensureAndroidNotificationChannels } from './register';
 
 export async function showLocalNotification(input: {
@@ -11,6 +11,12 @@ export async function showLocalNotification(input: {
   data?: Record<string, unknown>;
   channel?: 'default' | 'alerts';
 }): Promise<void> {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) {
+    pushDebug('warn', 'local', 'expo-notifications unavailable — skipping local notification');
+    return;
+  }
+
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 

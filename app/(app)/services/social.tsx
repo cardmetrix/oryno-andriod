@@ -8,9 +8,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
-
-import { cardEntering } from '@/lib/motion';
 
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
@@ -18,6 +15,7 @@ import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceInstructions } from '@/components/app/service-instructions';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -611,13 +609,15 @@ export default function SocialScreen() {
     await catalogQuery.refetch();
   }, [catalogQuery]);
 
+  const showFormSkeleton = !success && loading;
+
   return (
     <Screen
       scroll
       refreshing={catalogQuery.isFetching && !catalogQuery.isLoading}
       onRefresh={() => void onPullRefresh()}
       footer={
-        success ? null : (
+        success || showFormSkeleton ? undefined : (
           <Pressable
             disabled={!canSubmit}
             onPress={() => void onSubmit()}
@@ -686,14 +686,18 @@ export default function SocialScreen() {
             </View>
           ) : null}
         </ServiceSuccess>
-      ) : (
-        <>
+      ) : null}
+
       <ErrorAlertModal
         error={error}
         onClose={() => setError(null)}
         page="Social Boost"
       />
 
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : success ? null : (
+        <>
       {catalogData?.fallback && !error ? (
         <View style={styles.fallbackBanner}>
           <Text style={styles.fallbackText}>
@@ -702,7 +706,7 @@ export default function SocialScreen() {
         </View>
       ) : null}
 
-      <Animated.View entering={cardEntering(0)} style={styles.card}>
+      <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconBubble}>
             <Ionicons name="trending-up-outline" size={20} color={Brand.orange} />
@@ -871,9 +875,9 @@ export default function SocialScreen() {
             </View>
           ) : null}
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(40)} style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.fieldLabel}>Profile or post link</Text>
         <View style={styles.linkRow}>
           <Ionicons name="link-outline" size={20} color={colors.mutedForeground} />
@@ -887,9 +891,9 @@ export default function SocialScreen() {
             style={styles.linkInput}
           />
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(80)} style={styles.summaryCard}>
+      <View style={styles.summaryCard}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
           <SummaryRow label="Platform" value={selected?.platform ?? '—'} />
@@ -943,11 +947,11 @@ export default function SocialScreen() {
             <Text style={styles.payText}>Pay from USD card</Text>
           </View>
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(120)}>
+      <View>
         <ServiceInstructions service="social" />
-      </Animated.View>
+      </View>
         </>
       )}
     </Screen>

@@ -10,9 +10,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
-
-import { cardEntering } from '@/lib/motion';
 
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
@@ -21,6 +18,7 @@ import { ServiceInstructions } from '@/components/app/service-instructions';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -365,16 +363,20 @@ export default function VirtualNumbersScreen() {
     );
   }
 
+  const showFormSkeleton = !success && loadingServices;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Button
           title={buyLabel}
           disabled={!canBuyNumber}
           loading={submitting}
           onPress={() => void onSubmit()}
         />
+        )
       }
       header={
         <PageHeader
@@ -391,7 +393,11 @@ export default function VirtualNumbersScreen() {
         page="Virtual Numbers"
       />
 
-      <Animated.View entering={cardEntering(0)} style={styles.card}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : (
+        <>
+      <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.iconBubble}>
             <Ionicons name="call-outline" size={20} color={Brand.orange} />
@@ -417,43 +423,33 @@ export default function VirtualNumbersScreen() {
           />
         </View>
 
-        {loadingServices ? (
-          <View style={styles.chipRow}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <View key={i} style={styles.chipSkel} />
-            ))}
-          </View>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}>
-            {filteredServices.length ? (
-              filteredServices.map((s) => {
-                const active = service === s.code;
-                return (
-                  <Pressable
-                    key={s.code}
-                    onPress={() => setService(s.code)}
-                    style={[styles.chip, active && styles.chipActive]}>
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {s.name}
-                    </Text>
-                  </Pressable>
-                );
-              })
-            ) : (
-              <Text style={styles.emptyInline}>
-                No services match “{serviceQuery.trim()}”
-              </Text>
-            )}
-          </ScrollView>
-        )}
-      </Animated.View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}>
+          {filteredServices.length ? (
+            filteredServices.map((s) => {
+              const active = service === s.code;
+              return (
+                <Pressable
+                  key={s.code}
+                  onPress={() => setService(s.code)}
+                  style={[styles.chip, active && styles.chipActive]}>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {s.name}
+                  </Text>
+                </Pressable>
+              );
+            })
+          ) : (
+            <Text style={styles.emptyInline}>
+              No services match “{serviceQuery.trim()}”
+            </Text>
+          )}
+        </ScrollView>
+      </View>
 
-      <Animated.View
-        entering={cardEntering(40)}
-        style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Select country</Text>
         <Text style={styles.cardSub}>
           {loadingOffers
@@ -512,11 +508,9 @@ export default function VirtualNumbersScreen() {
           </Text>
         ) : null}
 
-      </Animated.View>
+      </View>
 
-      <Animated.View
-        entering={cardEntering(70)}
-        style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
           <SummaryRow label="Service" value={selected?.serviceName ?? '—'} />
@@ -538,7 +532,7 @@ export default function VirtualNumbersScreen() {
             <Text style={styles.walletText}>Pay from USD card</Text>
           </View>
         </View>
-      </Animated.View>
+      </View>
 
       <ServiceInstructions service="virtual-numbers" />
 
@@ -625,6 +619,8 @@ export default function VirtualNumbersScreen() {
           </View>
         )}
       </PickerSheet>
+        </>
+      )}
     </Screen>
   );
 }

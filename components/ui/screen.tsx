@@ -1,6 +1,6 @@
+import { useSegments } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useRef } from 'react';
-import { useSegments } from 'expo-router';
 import { RefreshControl, ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,8 +14,8 @@ type Props = ViewProps & {
   refreshing?: boolean;
   onRefresh?: () => void;
   /**
-   * Soft content enter motion. Default: only on tab root screens.
-   * Stack pushes rely on native transitions — JS enter animations fight them.
+   * Soft content enter motion. Off by default — remounting FadeIn between
+   * skeleton and content caused visible glitches. Opt in with animate={true}.
    */
   animate?: boolean;
   /** Fixed top bar (e.g. PageHeader). Stays pinned while content scrolls. */
@@ -40,8 +40,8 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const segments = useSegments() as string[];
   const inTabs = segments.includes('(tabs)');
-  /** Let native stack own motion on pushed screens. */
-  const shouldAnimate = animate ?? inTabs;
+  /** Opt-in only — default fade remounts were flashing skeleton → content. */
+  const shouldAnimate = animate === true;
   /** Enter once — remounting FadeIn on data refresh causes dashboard shake. */
   const enteredRef = useRef(false);
   const entering =

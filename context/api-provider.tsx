@@ -68,6 +68,6 @@ export function ApiAuthBridge({ children }: { children: React.ReactNode }) {
     setApiAuthReady(true);
   }, [isLoaded, isSignedIn, userId]);
 
-  // Splash is owned by AppQueryProvider (cache + Clerk) — don't remount it here.
+  // Data prefetch is owned by BootGate — don't remount UI here.
   return <PrefetchWhenReady>{children}</PrefetchWhenReady>;
 }

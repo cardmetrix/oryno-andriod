@@ -21,8 +21,8 @@ export function useQueryHydrated() {
 }
 
 /**
- * Restores React Query cache from disk. Does not own the splash —
- * BootGate keeps SplashLoading up until dashboard data is ready.
+ * Restores React Query cache from disk. BootGate no longer blocks on this —
+ * the dashboard paints immediately and uses skeletons until data is ready.
  */
 export function AppQueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => createAppQueryClient());

@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { PickerOptionList, PickerSheet } from '@/components/app/picker-sheet';
 import { TransactionRow } from '@/components/app/transaction-row';
@@ -106,21 +105,25 @@ export default function HistoryScreen() {
     }
   }
 
-  if (loading && !items.length && !error) {
-    return (
-      <Screen
-        scroll
-        header={<HistoryHeader downloading={false} onDownload={() => undefined} />}>
-        <HistorySkeleton />
-      </Screen>
-    );
-  }
+  const showSkeleton = loading && !items.length && !error;
+  const showError = Boolean(error && !items.length);
 
-  if (error && !items.length) {
-    return (
-      <Screen
-        scroll
-        header={<HistoryHeader downloading={false} onDownload={() => undefined} />}>
+  return (
+    <Screen
+      scroll
+      refreshing={showSkeleton || showError ? undefined : pulling}
+      onRefresh={showSkeleton || showError ? undefined : onRefresh}
+      header={
+        <HistoryHeader
+          downloading={showSkeleton || showError ? false : downloading}
+          onDownload={
+            showSkeleton || showError ? () => undefined : () => setSheet('statement')
+          }
+        />
+      }>
+      {showSkeleton ? (
+        <HistorySkeleton />
+      ) : showError ? (
         <View style={styles.stateCard}>
           <View style={styles.stateIcon}>
             <Ionicons name="cloud-offline-outline" size={26} color={Brand.error} />
@@ -133,21 +136,8 @@ export default function HistoryScreen() {
             <Text style={styles.primaryBtnText}>Try again</Text>
           </Pressable>
         </View>
-      </Screen>
-    );
-  }
-
-  return (
-    <Screen
-      scroll
-      refreshing={pulling}
-      onRefresh={onRefresh}
-      header={
-        <HistoryHeader
-          downloading={downloading}
-          onDownload={() => setSheet('statement')}
-        />
-      }>
+      ) : (
+        <>
       <View style={styles.filterRow}>
         <FilterPill
           label={categoryLabel}
@@ -195,7 +185,7 @@ export default function HistoryScreen() {
 
       <View style={styles.list}>
         {groups.length === 0 ? (
-          <Animated.View entering={FadeIn.duration(220)} style={styles.stateCard}>
+          <View style={styles.stateCard}>
             <View style={[styles.stateIcon, { backgroundColor: Brand.orangeMuted }]}>
               <Ionicons name="receipt-outline" size={26} color={Brand.orange} />
             </View>
@@ -211,12 +201,10 @@ export default function HistoryScreen() {
               }}>
               <Text style={styles.secondaryBtnText}>Clear filters</Text>
             </Pressable>
-          </Animated.View>
+          </View>
         ) : (
-          groups.map((group, groupIndex) => (
-            <Animated.View
-              key={group.date}
-              entering={FadeInDown.delay(Math.min(groupIndex * 30, 180)).duration(260)}>
+          groups.map((group) => (
+            <View key={group.date}>
               {group.items.map((tx) => (
                 <TransactionRow
                   key={tx.id}
@@ -225,7 +213,7 @@ export default function HistoryScreen() {
                   onPress={() => router.push(`/(app)/history/${tx.id}`)}
                 />
               ))}
-            </Animated.View>
+            </View>
           ))
         )}
       </View>
@@ -313,6 +301,8 @@ export default function HistoryScreen() {
           ]}
         />
       </PickerSheet>
+        </>
+      )}
     </Screen>
   );
 }

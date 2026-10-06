@@ -14,9 +14,8 @@ import { useSettlePendingTransactions } from '@/hooks/use-settle-pending-transac
 import { useWallet } from '@/hooks/use-wallet';
 import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -78,14 +77,12 @@ export default function HomeScreen() {
   const initials = useMemo(() => {
     const name =
       data?.user.fullName || user?.fullName || user?.firstName || firstName || 'OR';
-    return (
-      name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase() ?? '')
-        .join('') || 'OR'
-    );
+    return (name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? '')
+      .join('') || 'OR');
   }, [data?.user.fullName, user?.fullName, user?.firstName, firstName]);
   const recent = (data?.recent ?? []).slice(0, 2);
 
@@ -101,74 +98,73 @@ export default function HomeScreen() {
   }, [refresh, refreshNotifications, refreshProfile]);
 
   const { pulling, onRefresh } = usePullRefresh(onPullRefresh);
+  const showSkeleton = loading && !data;
 
-  if (loading && !data) {
-    return (
-      <Screen scroll>
-        <HomeSkeleton />
-      </Screen>
-    );
-  }
+  const header = (
+    <View style={styles.header}>
+      <Pressable
+        style={styles.headerIdentity}
+        onPress={() => router.push('/(app)/(tabs)/profile')}
+        accessibilityLabel="Open profile">
+        <View
+          style={[
+            styles.logoWell,
+            { backgroundColor: colors.orangeMuted, borderColor: 'rgba(255,106,0,0.18)' },
+          ]}>
+          {avatarUrl ? (
+            <Image
+              source={{ uri: avatarUrl }}
+              style={styles.logo}
+              contentFit="cover"
+            />
+          ) : (
+            <Text style={styles.avatarText}>{initials}</Text>
+          )}
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            style={[styles.pageTitle, { color: colors.foreground }]}
+            numberOfLines={1}>
+            Welcome back, {firstName} 👋
+          </Text>
+        </View>
+      </Pressable>
+
+      <View style={styles.headerActions}>
+        <Pressable
+          style={[styles.bell]}
+          onPress={() => router.push('/(app)/notifications')}
+          accessibilityLabel={
+            unreadCount > 0
+              ? `Notifications, ${unreadCount} unread`
+              : 'Notifications'
+          }>
+          <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
+          {unreadCount > 0 ? (
+            <View style={[styles.bellBadge, { borderColor: colors.muted }]}>
+              <Text style={styles.bellBadgeText}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
+    </View>
+  );
 
   return (
     <Screen
       scroll
-      refreshing={pulling}
-      onRefresh={onRefresh}
-      header={
-        <View style={styles.header}>
-          <Pressable
-            style={styles.headerIdentity}
-            onPress={() => router.push('/(app)/(tabs)/profile')}
-            accessibilityLabel="Open profile">
-            <View
-              style={[
-                styles.logoWell,
-                { backgroundColor: colors.orangeMuted, borderColor: 'rgba(255,106,0,0.18)' },
-              ]}>
-              {avatarUrl ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={styles.logo}
-                  contentFit="cover"
-                />
-              ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
-              )}
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[styles.pageTitle, { color: colors.foreground }]}
-                numberOfLines={1}>
-                Welcome back, {firstName} 👋
-              </Text>
-            </View>
-          </Pressable>
-
-          <View style={styles.headerActions}>
-            <Pressable
-              style={[styles.bell]}
-              onPress={() => router.push('/(app)/notifications')}
-              accessibilityLabel={
-                unreadCount > 0
-                  ? `Notifications, ${unreadCount} unread`
-                  : 'Notifications'
-              }>
-              <Ionicons name="notifications-outline" size={20} color={colors.foreground} />
-              {unreadCount > 0 ? (
-                <View style={[styles.bellBadge, { borderColor: colors.muted }]}>
-                  <Text style={styles.bellBadgeText}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              ) : null}
-            </Pressable>
-          </View>
-        </View>
-      }>
+      refreshing={showSkeleton ? undefined : pulling}
+      onRefresh={showSkeleton ? undefined : onRefresh}
+      header={showSkeleton ? undefined : header}>
+      {showSkeleton ? (
+        <HomeSkeleton />
+      ) : (
+        <>
       <View style={styles.walletBlock}>
         <DashboardWalletCarousel loading={loading && !data} />
-        <AdCarousel />
+   
       </View>
 
       {error ? (
@@ -219,7 +215,9 @@ export default function HomeScreen() {
           ))}
         </View>
       </View>
-
+      <View style={styles.walletBlock}>
+        <AdCarousel />
+      </View>
       <View
         style={[
           styles.txPanel,
@@ -239,7 +237,6 @@ export default function HomeScreen() {
             <Ionicons name="arrow-forward" size={16} color={Brand.orange} />
           </Pressable>
         </View>
-
         {recent.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIcon}>
@@ -278,6 +275,8 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+        </>
+      )}
     </Screen>
   );
 }

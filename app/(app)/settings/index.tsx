@@ -11,8 +11,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-
 import { PageHeader } from '@/components/app/page-header';
 import { Screen } from '@/components/ui/screen';
 import { SettingsSkeleton } from '@/components/ui/skeletons';
@@ -106,6 +104,7 @@ export default function SettingsScreen() {
   if (loading && !data) {
     return (
       <Screen
+        scroll
         header={
           <PageHeader
             title="Settings"
@@ -121,6 +120,7 @@ export default function SettingsScreen() {
   if (error && !data) {
     return (
       <Screen
+        scroll
         header={<PageHeader title="Settings" showBack />}>
         <View
           style={[
@@ -139,7 +139,21 @@ export default function SettingsScreen() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Screen
+        scroll
+        header={
+          <PageHeader
+            title="Settings"
+            subtitle="Preferences, security, and support"
+            showBack
+          />
+        }>
+        <SettingsSkeleton />
+      </Screen>
+    );
+  }
 
   const darkMode = preference === 'dark';
   return (
@@ -154,7 +168,7 @@ export default function SettingsScreen() {
           showBack
         />
       }>
-      <Animated.View entering={FadeInDown.duration(280)} style={styles.accountHeroWrap}>
+      <View style={styles.accountHeroWrap}>
         <ImageBackground
           source={SETTINGS_HERO_BG}
           resizeMode="cover"
@@ -172,9 +186,9 @@ export default function SettingsScreen() {
             </View>
           </View>
         </ImageBackground>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInDown.delay(40).duration(280)}>
+      <View>
         <Section title="Account">
           <Row
             icon="person-outline"
@@ -190,9 +204,9 @@ export default function SettingsScreen() {
             last
           />
         </Section>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInDown.delay(80).duration(280)}>
+      <View>
         <Section title="Preferences">
           <ToggleRow
             icon="notifications-outline"
@@ -245,9 +259,9 @@ export default function SettingsScreen() {
             last
           />
         </Section>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInDown.delay(120).duration(280)}>
+      <View>
         <Section title="Support">
           <Row
             icon="help-circle-outline"
@@ -272,9 +286,9 @@ export default function SettingsScreen() {
             last
           />
         </Section>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInDown.delay(160).duration(280)} style={{ marginBottom: 8 }}>
+      <View>
         <Pressable
           style={styles.signOutBtn}
           onPress={() => {
@@ -301,7 +315,7 @@ export default function SettingsScreen() {
             <Text style={[styles.savingText, { color: colors.mutedForeground }]}>Saving…</Text>
           </View>
         ) : null}
-      </Animated.View>
+      </View>
     </Screen>
   );
 }

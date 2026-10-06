@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(28,28,30,0.55)',
   },
   card: {

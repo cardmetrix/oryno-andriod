@@ -8,15 +8,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
-
-import { cardEntering } from '@/lib/motion';
 
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
 import { PageHeader } from '@/components/app/page-header';
 import { SelectSheet } from '@/components/app/picker-sheet';
 import { ServiceSuccess } from '@/components/app/service-success';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -194,10 +192,13 @@ export default function BettingScreen() {
     setVerifyHint(null);
   }
 
+  const showFormSkeleton = !success && loadingServices;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Pressable
           disabled={!canSubmit}
           onPress={() => void onSubmit()}
@@ -220,6 +221,7 @@ export default function BettingScreen() {
                     : `Fund wallet · ${money(amountNumber)}`}
           </Text>
         </Pressable>
+        )
       }
       header={
         <PageHeader title="Betting Funding" subtitle={subtitle} showBack />
@@ -260,7 +262,11 @@ export default function BettingScreen() {
         page="Betting Funding"
       />
 
-      <Animated.View entering={cardEntering(0)} style={styles.section}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : success ? null : (
+        <>
+      <View style={styles.section}>
         <SelectSheet
           label="Bookmaker"
           title="Select bookmaker"
@@ -292,9 +298,9 @@ export default function BettingScreen() {
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(40)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Betting account ID</Text>
         <TextInput
           value={customerRef}
@@ -315,9 +321,9 @@ export default function BettingScreen() {
         ) : verifyHint ? (
           <Text style={styles.verifyErr}>{verifyHint}</Text>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(80)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Amount</Text>
         <View style={styles.amountWrap}>
           <Text style={styles.currencyPrefix}>{currencyPrefix}</Text>
@@ -345,9 +351,9 @@ export default function BettingScreen() {
             );
           })}
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
+      <View style={styles.summaryCard}>
         <Text style={styles.summaryHeading}>Order summary</Text>
         <SummaryRow label="Bookmaker" value={selectedService?.name ?? '—'} />
         <SummaryRow label="Account ID" value={customerRef || '—'} />
@@ -364,7 +370,9 @@ export default function BettingScreen() {
           <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
           <Text style={styles.payText}>Pay from wallet</Text>
         </View>
-      </Animated.View>
+      </View>
+        </>
+      )}
     </Screen>
   );
 }

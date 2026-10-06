@@ -1,11 +1,11 @@
-import { useReverification, useUser } from '@clerk/clerk-expo';
-import { Ionicons } from '@expo/vector-icons';
-import { useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import {
   ensurePhotoLibraryAccessForPicker,
   launchImageLibraryAsync,
 } from '@/lib/pick-from-library';
+import { useReverification, useUser } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
@@ -17,20 +17,17 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
-import { PhoneIcon } from '@/components/icons/lucide-service-icons';
+import { OtpInput } from '@/components/auth/otp-input';
 import {
   AtSignIcon,
-  BadgeCheckIcon,
   CameraIcon,
   CheckIcon,
   Globe2Icon,
   MailIcon,
-  ShieldIcon,
-  UserRoundIcon,
+  UserRoundIcon
 } from '@/components/icons/lucide-profile-icons';
-import { OtpInput } from '@/components/auth/otp-input';
+import { PhoneIcon } from '@/components/icons/lucide-service-icons';
 import { Screen } from '@/components/ui/screen';
 import { ProfileSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
@@ -77,8 +74,8 @@ function initialsFrom(name?: string | null) {
 }
 
 export default function ProfileScreen() {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   const { user, isLoaded } = useUser();
   const queryClient = useQueryClient();
   const [profile, setProfile] = useState<ProfileDto | null>(null);
@@ -437,7 +434,8 @@ export default function ProfileScreen() {
           <Text style={styles.sub}>Manage your ORYNO identity</Text>
         </View>
       }>
-      <Animated.View entering={FadeInDown.duration(300)} style={styles.heroShell}>
+      {/* Hero — mirrors website MotionSection profile card */}
+      <View style={styles.heroShell}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}
           start={{ x: 0, y: 0 }}
@@ -445,8 +443,9 @@ export default function ProfileScreen() {
           style={styles.heroBanner}
         />
         <View pointerEvents="none" style={styles.heroGlow} />
+
         <View style={styles.heroBody}>
-          <Animated.View entering={FadeIn.duration(280)} style={styles.avatarWrap}>
+          <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
               {display.avatarUrl ? (
                 <Image
@@ -464,47 +463,33 @@ export default function ProfileScreen() {
               ) : null}
             </View>
             <Pressable
-              style={[styles.cameraBtn, uploadingAvatar && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                styles.cameraBtn,
+                uploadingAvatar && { opacity: 0.6 },
+                pressed && { transform: [{ scale: 0.94 }] },
+              ]}
               onPress={() => void onPickPhoto()}
               disabled={uploadingAvatar}
               accessibilityLabel="Upload profile photo">
               <CameraIcon size={16} color={Brand.white} />
             </Pressable>
-          </Animated.View>
+          </View>
 
           <Text style={styles.name}>{display.fullName}</Text>
-          {display.username ? <Text style={styles.username}>@{display.username}</Text> : null}
+        </View>
+      </View>
 
-          <View style={styles.badges}>
-            <View style={[styles.badge, verified ? styles.badgeVerified : styles.badgeMuted]}>
-              {verified ? (
-                <BadgeCheckIcon size={14} color={Brand.success} />
-              ) : (
-                <ShieldIcon size={14} color={colors.grayMedium} />
-              )}
-              <Text
-                style={[
-                  styles.badgeText,
-                  verified ? { color: Brand.success } : { color: colors.grayMedium },
-                ]}>
-                {enriching ? 'Syncing…' : display.kycLabel}
+      {/* Fields / edit / verify — website profile details card */}
+      <View style={styles.card}>
+        {verifyingEmail ? (
+          <View style={styles.verifyBox}>
+            <View style={{ gap: 4 }}>
+              <Text style={styles.verifyTitle}>Verify your new email</Text>
+              <Text style={styles.verifySub}>
+                Enter the 6-digit code we sent to{' '}
+                <Text style={styles.verifyEmail}>{normalizeEmail(form.email)}</Text>.
               </Text>
             </View>
-            <View style={styles.countryBadge}>
-              <Text style={styles.countryText}>{display.countryCode || '—'}</Text>
-            </View>
-          </View>
-        </View>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(60).duration(300)} style={styles.card}>
-        {verifyingEmail ? (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.verifyBox}>
-            <Text style={styles.verifyTitle}>Verify your new email</Text>
-            <Text style={styles.verifySub}>
-              Enter the 6-digit code we sent to{' '}
-              <Text style={styles.verifyEmail}>{normalizeEmail(form.email)}</Text>.
-            </Text>
             <OtpInput value={emailCode} onChange={setEmailCode} />
             <Text style={styles.resendLine}>
               Didn&apos;t get a code?{' '}
@@ -520,9 +505,9 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </Text>
-          </Animated.View>
+          </View>
         ) : editing ? (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.editForm}>
+          <View style={styles.editForm}>
             <Field
               label="Full Name"
               value={form.fullName}
@@ -560,14 +545,16 @@ export default function ProfileScreen() {
               Changing your email sends a verification code to the new address. Your login email
               updates after you verify.
             </Text>
-          </Animated.View>
+          </View>
         ) : (
           <View>
             {fields.map((field, index) => (
-              <Animated.View
+              <View
                 key={field.key}
-                entering={FadeInDown.delay(40 + index * 30).duration(240)}
-                style={[styles.fieldRow, index > 0 && styles.fieldBorder]}>
+                style={[
+                  styles.fieldRow,
+                  index < fields.length - 1 && styles.fieldBorder,
+                ]}>
                 <View style={styles.fieldIcon}>{field.icon(Brand.orange)}</View>
                 <View style={styles.fieldCopy}>
                   <Text style={styles.fieldLabel}>{field.label}</Text>
@@ -575,17 +562,17 @@ export default function ProfileScreen() {
                     {field.value}
                   </Text>
                 </View>
-              </Animated.View>
+              </View>
             ))}
           </View>
         )}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.actions}>
+      <View style={styles.actions}>
         {verifyingEmail ? (
           <View style={styles.editActions}>
             <Pressable
-              style={styles.cancelBtn}
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.9 }]}
               onPress={() => {
                 resetEmailVerification();
                 resetForm();
@@ -593,9 +580,10 @@ export default function ProfileScreen() {
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
             <Pressable
-              style={[
+              style={({ pressed }) => [
                 styles.saveBtn,
                 (emailBusy || emailCode.length < 6) && { opacity: 0.6 },
+                pressed && { transform: [{ scale: 0.98 }] },
               ]}
               disabled={emailBusy || emailCode.length < 6}
               onPress={() => void verifyEmailCode()}>
@@ -612,7 +600,7 @@ export default function ProfileScreen() {
         ) : editing ? (
           <View style={styles.editActions}>
             <Pressable
-              style={styles.cancelBtn}
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.9 }]}
               onPress={() => {
                 setEditing(false);
                 resetEmailVerification();
@@ -621,7 +609,11 @@ export default function ProfileScreen() {
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
             <Pressable
-              style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                styles.saveBtn,
+                saving && { opacity: 0.6 },
+                pressed && { transform: [{ scale: 0.98 }] },
+              ]}
               disabled={saving}
               onPress={() => void saveProfile()}>
               {saving ? (
@@ -635,7 +627,12 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
         ) : (
-          <Pressable style={styles.editBtn} onPress={() => setEditing(true)}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.editBtn,
+              pressed && { transform: [{ translateY: -2 }, { scale: 0.985 }] },
+            ]}
+            onPress={() => setEditing(true)}>
             <Text style={styles.editBtnText}>Edit Profile</Text>
           </Pressable>
         )}
@@ -646,7 +643,7 @@ export default function ProfileScreen() {
           label="Security & PIN"
           onPress={() => router.push('/(app)/settings/security')}
         />
-      </Animated.View>
+      </View>
     </Screen>
   );
 }
@@ -680,51 +677,61 @@ function Field({
 }
 
 function LinkRow({ label, onPress }: { label: string; onPress: () => void }) {
-  const { colors } = useAppTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => makeStyles(colors, isDark), [colors, isDark]);
   return (
-    <Pressable
-      style={({ pressed }) => [styles.linkRow, pressed && { opacity: 0.85 }]}
-      onPress={onPress}>
+    <Pressable style={styles.linkRow} onPress={onPress}>
       <Text style={styles.linkLabel}>{label}</Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.grayMedium} />
+      <Ionicons
+        name="chevron-forward"
+        size={16}
+        color={colors.mutedForeground}
+      />
     </Pressable>
   );
 }
 
-function makeStyles(colors: ThemeColors) {
+function makeStyles(colors: ThemeColors, isDark: boolean) {
+  const softShadow = {
+    shadowColor: '#1C1C1E',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  } as const;
+
   return StyleSheet.create({
     title: {
       fontSize: 20,
       fontWeight: '700',
       color: colors.foreground,
-      marginTop: 0,
       letterSpacing: -0.3,
     },
     sub: {
       color: colors.mutedForeground,
-      marginBottom: 0,
       marginTop: 2,
       fontSize: 14,
-      fontWeight: '500',
+      fontWeight: '400',
     },
     heroShell: {
       borderRadius: 28,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       overflow: 'hidden',
-      shadowColor: '#0F0F12',
-      shadowOpacity: 0.06,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 2,
+      ...softShadow,
     },
-    heroBanner: { height: 112 },
+    heroBanner: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 112,
+    },
     heroGlow: {
       position: 'absolute',
-      top: -36,
-      right: -28,
+      top: -20,
+      right: -40,
       width: 180,
       height: 180,
       borderRadius: 90,
@@ -733,8 +740,8 @@ function makeStyles(colors: ThemeColors) {
     heroBody: {
       alignItems: 'center',
       paddingHorizontal: 16,
+      paddingTop: 56,
       paddingBottom: 20,
-      marginTop: -56,
     },
     avatarWrap: { position: 'relative' },
     avatar: {
@@ -746,7 +753,7 @@ function makeStyles(colors: ThemeColors) {
       justifyContent: 'center',
       overflow: 'hidden',
       borderWidth: 4,
-      borderColor: colors.card,
+      borderColor: colors.background,
       shadowColor: Brand.orange,
       shadowOpacity: 0.35,
       shadowRadius: 20,
@@ -756,7 +763,7 @@ function makeStyles(colors: ThemeColors) {
     avatarImage: { width: '100%', height: '100%' },
     avatarText: { color: Brand.orange, fontSize: 24, fontWeight: '700' },
     avatarOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0,0,0,0.45)',
       alignItems: 'center',
       justifyContent: 'center',
@@ -772,7 +779,12 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 4,
-      borderColor: colors.card,
+      borderColor: colors.background,
+      shadowColor: '#0F0F12',
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
     },
     name: {
       marginTop: 16,
@@ -786,7 +798,7 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 4,
       fontSize: 14,
       color: colors.mutedForeground,
-      fontWeight: '500',
+      fontWeight: '400',
     },
     badges: {
       marginTop: 12,
@@ -815,27 +827,19 @@ function makeStyles(colors: ThemeColors) {
     countryText: { fontSize: 12, fontWeight: '600', color: Brand.orange },
     card: {
       marginTop: 20,
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       overflow: 'hidden',
-      shadowColor: '#0F0F12',
-      shadowOpacity: 0.06,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 2,
     },
     fieldRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 12,
-      paddingHorizontal: 16,
+      paddingHorizontal: 0,
       paddingVertical: 14,
     },
     fieldBorder: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
     fieldIcon: {
       width: 40,
@@ -853,14 +857,14 @@ function makeStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.foreground,
     },
-    verifyBox: { padding: 16, gap: 16 },
+    verifyBox: { paddingVertical: 4, gap: 16 },
     verifyTitle: { fontSize: 14, fontWeight: '600', color: colors.foreground },
     verifySub: { fontSize: 14, color: colors.mutedForeground, lineHeight: 20 },
     verifyEmail: { fontWeight: '600', color: colors.foreground },
     resendLine: { textAlign: 'center', fontSize: 14, color: colors.mutedForeground },
     resendWait: { fontWeight: '600', color: colors.foreground },
     resendLink: { fontWeight: '600', color: Brand.orange },
-    editForm: { padding: 16, gap: 16 },
+    editForm: { paddingVertical: 4, gap: 16 },
     inputLabel: {
       fontSize: 14,
       fontWeight: '500',
@@ -871,8 +875,8 @@ function makeStyles(colors: ThemeColors) {
       height: 48,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.muted,
+      borderColor: colors.grayDivider,
+      backgroundColor: isDark ? 'rgba(23,23,27,0.4)' : 'rgba(245,245,247,0.4)',
       paddingHorizontal: 16,
       fontSize: 16,
       color: colors.foreground,
@@ -892,7 +896,7 @@ function makeStyles(colors: ThemeColors) {
       shadowColor: Brand.orange,
       shadowOpacity: 0.28,
       shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
+      shadowOffset: { width: 0, height: 8 },
       elevation: 3,
     },
     editBtnText: { color: Brand.white, fontSize: 16, fontWeight: '600' },
@@ -903,11 +907,11 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 14,
       borderWidth: 1.5,
       borderColor: Brand.orange,
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    cancelText: { color: colors.foreground, fontSize: 14, fontWeight: '600' },
+    cancelText: { color: Brand.orange, fontSize: 14, fontWeight: '600' },
     saveBtn: {
       flex: 1,
       height: 48,
@@ -917,6 +921,11 @@ function makeStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
+      shadowColor: Brand.orange,
+      shadowOpacity: 0.28,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 3,
     },
     saveText: { color: Brand.white, fontSize: 14, fontWeight: '600' },
     linkRow: {
@@ -926,14 +935,10 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.card,
+      backgroundColor: colors.background,
       paddingHorizontal: 16,
       paddingVertical: 14,
-      shadowColor: '#0F0F12',
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 1,
+      ...softShadow,
     },
     linkLabel: { fontSize: 14, fontWeight: '600', color: colors.foreground },
   });

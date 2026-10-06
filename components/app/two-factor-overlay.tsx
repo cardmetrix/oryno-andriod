@@ -13,7 +13,7 @@ import { useTwoFactorOptional } from '@/context/two-factor-context';
 
 export function TwoFactorOverlay() {
   const twoFa = useTwoFactorOptional();
-  // BootGate keeps splash until 2FA status is known — only show the challenge here.
+  // Challenge UI only — boot no longer waits on 2FA status.
   if (!twoFa?.blocking) return null;
   return <TwoFactorChallenge twoFa={twoFa} />;
 }
@@ -101,7 +101,7 @@ function TwoFactorChallenge({
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: 90,
       elevation: 90,
       backgroundColor: colors.background,

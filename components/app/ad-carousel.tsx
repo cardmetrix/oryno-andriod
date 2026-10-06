@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: 6,
   },
-  image: { ...StyleSheet.absoluteFillObject },
+  image: { ...StyleSheet.absoluteFill },
   progressTrack: {
     position: 'absolute',
     top: 0,

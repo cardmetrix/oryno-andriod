@@ -2,7 +2,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { useAppTheme } from '@/context/theme-context';
 
@@ -17,11 +16,11 @@ type Props = {
 
 /**
  * Matches website `ServiceActionCard`: orange gradient circle + bold label.
+ * No enter animation / lingering press style — those flash during navigation.
  */
 export function ServiceActionCard({
   label,
   href,
-  index = 0,
   size = 'sm',
   children,
 }: Props) {
@@ -30,66 +29,58 @@ export function ServiceActionCard({
   const labelSize = size === 'md' ? 13 : 11;
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(Math.min(index * 45, 350)).duration(400)}
-      style={styles.wrap}>
-      <Pressable
-        onPress={() => router.push(href as never)}
-        style={({ pressed }) => [styles.press, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={label}>
-        <LinearGradient
-          colors={['#FF6A00', '#E85D00']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.iconCircle, { width: circle, height: circle }]}>
-          {children}
-        </LinearGradient>
-        <Text
-          style={[styles.label, { color: colors.foreground, fontSize: labelSize }]}
-          numberOfLines={2}>
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      onPress={() => {
+        // Defer push so Pressable can unpress before the transition (no stuck click).
+        requestAnimationFrame(() => {
+          router.push(href as never);
+        });
+      }}
+      style={styles.press}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      android_ripple={{ color: 'rgba(255,106,0,0.12)', borderless: true }}>
+      <LinearGradient
+        colors={['#FF6A00', '#E85D00']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.iconCircle, { width: circle, height: circle }]}>
+        {children}
+      </LinearGradient>
+      <Text
+        style={[styles.label, { color: colors.foreground, fontSize: labelSize }]}
+        numberOfLines={2}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  press: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 0,
     minWidth: 0,
-  },
-  press: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
-  pressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.97 }],
-  },
   iconCircle: {
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+    elevation: 2,
   },
   label: {
     fontWeight: '700',
-    letterSpacing: -0.2,
     textAlign: 'center',
-    width: '100%',
     lineHeight: 16,
   },
 });

@@ -340,7 +340,7 @@ function makeStyles(colors: ThemeColors) {
       paddingHorizontal: 16,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(0,0,0,0.55)',
     },
     cardWrap: {

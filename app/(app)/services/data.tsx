@@ -9,9 +9,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
-
-import { cardEntering } from '@/lib/motion';
 
 import { DataPlanGrid } from '@/components/app/data-plan-grid';
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
@@ -21,6 +18,7 @@ import { ServiceSuccess } from '@/components/app/service-success';
 import { TelecomNetworkGrid } from '@/components/app/telecom-network-grid';
 import type { VtpassServiceOption } from '@/components/app/vtpass-service-picker';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -434,10 +432,13 @@ export default function DataScreen() {
     }
   }
 
+  const showFormSkeleton = !success && loadingNetworks;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Pressable
           disabled={!canSubmit}
           onPress={() => void onSubmit()}
@@ -458,6 +459,7 @@ export default function DataScreen() {
                     : 'Select a plan'}
           </Text>
         </Pressable>
+        )
       }
       header={<PageHeader title="Buy Data" showBack />}>
       {success ? (
@@ -486,13 +488,17 @@ export default function DataScreen() {
         page="Buy Data"
       />
 
-      <Animated.View entering={cardEntering(0)} style={styles.section}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : success ? null : (
+        <>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Select Network</Text>
         <TelecomNetworkGrid
           services={networks}
           value={networkId}
           onChange={setNetworkId}
-          loading={loadingNetworks || countryLoading}
+          loading={false}
         />
         {error && !networks.length ? (
           <Pressable
@@ -505,9 +511,9 @@ export default function DataScreen() {
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(40)} style={styles.section}>
+      <View style={styles.section}>
         <PhoneNumberField
           value={phone}
           onChange={setPhone}
@@ -522,10 +528,10 @@ export default function DataScreen() {
             thumbColor={saveBeneficiary ? Brand.orange : Brand.white}
           />
         </View>
-      </Animated.View>
+      </View>
 
       {isFlexibleIntl ? (
-        <Animated.View entering={cardEntering(80)} style={styles.section}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Amount</Text>
           <View style={styles.amountWrap}>
             <Text style={styles.currencyPrefix}>{currencyPrefix}</Text>
@@ -554,9 +560,9 @@ export default function DataScreen() {
               );
             })}
           </View>
-        </Animated.View>
+        </View>
       ) : (
-        <Animated.View entering={cardEntering(80)} style={styles.section}>
+        <View style={styles.section}>
           <DataPlanGrid
             plans={variations.map((v) => ({
               id: v.variationCode,
@@ -570,10 +576,10 @@ export default function DataScreen() {
             formatMoney={money}
             loading={loadingPlans}
           />
-        </Animated.View>
+        </View>
       )}
 
-      <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
+      <View style={styles.summaryCard}>
         <SummaryRow label="Network" value={selectedNetwork?.name ?? '—'} />
         {!isFlexibleIntl ? (
           <SummaryRow label="Plan" value={selected?.name ?? '—'} />
@@ -584,7 +590,9 @@ export default function DataScreen() {
           <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
           <Text style={styles.payText}>Pay from wallet</Text>
         </View>
-      </Animated.View>
+      </View>
+        </>
+      )}
     </Screen>
   );
 }

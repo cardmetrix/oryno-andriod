@@ -25,6 +25,7 @@ export const queryKeys = {
     emailDomains: ['catalog', 'email-domains'] as const,
     betting: ['catalog', 'betting'] as const,
   },
+  depositAccount: ['wallet', 'deposit-account'] as const,
 } as const;
 
 /** Root keys that are safe to persist to AsyncStorage. */

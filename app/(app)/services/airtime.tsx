@@ -8,9 +8,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
-
-import { cardEntering } from '@/lib/motion';
 
 import { LucideGiftIcon } from '@/components/icons/lucide-gift-icon';
 import { ErrorAlertModal } from '@/components/app/error-alert-modal';
@@ -20,6 +17,7 @@ import { ServiceSuccess } from '@/components/app/service-success';
 import { TelecomNetworkGrid } from '@/components/app/telecom-network-grid';
 import type { VtpassServiceOption } from '@/components/app/vtpass-service-picker';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -247,10 +245,13 @@ export default function AirtimeScreen() {
     }
   }
 
+  const showFormSkeleton = !success && loadingNetworks;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Pressable
           disabled={!canSubmit}
           onPress={() => void onSubmit()}
@@ -273,6 +274,7 @@ export default function AirtimeScreen() {
                     }`}
           </Text>
         </Pressable>
+        )
       }
       header={<PageHeader title="Buy Airtime" showBack />}>
       {success ? (
@@ -308,13 +310,17 @@ export default function AirtimeScreen() {
         page="Buy Airtime"
       />
 
-      <Animated.View entering={cardEntering(0)} style={styles.section}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : success ? null : (
+        <>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Select Network</Text>
         <TelecomNetworkGrid
           services={networks}
           value={networkId}
           onChange={setNetworkId}
-          loading={loadingNetworks || countryLoading}
+          loading={false}
         />
         {error && !networks.length ? (
           <Pressable
@@ -327,9 +333,9 @@ export default function AirtimeScreen() {
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(40)} style={styles.section}>
+      <View style={styles.section}>
         <PhoneNumberField
           value={phone}
           onChange={setPhone}
@@ -344,9 +350,9 @@ export default function AirtimeScreen() {
             thumbColor={saveBeneficiary ? Brand.orange : Brand.white}
           />
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(80)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Select Amount</Text>
         <View style={styles.amountWrap}>
           <Text style={styles.currencyPrefix}>{currencyPrefix}</Text>
@@ -379,9 +385,9 @@ export default function AirtimeScreen() {
           <LucideGiftIcon size={14} color={Brand.orange} strokeWidth={2} />
           <Text style={styles.cashbackHint}>Est. cashback {money(cashback)}</Text>
         </View>
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
+      <View style={styles.summaryCard}>
         <SummaryRow label="Network" value={selectedNetwork?.name ?? '—'} />
         <SummaryRow label="Phone" value={phone || '—'} />
         <SummaryRow label="Airtime value" value={amountLabel} />
@@ -394,7 +400,9 @@ export default function AirtimeScreen() {
           <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
           <Text style={styles.payText}>Pay from wallet</Text>
         </View>
-      </Animated.View>
+      </View>
+        </>
+      )}
     </Screen>
   );
 }

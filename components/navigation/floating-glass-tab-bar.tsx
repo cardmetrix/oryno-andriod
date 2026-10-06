@@ -1,20 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
+import {
+  GlassView,
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+} from 'expo-glass-effect';
 import * as Haptics from 'expo-haptics';
-import { type ReactNode } from 'react';
+import { Tabs } from 'expo-router';
+import { type ComponentProps, type ReactNode, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { Radius } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
+
+type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
+
+function canUseLiquidGlass() {
+  try {
+    return (
+      Platform.OS === 'ios' &&
+      isLiquidGlassAvailable() &&
+      isGlassEffectAPIAvailable()
+    );
+  } catch {
+    return false;
+  }
+}
 
 /** Lucide `Home` paths (same glyph as `lucide-react`). */
 function LucideHome({
@@ -60,19 +73,68 @@ const OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
   profile: 'person-outline',
 };
 
+function TabBarGlassBackground({ isDark }: { isDark: boolean }) {
+  const liquid = useMemo(() => canUseLiquidGlass(), []);
+
+  if (liquid) {
+    return (
+      <GlassView
+        style={styles.blurBleed}
+        glassEffectStyle="regular"
+        colorScheme={isDark ? 'dark' : 'light'}
+        tintColor={isDark ? 'rgba(28,28,30,0.35)' : 'rgba(255,255,255,0.22)'}
+        isInteractive
+      />
+    );
+  }
+
+  if (Platform.OS === 'web') {
+    return (
+      <View
+        style={[
+          styles.glassFallback,
+          {
+            backgroundColor: isDark ? 'rgba(23,23,27,0.92)' : 'rgba(255,255,255,0.86)',
+          },
+        ]}
+      />
+    );
+  }
+
+  return (
+    <>
+      <BlurView
+        intensity={isDark ? 48 : 72}
+        tint={isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
+        experimentalBlurMethod="dimezisBlurView"
+        style={styles.blurBleed}
+      />
+      <View
+        style={[
+          styles.glassTint,
+          {
+            backgroundColor: isDark ? 'rgba(15,15,18,0.38)' : 'rgba(255,255,255,0.22)',
+          },
+        ]}
+      />
+    </>
+  );
+}
+
 export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useAppTheme();
   const bottom = Math.max(insets.bottom, 10);
+  const liquid = useMemo(() => canUseLiquidGlass(), []);
 
   const shell = {
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.65)',
-    backgroundColor: isDark ? colors.card : 'rgba(255,255,255,0.55)',
-    shadowOpacity: isDark ? 0.5 : 0.14,
+    backgroundColor: liquid
+      ? 'transparent'
+      : isDark
+        ? 'rgba(28,28,30,0.92)'
+        : 'rgba(255,255,255,0.94)',
+    shadowOpacity: isDark ? 0.55 : 0.16,
   };
-
-  const glassFill = isDark ? 'rgba(23,23,27,0.94)' : 'rgba(255,255,255,0.88)';
-  const glassTint = isDark ? 'rgba(15,15,18,0.45)' : 'rgba(255,255,255,0.28)';
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: bottom }]}>
@@ -80,22 +142,9 @@ export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTa
         <View
           style={[
             styles.clip,
-            {
-              borderColor: shell.borderColor,
-              backgroundColor: shell.backgroundColor,
-            },
+            { backgroundColor: shell.backgroundColor },
           ]}>
-          {Platform.OS === 'web' ? (
-            <View style={[styles.glass, { backgroundColor: glassFill }]} />
-          ) : (
-            <BlurView
-              intensity={isDark ? 36 : 56}
-              tint={isDark ? 'dark' : 'light'}
-              experimentalBlurMethod="dimezisBlurView"
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          <View style={[styles.glassTint, { backgroundColor: glassTint }]} />
+          <TabBarGlassBackground isDark={isDark} />
           <View style={styles.row}>
             {state.routes.map((route, index) => {
               const { options } = descriptors[route.key];
@@ -127,9 +176,7 @@ export function FloatingGlassTabBar({ state, descriptors, navigation }: BottomTa
                   canPreventDefault: true,
                 });
                 if (!focused && !event.defaultPrevented) {
-                  if (process.env.EXPO_OS === 'ios') {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
+                  void Haptics.selectionAsync();
                   navigation.navigate(route.name, route.params);
                 }
               };
@@ -171,30 +218,15 @@ function TabItem({
   inactiveColor: string;
   pillColor: string;
 }) {
-  const scale = useSharedValue(1);
-
-  const anim = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={focused ? { selected: true } : {}}
       onPress={onPress}
-      onPressIn={() => {
-        scale.value = withSpring(0.92, { damping: 16, stiffness: 320 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 260 });
-      }}
       style={styles.item}>
-      <Animated.View style={[styles.itemInner, anim]}>
+      <View style={styles.itemInner}>
         {focused ? (
-          <Animated.View
-            entering={FadeIn.duration(180)}
-            style={[styles.activePill, { backgroundColor: pillColor }]}
-          />
+          <View style={[styles.activePill, { backgroundColor: pillColor }]} />
         ) : null}
         {icon}
         <Text
@@ -206,7 +238,7 @@ function TabItem({
           numberOfLines={1}>
           {label}
         </Text>
-      </Animated.View>
+      </View>
     </Pressable>
   );
 }
@@ -223,20 +255,28 @@ const styles = StyleSheet.create({
   shadow: {
     borderRadius: Radius.phone,
     shadowColor: '#0F0F12',
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 14,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 16,
   },
   clip: {
     borderRadius: Radius.phone,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 0,
   },
-  glass: {
-    ...StyleSheet.absoluteFillObject,
+  glassFallback: {
+    ...StyleSheet.absoluteFill,
+  },
+  /** Bleed past clip edges — BlurView + overflow:hidden draws a hairline at the bottom. */
+  blurBleed: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    bottom: -2,
+    left: -2,
   },
   glassTint: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   row: {
     flexDirection: 'row',
@@ -261,7 +301,7 @@ const styles = StyleSheet.create({
     minWidth: 58,
   },
   activePill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: 18,
   },
   label: {

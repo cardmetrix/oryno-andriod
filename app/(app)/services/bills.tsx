@@ -23,6 +23,7 @@ import {
 } from '@/components/app/vtpass-service-picker';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, Radius, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -546,10 +547,13 @@ export default function BillsScreen() {
     );
   }
 
+  const showFormSkeleton = !success && loadingServices;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Pressable
           disabled={!canSubmit}
           onPress={() => void onSubmit()}
@@ -572,6 +576,7 @@ export default function BillsScreen() {
                     : `Pay bill · ${money(amountNumber)}`}
           </Text>
         </Pressable>
+        )
       }
       header={
         <PageHeader
@@ -586,7 +591,11 @@ export default function BillsScreen() {
         page="Bills"
       />
 
-      <Animated.View entering={cardEntering(40)} style={styles.card}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : (
+        <>
+      <View style={styles.card}>
         <Text style={[styles.cardTitle, { marginBottom: 12 }]}>
           {category === 'tv'
             ? 'TV providers'
@@ -600,7 +609,7 @@ export default function BillsScreen() {
           services={services}
           value={serviceID}
           onChange={setServiceID}
-          loading={loadingServices || countryLoading}
+          loading={false}
           label="Provider"
           title={
             category === 'tv'
@@ -638,9 +647,9 @@ export default function BillsScreen() {
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(80)} style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.fieldLabel}>{customerLabel}</Text>
         <TextInput
           value={customerRef}
@@ -676,9 +685,9 @@ export default function BillsScreen() {
             {`Enter at least 6 digits — we verify the ${refNoun} automatically.`}
           </Text>
         )}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(120)} style={styles.card}>
+      <View style={styles.card}>
         <Text style={[styles.cardTitle, { marginBottom: 12 }]}>
           {category === 'tv' ? 'Bouquets / plans' : 'Meter type'}
         </Text>
@@ -727,9 +736,9 @@ export default function BillsScreen() {
             </View>
           </View>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(160)} style={styles.card}>
+      <View style={styles.card}>
         <Text style={styles.cardTitle}>Order summary</Text>
         <View style={styles.summary}>
           <SummaryRow label="Provider" value={selectedService?.name ?? '—'} />
@@ -755,7 +764,10 @@ export default function BillsScreen() {
             <Text style={styles.payText}>Pay from wallet</Text>
           </View>
         </View>
-      </Animated.View>
+      </View>
+
+        </>
+      )}
 
     </Screen>
   );

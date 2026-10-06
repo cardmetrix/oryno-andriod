@@ -9,7 +9,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { AdCarousel } from '@/components/app/ad-carousel';
 import { PageHeader } from '@/components/app/page-header';
@@ -64,7 +63,7 @@ export function AllServicesScreen({ showBack = false }: { showBack?: boolean }) 
           </View>
         )
       }>
-      <Animated.View entering={FadeInDown.duration(320)} style={styles.heroShell}>
+      <View style={styles.heroShell}>
         <LinearGradient
           colors={['#FF8124', Brand.orange, '#E85D00']}
           start={{ x: 0, y: 0 }}
@@ -124,11 +123,11 @@ export function AllServicesScreen({ showBack = false }: { showBack?: boolean }) 
             })}
           </ScrollView>
         </View>
-      </Animated.View>
+      </View>
 
       <View style={styles.gridWrap}>
         {visible.length === 0 ? (
-          <Animated.View entering={FadeIn.duration(220)} style={styles.empty}>
+          <View style={styles.empty}>
             <View style={styles.emptyIcon}>
               <Ionicons name="search-outline" size={22} color={Brand.orange} />
             </View>
@@ -144,7 +143,7 @@ export function AllServicesScreen({ showBack = false }: { showBack?: boolean }) 
               }}>
               <Text style={styles.clearText}>Clear search</Text>
             </Pressable>
-          </Animated.View>
+          </View>
         ) : (
           <View style={styles.grid}>
             {rows.map((row, rowIndex) => (
@@ -173,9 +172,7 @@ export function AllServicesScreen({ showBack = false }: { showBack?: boolean }) 
         )}
       </View>
 
-      <Animated.View entering={FadeInDown.delay(120).duration(320)}>
-        <AdCarousel placement="services_carousel" reserveSpaceWhileLoading={false} />
-      </Animated.View>
+      <AdCarousel placement="services_carousel" reserveSpaceWhileLoading={false} />
     </Screen>
   );
 }

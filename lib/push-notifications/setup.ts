@@ -1,26 +1,22 @@
 import { Platform } from 'react-native';
 
 import { pushDebug } from './debug';
+import { isExpoGo } from './expo-go';
+import { getNotificationsModule } from './module';
 
-/** True when running inside Expo Go (remote push limited / unavailable on Android). */
-export function isExpoGo() {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Constants = require('expo-constants').default as {
-      appOwnership?: string | null;
-      executionEnvironment?: string;
-    };
-    return (
-      Constants.appOwnership === 'expo' ||
-      Constants.executionEnvironment === 'storeClient'
-    );
-  } catch {
-    return false;
-  }
-}
+export { isExpoGo } from './expo-go';
 
 export function configurePushNotificationHandler(): void {
   if (Platform.OS === 'web') return;
+
+  if (Platform.OS === 'android' && isExpoGo()) {
+    pushDebug(
+      'warn',
+      'setup',
+      'Expo Go on Android cannot load expo-notifications. Use a development build for push.',
+    );
+    return;
+  }
 
   if (isExpoGo()) {
     pushDebug(
@@ -30,9 +26,13 @@ export function configurePushNotificationHandler(): void {
     );
   }
 
+  const Notifications = getNotificationsModule();
+  if (!Notifications) {
+    pushDebug('warn', 'setup', 'expo-notifications unavailable — skipping handler setup');
+    return;
+  }
+
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Notifications = require('expo-notifications') as typeof import('expo-notifications');
     pushDebug('info', 'setup', 'Configuring foreground notification handler');
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {

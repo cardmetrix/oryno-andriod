@@ -272,7 +272,7 @@ function makeStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     root: { flex: 1 },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(28,28,30,0.55)',
     },
     scrollContent: {

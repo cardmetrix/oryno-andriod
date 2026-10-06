@@ -1,6 +1,5 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { api } from '@/lib/api';
@@ -8,6 +7,8 @@ import { APP_VERSION } from '@/lib/app-version';
 
 import { ANDROID_ALERTS_CHANNEL_ID, ANDROID_DEFAULT_CHANNEL_ID } from './constants';
 import { formatPushError, pushDebug } from './debug';
+import { isExpoGo } from './expo-go';
+import { getNotificationsModule } from './module';
 
 export function getEasProjectId(): string | null {
   const fromEnv = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim();
@@ -20,6 +21,9 @@ export function getEasProjectId(): string | null {
 
 export async function ensureAndroidNotificationChannels(): Promise<void> {
   if (Platform.OS !== 'android') return;
+
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return;
 
   await Notifications.setNotificationChannelAsync(ANDROID_DEFAULT_CHANNEL_ID, {
     name: 'General',
@@ -46,9 +50,22 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   pushDebug('info', 'register', 'Starting registration', {
     platform: Platform.OS,
     isDevice: Device.isDevice,
+    expoGo: isExpoGo(),
   });
 
   if (Platform.OS === 'web') return null;
+
+  const Notifications = getNotificationsModule();
+  if (!Notifications) {
+    pushDebug(
+      'warn',
+      'register',
+      Platform.OS === 'android' && isExpoGo()
+        ? 'Push unavailable in Expo Go on Android — use a development build'
+        : 'expo-notifications unavailable',
+    );
+    return null;
+  }
 
   if (!Device.isDevice) {
     pushDebug('warn', 'register', 'Push requires a physical device');
@@ -156,6 +173,8 @@ export async function registerPushToken(): Promise<string | null> {
 }
 
 export async function setAppBadge(count: number) {
+  const Notifications = getNotificationsModule();
+  if (!Notifications) return;
   try {
     await Notifications.setBadgeCountAsync(Math.max(0, count));
   } catch {

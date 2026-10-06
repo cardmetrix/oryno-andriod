@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -28,6 +29,8 @@ import { useWallet, fetchWallet } from '@/hooks/use-wallet';
 import { alert } from '@/lib/alert';
 import { ApiError, api, publicProviderMessage } from '@/lib/api';
 import { endpoints } from '@/lib/endpoints';
+import { STALE } from '@/lib/query-client';
+import { queryKeys } from '@/lib/query-keys';
 import { toast } from '@/lib/toast';
 import type { DepositAccount } from '@/lib/types';
 
@@ -95,13 +98,9 @@ export default function FundScreen() {
   const { colors } = useAppTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const invalidateWallet = useInvalidateWallet();
+  const queryClient = useQueryClient();
   const { data: walletPayload, refresh: refreshWallet } = useWallet();
 
-  const [deposit, setDeposit] = useState<DepositAccount | null>(null);
-  const [identityRequired, setIdentityRequired] = useState<IdentityRequired | null>(
-    null,
-  );
-  const [checkoutAvailable, setCheckoutAvailable] = useState(false);
   const [preferCheckout, setPreferCheckout] = useState(false);
   const [currency, setCurrency] = useState('NGN');
   const [presets, setPresets] = useState<string[]>(['1000', '2000', '5000', '10000']);
@@ -109,7 +108,6 @@ export default function FundScreen() {
   const [amount, setAmount] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [paying, setPaying] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checking, setChecking] = useState(false);
   const [submittingIdentity, setSubmittingIdentity] = useState(false);
@@ -122,6 +120,28 @@ export default function FundScreen() {
   const redirectedRef = useRef(false);
 
   const wallet = walletPayload?.primary ?? null;
+
+  const depositQuery = useQuery({
+    queryKey: queryKeys.depositAccount,
+    queryFn: async (): Promise<FundOptions> => {
+      try {
+        return await api.get<FundOptions>(endpoints.wallet.depositAccount);
+      } catch (e) {
+        // API often returns funding options in the error body (identity gate).
+        if (e instanceof ApiError && e.body && typeof e.body === 'object') {
+          return e.body as FundOptions;
+        }
+        throw e;
+      }
+    },
+    staleTime: STALE.wallet,
+  });
+
+  const deposit = depositQuery.data?.account ?? null;
+  const identityRequired = depositQuery.data?.identityRequired ?? null;
+  const checkoutAvailable = Boolean(depositQuery.data?.checkoutAvailable);
+  /** Only block first paint — cached revisits render immediately. */
+  const loading = depositQuery.isLoading && !depositQuery.data;
 
   const goToLatestFundReceipt = useCallback(async () => {
     if (redirectedRef.current) return;
@@ -158,73 +178,53 @@ export default function FundScreen() {
   useEffect(() => {
     const id = setInterval(() => {
       void refreshWallet();
-    }, 8000);
+    }, 12_000);
     return () => clearInterval(id);
   }, [refreshWallet]);
 
-  const applyOptions = useCallback((json: FundOptions) => {
-    setDeposit(json.account ?? null);
-    setIdentityRequired(json.identityRequired ?? null);
+  useEffect(() => {
+    const json = depositQuery.data;
+    if (!json) return;
     const hint = json.setupHint?.trim() || null;
     setSetupHint(
       hint && publicProviderMessage(hint) === 'Service unavailable' ? null : hint,
     );
-    setCheckoutAvailable(Boolean(json.checkoutAvailable));
     if (json.currency) setCurrency(json.currency);
     if (json.presets?.length) {
       setPresets(json.presets);
       setAmount((prev) => prev || json.presets![0]);
     }
     if (json.paymentOptions) setPaymentOptions(json.paymentOptions);
-  }, []);
 
-  const load = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true);
+    const hasPath =
+      Boolean(json.account) ||
+      Boolean(json.identityRequired) ||
+      Boolean(json.checkoutAvailable);
+    if (!hasPath && json.error) {
+      setError(publicProviderMessage(json.error));
+    } else if (hasPath) {
       setError(null);
-      setSetupHint(null);
-      try {
-        const json = await api.get<FundOptions>(endpoints.wallet.depositAccount);
-        applyOptions(json);
-        const hasPath =
-          Boolean(json.account) ||
-          Boolean(json.identityRequired) ||
-          Boolean(json.checkoutAvailable);
-        if (!hasPath && json.error) {
-          setError(publicProviderMessage(json.error));
-        }
-      } catch (e) {
-        if (e instanceof ApiError && e.body && typeof e.body === 'object') {
-          const body = e.body as FundOptions;
-          applyOptions(body);
-          const hasPath =
-            Boolean(body.account) ||
-            Boolean(body.identityRequired) ||
-            Boolean(body.checkoutAvailable);
-          if (hasPath) {
-            setError(null);
-            return;
-          }
-          setError(publicProviderMessage(body.error || e.message));
-          return;
-        }
-        setDeposit(null);
-        setIdentityRequired(null);
-        setError(
-          publicProviderMessage(
-            e instanceof Error ? e.message : 'Could not load funding options',
-          ),
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [applyOptions],
-  );
+    }
+  }, [depositQuery.data]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!depositQuery.isError || depositQuery.data) return;
+    setError(
+      publicProviderMessage(
+        depositQuery.error instanceof Error
+          ? depositQuery.error.message
+          : 'Could not load funding options',
+      ),
+    );
+  }, [depositQuery.isError, depositQuery.error, depositQuery.data]);
+
+  const load = useCallback(
+    async (_silent = false) => {
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.depositAccount });
+    },
+    [queryClient],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -291,7 +291,7 @@ export default function FundScreen() {
         idType,
         idNumber: digits,
       });
-      applyOptions(json);
+      queryClient.setQueryData(queryKeys.depositAccount, json);
       if (json.account) {
         setIdNumber('');
         alert.success('Account ready', 'Your fund account is ready.');

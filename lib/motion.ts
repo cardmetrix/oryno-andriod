@@ -1,9 +1,9 @@
 import { FadeIn } from 'react-native-reanimated';
 
 /**
- * Light content fade used inside pushed screens.
- * Avoid FadeInDown + spring — those fight native stack transitions.
+ * Soft enter for stacked cards. Duration 0 keeps navigation snappy while
+ * remaining chainable (`.delay()` / `.duration()`) so callers never crash.
  */
 export function cardEntering(delayMs = 0) {
-  return FadeIn.delay(delayMs).duration(150);
+  return FadeIn.delay(delayMs).duration(0);
 }

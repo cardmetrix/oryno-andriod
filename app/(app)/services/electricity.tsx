@@ -19,6 +19,7 @@ import { ServiceSuccess } from '@/components/app/service-success';
 import { TelecomNetworkGrid } from '@/components/app/telecom-network-grid';
 import { Button } from '@/components/ui/button';
 import { Screen } from '@/components/ui/screen';
+import { FormSkeleton } from '@/components/ui/skeletons';
 import { Brand, type ThemeColors } from '@/constants/theme';
 import { useAppTheme } from '@/context/theme-context';
 import { useInvalidateWallet } from '@/hooks/use-invalidate-wallet';
@@ -414,10 +415,13 @@ export default function ElectricityScreen() {
     );
   }
 
+  const showFormSkeleton = !success && loadingServices;
+
   return (
     <Screen
       scroll
       footer={
+        showFormSkeleton ? undefined : (
         <Pressable
           disabled={!canSubmit}
           onPress={() => void onSubmit()}
@@ -440,6 +444,7 @@ export default function ElectricityScreen() {
                     : `Pay electricity · ${money(amountNumber)}`}
           </Text>
         </Pressable>
+        )
       }
       header={<PageHeader title="Electricity" subtitle={subtitle} showBack />}>
       {success ? (
@@ -484,7 +489,11 @@ export default function ElectricityScreen() {
         page="Electricity"
       />
 
-      <Animated.View entering={cardEntering(0)} style={styles.section}>
+      {showFormSkeleton ? (
+        <FormSkeleton />
+      ) : success ? null : (
+        <>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Select Disco</Text>
         <TelecomNetworkGrid
           services={services}
@@ -494,7 +503,7 @@ export default function ElectricityScreen() {
             setCustomerName(null);
             setVerifyHint(null);
           }}
-          loading={loadingServices}
+          loading={false}
         />
         {error && !services.length ? (
           <Pressable
@@ -503,9 +512,9 @@ export default function ElectricityScreen() {
             <Text style={styles.retryText}>Retry</Text>
           </Pressable>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(40)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>{customerLabel}</Text>
         <TextInput
           value={meterNumber}
@@ -530,9 +539,9 @@ export default function ElectricityScreen() {
             Enter at least 6 digits — we verify the account automatically.
           </Text>
         )}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(60)} style={styles.section}>
+      <View style={styles.section}>
         <SelectSheet
           label="Meter type"
           title="Select meter type"
@@ -549,9 +558,9 @@ export default function ElectricityScreen() {
             title: v.name,
           }))}
         />
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(80)} style={styles.section}>
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Amount</Text>
         <View style={styles.amountWrap}>
           <Text style={styles.currencyPrefix}>{currencyPrefix}</Text>
@@ -582,9 +591,9 @@ export default function ElectricityScreen() {
         {isNigeria ? (
           <Text style={styles.minHint}>Minimum top-up is {money(minAmount)}.</Text>
         ) : null}
-      </Animated.View>
+      </View>
 
-      <Animated.View entering={cardEntering(100)} style={styles.summaryCard}>
+      <View style={styles.summaryCard}>
         <SummaryRow label="Disco" value={selectedService?.name ?? '—'} />
         <SummaryRow label="Meter" value={meterNumber || '—'} />
         <SummaryRow label="Type" value={selectedVariation?.name ?? '—'} />
@@ -593,7 +602,9 @@ export default function ElectricityScreen() {
           <Ionicons name="wallet-outline" size={16} color={Brand.orange} />
           <Text style={styles.payText}>Pay from wallet</Text>
         </View>
-      </Animated.View>
+      </View>
+        </>
+      )}
     </Screen>
   );
 }

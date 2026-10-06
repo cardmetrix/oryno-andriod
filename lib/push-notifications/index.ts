@@ -1,4 +1,5 @@
 export { configurePushNotificationHandler, isExpoGo } from './setup';
+export { areNativeNotificationsAvailable, getNotificationsModule } from './module';
 export {
   registerForPushNotificationsAsync,
   registerPushToken,

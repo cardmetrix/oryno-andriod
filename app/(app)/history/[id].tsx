@@ -864,7 +864,7 @@ function makeStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     watermarkWrap: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       overflow: 'hidden',
     },
     watermarkGrid: {

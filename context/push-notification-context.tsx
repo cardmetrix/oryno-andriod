@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 import {
   createContext,
   useCallback,
@@ -21,6 +20,7 @@ import {
   STORAGE_KEYS,
   unregisterPushToken,
 } from '@/lib/push-notifications';
+import { getNotificationsModule } from '@/lib/push-notifications/module';
 
 export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unknown';
 export type PushSetupTrigger = 'app-load' | 'sign-in' | 'main';
@@ -93,6 +93,12 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   }, []);
 
   const refreshPermissionStatus = useCallback(async () => {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) {
+      setPermissionStatus('undetermined');
+      return 'undetermined' as const;
+    }
+
     const settings = await Notifications.getPermissionsAsync();
     const mapped: PushPermissionStatus =
       settings.status === 'granted' ||
@@ -106,6 +112,12 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
 
   const evaluateEnableModal = useCallback(
     async (permission: PushPermissionStatus, force = false) => {
+      // Don't prompt for OS push permission when native notifications aren't available
+      // (e.g. Android Expo Go). In-app inbox still works without device push.
+      if (!getNotificationsModule()) {
+        setShowEnableModal(false);
+        return;
+      }
       if (permission === 'granted') {
         setShowEnableModal(false);
         await AsyncStorage.setItem(STORAGE_KEYS.notificationsEnabled, 'true');
@@ -258,6 +270,9 @@ export function PushNotificationProvider({ children }: { children: ReactNode }) 
   }, [clearPushRegistration, clerkUserId, preferenceEnabled]);
 
   useEffect(() => {
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return;
+
     if (!coldStartHandled.current) {
       coldStartHandled.current = true;
       void handleInitialNotificationResponse();

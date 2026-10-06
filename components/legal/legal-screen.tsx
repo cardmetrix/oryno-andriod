@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -15,7 +15,7 @@ type Props = {
   title: string;
   intro: string;
   sections: LegalSection[];
-  otherHref: string;
+  otherHref: Href;
   otherLabel: string;
 };
 

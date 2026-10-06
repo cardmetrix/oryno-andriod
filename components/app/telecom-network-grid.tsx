@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { ServiceLogo } from '@/components/app/service-logo';
 import type { VtpassServiceOption } from '@/components/app/vtpass-service-picker';
@@ -58,19 +57,15 @@ export function TelecomNetworkGrid({
 
   return (
     <View style={styles.grid}>
-      {services.map((service, index) => {
+      {services.map((service) => {
         const selected = value === service.serviceID;
         return (
-          <Animated.View
-            key={service.serviceID}
-            entering={FadeInDown.delay(Math.min(index * 30, 200)).duration(280)}
-            style={{ width: tileWidth }}>
+          <View key={service.serviceID} style={{ width: tileWidth }}>
             <Pressable
               onPress={() => onChange(service.serviceID)}
-              style={({ pressed }) => [
+              style={[
                 styles.tile,
                 selected ? styles.tileSelected : styles.tileIdle,
-                pressed && { opacity: 0.92, transform: [{ scale: 0.97 }] },
               ]}>
               <View style={styles.logoWrap}>
                 <ServiceLogo
@@ -88,7 +83,7 @@ export function TelecomNetworkGrid({
                 {service.name}
               </Text>
             </Pressable>
-          </Animated.View>
+          </View>
         );
       })}
     </View>

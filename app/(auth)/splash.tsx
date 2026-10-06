@@ -1,15 +1,6 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { Redirect } from 'expo-router';
 
-import { SplashLoading } from '@/components/ui/splash-loading';
-
+/** Legacy route — jump straight to onboarding (no timed splash). */
 export default function SplashScreen() {
-  useEffect(() => {
-    const t = setTimeout(() => {
-      router.replace('/(auth)/onboarding');
-    }, 1200);
-    return () => clearTimeout(t);
-  }, []);
-
-  return <SplashLoading showStatus={false} />;
+  return <Redirect href="/(auth)/onboarding" />;
 }

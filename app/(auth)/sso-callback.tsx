@@ -1,8 +1,8 @@
 import { useAuth, useSignUp } from '@clerk/clerk-expo';
 import { Redirect } from 'expo-router';
 import { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 
-import { SplashLoading } from '@/components/ui/splash-loading';
 import { syncSessionToDatabase } from '@/lib/auth-sync';
 
 /**
@@ -28,7 +28,7 @@ export default function SsoCallbackScreen() {
   }, [isLoaded, isSignedIn, needsContinue]);
 
   if (!isLoaded || !signUpLoaded) {
-    return <SplashLoading />;
+    return <View style={{ flex: 1 }} />;
   }
 
   if (needsContinue) {

@@ -54,20 +54,29 @@ export default function ConvertScreen() {
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
+  // Prefer cached wallet FX immediately — avoid blank rate while quoting.
+  useEffect(() => {
+    if (wallet?.fx) setFx((prev) => prev ?? wallet.fx ?? null);
+  }, [wallet?.fx]);
+
+  // Debounce quote fetches so typing amount stays snappy.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        const json = await api.get<{ quote?: FxQuote }>(
-          `${endpoints.wallet.fx}?currency=${encodeURIComponent(localCurrency)}&direction=${direction}&amount=${encodeURIComponent(amount || '0')}`,
-        );
-        if (!cancelled && json.quote) setFx(json.quote);
-      } catch {
-        // keep existing
-      }
-    })();
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const json = await api.get<{ quote?: FxQuote }>(
+            `${endpoints.wallet.fx}?currency=${encodeURIComponent(localCurrency)}&direction=${direction}&amount=${encodeURIComponent(amount || '0')}`,
+          );
+          if (!cancelled && json.quote) setFx(json.quote);
+        } catch {
+          // keep existing quote
+        }
+      })();
+    }, 280);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [localCurrency, direction, amount]);
 

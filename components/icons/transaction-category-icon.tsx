@@ -31,7 +31,7 @@ function normalizeKey(raw: string) {
 }
 
 /** Same category → glyph map as the website transaction row. */
-function glyphFor(category: string | undefined, title: string, credit: boolean): Glyph {
+function glyphFor(category: string | null | undefined, title: string, credit: boolean): Glyph {
   const cat = normalizeKey(category || '');
   const titleKey = normalizeKey(title || '');
 
